@@ -1,13 +1,22 @@
 import 'package:flutter/material.dart';
+import 'screens/auth/login_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/shop_screen.dart';
 import 'screens/categories_screen.dart';
 import 'screens/people_screen.dart';
 import 'screens/cart_screen.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'widgets/bottom_navbar.dart';
+import './utils/StorageService.dart'; // <-- import your storage service
+import './main_layout.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(
+    const ProviderScope(
+      // ← This is required for Riverpod
+      child: MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -17,45 +26,49 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: const MainLayout(),
+      routes: {
+        "/home": (context) => const MainLayout(),
+        "/login": (context) => const LoginScreen(),
+      },
+      home: const SplashScreen(),
     );
   }
 }
 
-class MainLayout extends StatefulWidget {
-  const MainLayout({super.key});
+/// 🔹 SplashScreen handles the token check
+class SplashScreen extends StatefulWidget {
+  const SplashScreen({super.key});
 
   @override
-  State<MainLayout> createState() => _MainLayoutState();
+  State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _MainLayoutState extends State<MainLayout> {
-  int _currentIndex = 0;
+class _SplashScreenState extends State<SplashScreen> {
+  @override
+  void initState() {
+    super.initState();
+    _checkAuth();
+  }
 
-  final List<Widget> _screens = const [
-    HomeScreen(),
-    ShopScreen(),
-    CategoriesScreen(),
-    PeopleScreen(),
-    CartScreen(),
-  ];
+  Future<void> _checkAuth() async {
+    final isLoggedIn = await StorageService.checkAuth();
 
-  void _onTabTapped(int index) {
-    setState(() {
-      _currentIndex = index;
-    });
+    if (!mounted) return;
+
+    if (isLoggedIn) {
+      Navigator.pushReplacementNamed(context, "/home");
+    } else {
+      Navigator.pushReplacementNamed(context, "/login");
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _screens,
-      ),
-      bottomNavigationBar: BottomNavBar(
-        currentIndex: _currentIndex,
-        onTap: _onTabTapped,
+    return const Scaffold(
+      body: Center(
+        child: CircularProgressIndicator(
+          color: Color.fromRGBO(255, 82, 0, 1), // orange loader
+        ),
       ),
     );
   }

@@ -21,7 +21,7 @@ void showAddressModal(BuildContext context) {
             child: DeliveryAddressSelector(
               onClose: () => Navigator.pop(context),
               onAddressSelect: (address) {
-                debugPrint('Selected address: ${address.name}');
+                debugPrint('Selected address: ${address['line1']}');
                 Navigator.pop(context);
               },
             ),
