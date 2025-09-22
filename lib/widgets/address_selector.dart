@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../provider/rider_provider.dart';
+import './current_location_button.dart';
 
 class DeliveryAddressSelector extends ConsumerStatefulWidget {
   final VoidCallback? onClose;
@@ -51,14 +53,6 @@ class _DeliveryAddressSelectorState
       widget.onAddressSelect?.call(selectedAddress);
     }
 
-    void handleUseCurrentLocation() {
-      debugPrint('Using current location...');
-    }
-
-    void handleAddNewAddress() {
-      debugPrint('Adding new address...');
-    }
-
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
@@ -71,7 +65,7 @@ class _DeliveryAddressSelectorState
             _buildSearchBar(),
 
             // Use Current Location
-            _buildCurrentLocationButton(),
+            const CurrentLocationButton(),
 
             // Saved Addresses
             _buildSavedAddressesTitle(),
@@ -140,26 +134,6 @@ class _DeliveryAddressSelectorState
           ),
         ),
         onChanged: (value) => setState(() => searchQuery = value),
-      ),
-    );
-  }
-
-  Widget _buildCurrentLocationButton() {
-    void handleUseCurrentLocation() {
-      debugPrint('Using current location...');
-      // Add logic to fetch user's current location here
-    }
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: ElevatedButton.icon(
-        onPressed: handleUseCurrentLocation,
-        icon: const Icon(Icons.location_on, color: Colors.white),
-        label: const Text("Use my current location"),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFFFF5200),
-          minimumSize: const Size.fromHeight(48),
-        ),
       ),
     );
   }

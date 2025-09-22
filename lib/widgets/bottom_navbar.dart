@@ -17,7 +17,7 @@ class BottomNavBar extends StatelessWidget {
       currentIndex: currentIndex,
       onTap: onTap,
       selectedItemColor: const Color.fromRGBO(255, 82, 0, 1), // Active
-      unselectedItemColor: Colors.grey, // Inactive icon color
+      unselectedItemColor: Colors.black, // Inactive icon color
       items: const [
         BottomNavigationBarItem(
           icon: Icon(Icons.home),

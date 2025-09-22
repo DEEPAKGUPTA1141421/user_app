@@ -11,6 +11,7 @@ import '../widgets/title_row.dart';
 import '../widgets/sponsored_section.dart';
 import './auth/login_screen.dart'; // your login page
 import '../widgets/collapsible_header.dart';
+import '../widgets/Home/category_page.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -22,13 +23,22 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   String? jwtToken;
   bool isLoading = false;
-
+  String? selectedCategoryId;
+  int reloadKey = 0;
   @override
   void initState() {
     print("Init the Rendering from Home Page");
     super.initState();
     Future.microtask(() => checkAuth(context));
+    // default to null → CategoryPage can handle empty state
+    selectedCategoryId = null;
     isLoading = false;
+  }
+
+  void reloadPage() {
+    setState(() {
+      reloadKey++; // change key to rebuild
+    });
   }
 
   Future<void> checkAuth(BuildContext context) async {
@@ -61,44 +71,45 @@ class _HomeScreenState extends State<HomeScreen> {
     if (isLoading) {
       return const Scaffold(
         body: Center(
-            child: CircularProgressIndicator(
-          color: Color.fromRGBO(255, 82, 0, 1),
-        )),
+          child: CircularProgressIndicator(
+            color: Color.fromRGBO(255, 82, 0, 1),
+          ),
+        ),
       );
     }
 
     return Scaffold(
       body: SafeArea(
-        child: ScrollConfiguration(
-          behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Collapsible header → full width, only top margin
-                const Padding(
-                  padding: EdgeInsets.only(top: 8.0), // 👈 only top margin
-                  child: CollapsibleHeader(),
+        child: RefreshIndicator(
+          onRefresh: () async {
+            setState(() {
+              reloadKey++; // triggers rebuild of everything inside KeyedSubtree
+            });
+          },
+          child: ScrollConfiguration(
+            behavior:
+                ScrollConfiguration.of(context).copyWith(scrollbars: false),
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: KeyedSubtree(
+                key: ValueKey(reloadKey), // <-- everything inside rebuilds
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Collapsible header
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8.0),
+                      child: CollapsibleHeader(
+                        onCategorySelected: (id) {
+                          setState(() => selectedCategoryId = id);
+                        },
+                      ),
+                    ),
+                    // Category page
+                    CategoryPage(categoryId: selectedCategoryId),
+                  ],
                 ),
-
-                // All other sections keep side margin
-                const _Section(child: BannerSection()),
-                const _Section(child: TitleRow(title: "Popular Products")),
-                const _Section(child: ProductList(itemCount: 3)),
-                const _Section(child: TitleRow(title: "Upcoming Top Deals")),
-                const _Section(child: ProductList(itemCount: 3)),
-                const _Section(child: TitleRow(title: "Suggested For You")),
-                const _Section(child: ProductList(itemCount: 3)),
-                const _Section(child: TitleRow(title: "Continue Your Search")),
-                const _Section(child: ProductGrid(itemCount: 6)),
-                const _Section(
-                    child: TitleRow(title: "Upcoming Festival Products")),
-                const _Section(child: ProductList(itemCount: 3)),
-                const _Section(child: TitleRow(title: "Super Hot Trends")),
-                const _Section(child: ProductList(itemCount: 3)),
-                const _Section(child: TitleRow(title: "Sponsored")),
-                const _Section(child: SponsoredSection()),
-              ],
+              ),
             ),
           ),
         ),

@@ -5,8 +5,8 @@ import 'category_section.dart';
 import 'show_address_modal.dart';
 
 class CollapsibleHeader extends StatefulWidget {
-  const CollapsibleHeader({super.key});
-
+  final Function(String) onCategorySelected;
+  const CollapsibleHeader({super.key, required this.onCategorySelected});
   @override
   State<CollapsibleHeader> createState() => _CollapsibleHeaderState();
 }
@@ -65,10 +65,10 @@ class _CollapsibleHeaderState extends State<CollapsibleHeader> {
               )
             ],
           ),
-          child: const Column(
+          child: Column(
             children: [
-              SearchSection(),
-              CategorySection(),
+              const SearchSection(),
+              CategorySection(onCategorySelected: widget.onCategorySelected),
             ],
           ),
         )

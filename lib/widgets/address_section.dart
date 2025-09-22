@@ -133,7 +133,7 @@ class _AddressSectionState extends ConsumerState<AddressSection> {
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontSize: 12,
-                        color: Colors.black87,
+                        color: Colors.black,
                       ),
                     ),
                   ],
