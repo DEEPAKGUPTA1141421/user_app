@@ -12,6 +12,7 @@ import '../widgets/sponsored_section.dart';
 import './auth/login_screen.dart'; // your login page
 import '../widgets/collapsible_header.dart';
 import '../widgets/Home/category_page.dart';
+import '../components/product/infinite_product_section.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -107,6 +108,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     // Category page
                     CategoryPage(categoryId: selectedCategoryId),
+                    InfiniteProductSection()
                   ],
                 ),
               ),

@@ -23,45 +23,8 @@ class BannerSlide {
   });
 }
 
-// Example slides
-final List<BannerSlide> bannerSlides = [
-  BannerSlide(
-    id: 1,
-    title: "vivo T4 Lite 5G",
-    subtitle: "Next-Gen Performance",
-    price: "₹8,999*",
-    originalPrice: "₹12,999",
-    image:
-        "https://i.pinimg.com/736x/de/77/de/de77deab31779bc4ed3fae38062fc27f.jpg",
-    badge: "THE BIG BILLION DAYS",
-    bgGradient: LinearGradient(colors: [Colors.purple, Colors.orange]),
-  ),
-  BannerSlide(
-    id: 2,
-    title: "iPhone 15 Pro",
-    subtitle: "Titanium. So Pro.",
-    price: "₹1,34,900*",
-    originalPrice: "₹1,49,900",
-    image:
-        "assets/phone-2.pnghttps://i.pinimg.com/736x/de/77/de/de77deab31779bc4ed3fae38062fc27f.jpg",
-    badge: "MEGA SALE",
-    bgGradient: LinearGradient(colors: [Colors.blue, Colors.pink]),
-  ),
-  BannerSlide(
-    id: 3,
-    title: "Galaxy S24 Ultra",
-    subtitle: "Galaxy AI is Here",
-    price: "₹1,29,999*",
-    originalPrice: "₹1,49,999",
-    image:
-        "https://i.pinimg.com/736x/de/77/de/de77deab31779bc4ed3fae38062fc27f.jpg",
-    badge: "LIMITED TIME",
-    bgGradient: LinearGradient(colors: [Colors.green, Colors.teal]),
-  ),
-];
-
 class BannerSection extends StatefulWidget {
-  final List<dynamic> section;
+  final Map<String, dynamic> section;
   const BannerSection({super.key, required this.section});
 
   @override
@@ -73,19 +36,46 @@ class _AutoScrollBannerState extends State<BannerSection> {
   int currentSlide = 0;
   Timer? timer;
 
+  // Initialize with empty list to avoid LateInitializationError
+  List<BannerSlide> slides = [];
+
   @override
   void initState() {
     super.initState();
-    timer = Timer.periodic(const Duration(seconds: 4), (_) {
-      setState(() {
-        currentSlide = (currentSlide + 1) % bannerSlides.length;
-      });
-      _controller.animateToPage(
-        currentSlide,
-        duration: const Duration(milliseconds: 700),
-        curve: Curves.easeInOut,
+    if (!mounted) return;
+    // Parse API data into BannerSlide objects
+    slides = (widget.section['items'] as List<dynamic>).map((item) {
+      final metadata = item['metadata'] ?? {};
+      final gradientColors =
+          (metadata['bgGradient'] as List<dynamic>? ?? ['purple', 'orange'])
+              .map((color) => _getColorFromString(color.toString()))
+              .toList();
+      return BannerSlide(
+        id: item['id'].hashCode,
+        title: metadata['title'] ?? '',
+        subtitle: metadata['subtitle'] ?? '',
+        price: metadata['price'] ?? '',
+        originalPrice: metadata['originalPrice'],
+        image: metadata['imageurl'] ?? '',
+        badge: metadata['badge'],
+        bgGradient: LinearGradient(colors: gradientColors),
       );
-    });
+    }).toList();
+
+    // Only start timer if we have slides
+    if (slides.isNotEmpty) {
+      timer = Timer.periodic(const Duration(seconds: 4), (_) {
+        if (!mounted) return;
+        setState(() {
+          currentSlide = (currentSlide + 1) % slides.length;
+        });
+        _controller.animateToPage(
+          currentSlide,
+          duration: const Duration(milliseconds: 700),
+          curve: Curves.easeInOut,
+        );
+      });
+    }
   }
 
   @override
@@ -97,17 +87,21 @@ class _AutoScrollBannerState extends State<BannerSection> {
 
   @override
   Widget build(BuildContext context) {
+    final sectionConfig = widget.section['config'] ?? {};
+    final double height =
+        double.tryParse(sectionConfig['height']?.toString() ?? '200') ?? 200;
+
     return SizedBox(
-      height: 200, // max height
+      height: height,
       width: double.infinity,
       child: Stack(
         children: [
           PageView.builder(
             controller: _controller,
-            itemCount: bannerSlides.length,
+            itemCount: slides.length,
             onPageChanged: (index) => setState(() => currentSlide = index),
             itemBuilder: (context, index) {
-              final slide = bannerSlides[index];
+              final slide = slides[index];
               return Container(
                 decoration: BoxDecoration(
                   gradient: slide.bgGradient,
@@ -117,7 +111,6 @@ class _AutoScrollBannerState extends State<BannerSection> {
                 padding: const EdgeInsets.all(12),
                 child: Row(
                   children: [
-                    // Left Content
                     Flexible(
                       flex: 1,
                       child: Column(
@@ -184,23 +177,21 @@ class _AutoScrollBannerState extends State<BannerSection> {
                           const SizedBox(height: 8),
                           ElevatedButton(
                             style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.white,
-                                foregroundColor: Colors.orange,
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 8),
-                                shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12))),
-                            onPressed: () {},
-                            child: const Text(
-                              "Buy Now",
-                              style: TextStyle(
-                                  fontSize: 12, fontWeight: FontWeight.bold),
+                              backgroundColor: Colors.white,
+                              foregroundColor: Colors.orange,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 8),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12)),
                             ),
+                            onPressed: () {},
+                            child: const Text("Buy Now",
+                                style: TextStyle(
+                                    fontSize: 12, fontWeight: FontWeight.bold)),
                           )
                         ],
                       ),
                     ),
-                    // Right Image
                     Flexible(
                       flex: 1,
                       child: Center(
@@ -208,9 +199,7 @@ class _AutoScrollBannerState extends State<BannerSection> {
                           width: 120,
                           height: 180,
                           child: Transform.rotate(
-                            angle: 45 *
-                                3.1415927 /
-                                180, // convert 45 degrees to radians
+                            angle: 45 * 3.1415927 / 180,
                             child: Image.network(
                               slide.image,
                               fit: BoxFit.contain,
@@ -218,8 +207,7 @@ class _AutoScrollBannerState extends State<BannerSection> {
                                 if (progress == null) return child;
                                 return const Center(
                                     child: CircularProgressIndicator(
-                                  color: Colors.white,
-                                ));
+                                        color: Colors.white));
                               },
                               errorBuilder: (context, error, stackTrace) =>
                                   const Icon(Icons.broken_image,
@@ -234,7 +222,7 @@ class _AutoScrollBannerState extends State<BannerSection> {
               );
             },
           ),
-          // Slide Indicators
+          // Slide indicators
           Positioned(
             bottom: 8,
             left: 0,
@@ -242,7 +230,7 @@ class _AutoScrollBannerState extends State<BannerSection> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: List.generate(
-                bannerSlides.length,
+                slides.length,
                 (index) => GestureDetector(
                   onTap: () {
                     setState(() => currentSlide = index);
@@ -272,7 +260,7 @@ class _AutoScrollBannerState extends State<BannerSection> {
             left: 0,
             right: 0,
             child: LinearProgressIndicator(
-              value: (currentSlide + 1) / bannerSlides.length,
+              value: (currentSlide + 1) / slides.length,
               color: Colors.white,
               backgroundColor: Colors.white.withOpacity(0.2),
               minHeight: 3,
@@ -281,5 +269,28 @@ class _AutoScrollBannerState extends State<BannerSection> {
         ],
       ),
     );
+  }
+
+  Color _getColorFromString(String color) {
+    switch (color.toLowerCase()) {
+      case 'purple':
+        return Colors.purple;
+      case 'orange':
+        return Colors.orange;
+      case 'blue':
+        return Colors.blue;
+      case 'pink':
+        return Colors.pink;
+      case 'green':
+        return Colors.green;
+      case 'teal':
+        return Colors.teal;
+      case 'white':
+        return Colors.white;
+      case 'black':
+        return Colors.black;
+      default:
+        return Colors.grey;
+    }
   }
 }

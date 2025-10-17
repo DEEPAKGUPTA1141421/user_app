@@ -18,6 +18,7 @@ class _CategorySectionState extends ConsumerState<CategorySection> {
 
   @override
   Widget build(BuildContext context) {
+    print("rendering category section");
     final state = ref.watch(categoryProvider);
     final isLoading = state['isLoading'] ?? false;
     final categories = state['categoryData'] as List<dynamic>? ?? [];

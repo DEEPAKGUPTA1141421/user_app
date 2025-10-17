@@ -2,6 +2,9 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+
 
     <application
         android:label="@string/app_name"
@@ -33,5 +36,8 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        <meta-data android:name="com.phonepe.android.sdk.isUAT" android:value="true"/>
+        <meta-data android:name="com.phonepe.android.sdk.MerchantId" android:value="PGTESTPAYUAT"/>
+        <!-- phone merchant id for payment replace it with actaul merchantId -->
     </application>
 </manifest>

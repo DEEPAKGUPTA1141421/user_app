@@ -21,6 +21,16 @@ class _SearchSectionState extends State<SearchSection> {
         children: [
           Expanded(
             child: TextField(
+              readOnly: true, // Makes it non-editable but clickable
+              onTap: () {
+                // Navigate to real search page
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const RealSearchPage(),
+                  ),
+                );
+              },
               cursorColor: brandColor, // 🔥 cursor color
               decoration: InputDecoration(
                 hintText: "Search for products, brands and more",

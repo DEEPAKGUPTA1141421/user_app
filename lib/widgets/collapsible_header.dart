@@ -14,6 +14,8 @@ class CollapsibleHeader extends StatefulWidget {
 class _CollapsibleHeaderState extends State<CollapsibleHeader> {
   bool isCollapsed = false;
   double lastScrollY = 0;
+  ScrollPosition? _scrollPosition;
+  VoidCallback? _scrollListener;
 
   @override
   void initState() {
@@ -24,18 +26,33 @@ class _CollapsibleHeaderState extends State<CollapsibleHeader> {
   void _setupScrollListener() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ScrollableState? scrollable = Scrollable.of(context);
-      scrollable?.position.addListener(() {
-        double currentScrollY = scrollable.position.pixels;
+      if (scrollable != null) {
+        _scrollPosition = scrollable.position;
 
-        if (currentScrollY > 100 && currentScrollY > lastScrollY) {
-          setState(() => isCollapsed = true);
-        } else if (currentScrollY < lastScrollY) {
-          setState(() => isCollapsed = false);
-        }
+        _scrollListener = () {
+          if (!mounted) return; // safety check
+          double currentScrollY = _scrollPosition!.pixels;
 
-        lastScrollY = currentScrollY;
-      });
+          if (currentScrollY > 100 && currentScrollY > lastScrollY) {
+            setState(() => isCollapsed = true);
+          } else if (currentScrollY < lastScrollY) {
+            setState(() => isCollapsed = false);
+          }
+
+          lastScrollY = currentScrollY;
+        };
+
+        _scrollPosition!.addListener(_scrollListener!);
+      }
     });
+  }
+
+  @override
+  void dispose() {
+    if (_scrollListener != null && _scrollPosition != null) {
+      _scrollPosition!.removeListener(_scrollListener!);
+    }
+    super.dispose();
   }
 
   @override
@@ -47,11 +64,13 @@ class _CollapsibleHeaderState extends State<CollapsibleHeader> {
           transform: Matrix4.translationValues(
               0, isCollapsed ? -100 : 0, 0), // collapse effect
           child: Container(
-            child: SafeArea(child: AddressSection(
-              showAddressModal: () {
-                showAddressModal(context); // your pre-defined function
-              },
-            )),
+            child: SafeArea(
+              child: AddressSection(
+                showAddressModal: () {
+                  showAddressModal(context);
+                },
+              ),
+            ),
           ),
         ),
         Container(

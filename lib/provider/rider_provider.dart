@@ -11,7 +11,9 @@ class RiderNotifier extends StateNotifier<Map<String, dynamic>> {
           'isLoading': false,
           'success': false,
           'message': '',
-          'user_detail': {}
+          'user_detail': {},
+          'recent_search': [],
+          'trending_search': []
         });
 
   /// Getter for loading status

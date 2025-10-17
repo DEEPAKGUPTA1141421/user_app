@@ -16,6 +16,7 @@ class _AddressSectionState extends ConsumerState<AddressSection> {
   void initState() {
     super.initState();
     // Fetch user details when this widget is mounted
+    if (!mounted) return;
     Future.microtask(() {
       ref.read(riderPod.notifier).getUserDetail();
     });

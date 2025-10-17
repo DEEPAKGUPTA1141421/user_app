@@ -1,3 +1,5 @@
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/home_screen.dart';
@@ -9,8 +11,24 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'widgets/bottom_navbar.dart';
 import './utils/StorageService.dart'; // <-- import your storage service
 import './main_layout.dart';
+import 'screens/cart/order_summary_page.dart';
+import 'screens/cart/payment_page.dart';
+import 'screens/accounts/customer_support_page.dart';
+import 'screens/accounts/my_orders_page.dart';
+import 'screens/accounts/wishlist_screen.dart';
+import 'screens/accounts/order_details_page.dart';
+import 'unknown_page.dart';
+import 'screens/shop/shop_detail_screen.dart';
+import 'widgets/product/product_details_page.dart';
 
-void main() {
+Future<void> _firebaseMessagingHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+}
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingHandler);
   runApp(
     const ProviderScope(
       // ← This is required for Riverpod
@@ -26,11 +44,64 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
+      home: const SplashScreen(),
+
+      // Static routes
       routes: {
         "/home": (context) => const MainLayout(),
         "/login": (context) => const LoginScreen(),
+        '/order-summary': (context) => OrderSummaryPage(),
+        '/payment': (context) => PaymentPage(),
+        '/account/orders': (context) => MyOrdersPage(),
+        '/account/wishlist': (context) => WishlistScreen(),
+        '/account/support': (context) => CustomerSupportPage(),
       },
-      home: const SplashScreen(),
+
+      // Dynamic routes
+      onGenerateRoute: (settings) {
+        if (settings.name != null) {
+          final uri = Uri.parse(settings.name!);
+
+          // Example: /order/1
+          if (uri.pathSegments.length == 2 && uri.pathSegments[0] == 'order') {
+            final orderId = uri.pathSegments[1];
+            return MaterialPageRoute(
+              builder: (context) => OrderDetailsPage(orderId: orderId),
+            );
+          } // Dynamic shop route: /shop/<id>
+          if (uri.pathSegments.length == 2 && uri.pathSegments[0] == 'shop') {
+            final shopId = uri.pathSegments[1];
+            return MaterialPageRoute(
+              builder: (context) => ShopDetailScreen(shopId: shopId),
+            );
+          }
+
+          // Dynamic product detail route: /productDetail/<id>
+          if (uri.pathSegments.length == 2 &&
+              uri.pathSegments[0] == 'productDetail') {
+            final productId = uri.pathSegments[1]; // from URL path
+            final args = settings.arguments as Map<String, dynamic>? ?? {};
+
+            return MaterialPageRoute(
+              builder: (context) => ProductDetailsPage(
+                productId: productId,
+                // Optionally, pass args to the constructor if you modify it:
+                // itemType: args['itemType'] ?? "Product",
+                // title: args['title'] ?? "Unnamed Product",
+                // imageUrl: args['imageUrl'] ?? "https://via.placeholder.com/150",
+                // itemId: args['itemId'] ?? productId,
+              ),
+              settings: settings, // Keep arguments available via ModalRoute
+            );
+          }
+        }
+
+        // Unknown route fallback
+        print("⚠️ Unknown route: ${settings.name}");
+        return MaterialPageRoute(
+          builder: (context) => const UnknownPage(),
+        );
+      },
     );
   }
 }
@@ -44,8 +115,11 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
+  late FirebaseMessaging messaging;
   @override
   void initState() {
+    messaging = FirebaseMessaging.instance;
+    messaging.requestPermission();
     super.initState();
     _checkAuth();
   }
