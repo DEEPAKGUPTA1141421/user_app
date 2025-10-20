@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../provider/product_provider.dart';
+import '../../provider/cart_provider.dart';
 import '../../widgets/real_search_page.dart';
 import 'product_image_carousel.dart';
 import 'delivery_info.dart';
@@ -60,6 +61,8 @@ class _ProductDetailsPageState extends ConsumerState<ProductDetailsPage> {
     final bool isLoading = productState['isLoading'] ?? false;
     final productDetail = productState['product_detail'];
     const brandColor = Color(0xFFFF5200);
+    final cartState = ref.watch(cartProvider); // Access cart data
+    final cartItems = cartState['cartData']['items'] ?? [];
 // ✅ Extract product images where is_image_attribute == true
     final imageAttributes =
         (productDetail['product_attributes'] as List?)?.where((attr) {
@@ -92,6 +95,8 @@ class _ProductDetailsPageState extends ConsumerState<ProductDetailsPage> {
     final name = productDetail['name'] ?? 'Unnamed Product';
     final description = productDetail['description'] ?? '';
     final stock = productDetail['stock'] ?? 0;
+    // Check if the current product is already in the cart
+    final isInCart = cartItems.any((item) => item['productId'] == widget.productId);
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
@@ -184,7 +189,13 @@ class _ProductDetailsPageState extends ConsumerState<ProductDetailsPage> {
                   foregroundColor: brandColor,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                 ),
-                child: const Text("Add to Cart"),
+                child: Text(
+                  isInCart ? "Added to Cart" : "Add to Cart",
+                  style: TextStyle(
+                    color: isInCart ? Colors.green : brandColor,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
             ),
             const SizedBox(width: 12),

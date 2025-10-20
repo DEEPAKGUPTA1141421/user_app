@@ -77,19 +77,18 @@ class _ProductSectionState extends ConsumerState<InfiniteProductSection> {
           ),
           itemBuilder: (context, index) {
             if (index == products.length && hasMore) {
-              // bottom shimmer loader
-              ref
-                  .read(InfiniteproductProvider.notifier)
-                  .fetchProducts(loadMore: true);
-              return const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(10.0),
-                  child: CircularProgressIndicator(
-                    color: Color(0xFFFF5200),
-                  ),
-                ),
-              );
-            }
+  // bottom shimmer loader
+  ref.read(InfiniteproductProvider.notifier).fetchProducts(loadMore: true);
+  return const Center( // Center widget added here
+    child: Padding(
+      padding: EdgeInsets.all(10.0),
+      child: CircularProgressIndicator(
+        color: Color(0xFFFF5200),
+      ),
+    ),
+  );
+}
+
 
             if (index >= products.length) return const SizedBox.shrink();
 

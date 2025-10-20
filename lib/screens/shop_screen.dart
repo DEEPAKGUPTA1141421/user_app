@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import './shop/search_bar.dart' as local;
 import './shop/shop_card.dart';
 import './shop/category_pill.dart';
-
+import '../widgets/category_section.dart';
 class ShopScreen extends StatefulWidget {
   const ShopScreen({super.key});
 
@@ -132,7 +132,6 @@ class _ShopScreenState extends State<ShopScreen> {
                             .toList(),
                       ),
                     ),
-
                     const SizedBox(height: 24),
                     // All Shops
                     const Text("All Shops",

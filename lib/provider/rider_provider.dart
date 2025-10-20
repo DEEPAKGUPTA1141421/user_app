@@ -21,21 +21,25 @@ class RiderNotifier extends StateNotifier<Map<String, dynamic>> {
 
   /// Login API
   Future<Map<String, dynamic>> login(String phone, String userType) async {
+    print("login Body 1");
     state = {...state, 'isLoading': true, 'success': false, 'message': ''};
-
+    print("login Body 2");
     try {
+      print("login Body 3");
       final res = await http.post(
         Uri.parse(ServerApi.login),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({"phone": phone, "typeOfUser": userType}),
       );
-
+      print("login Body 4");
       final Map<String, dynamic> jsonBody = jsonDecode(res.body);
 
       // Update state with API response and stop loading
       state = {...jsonBody, 'isLoading': false};
+      print("login Body ${jsonBody}");
       return jsonBody;
     } catch (e) {
+      print("login Body 6 ${e}");
       state = {'success': false, 'message': e.toString(), 'isLoading': false};
       return state;
     }

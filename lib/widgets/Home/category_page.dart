@@ -21,7 +21,9 @@ class _CategoryPageState extends ConsumerState<CategoryPage> {
     print("Init the Category Page");
     // Fetch sections when widget initializes
     Future.microtask(() {
+      print("fetch data of Category Page");
       ref.read(categorySectionsProvider.notifier).fetchSectionsOfCategory();
+      print("catgoryid ${widget.categoryId}");
       if (widget.categoryId != null) {
         ref
             .read(categorySectionsProvider.notifier)
@@ -42,11 +44,6 @@ class _CategoryPageState extends ConsumerState<CategoryPage> {
         child: CircularProgressIndicator(color: Color(0xFFFF5200)),
       );
     }
-
-    if (sectionsData.isEmpty) {
-      return const Center(child: Text("No sections found"));
-    }
-
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -77,6 +74,7 @@ class _CategoryPageState extends ConsumerState<CategoryPage> {
                       return ProductCard(
                         product: brand['metadata'] ?? brand,
                         showDiscount: false,
+                        section:section
                       );
                     },
                   ),
@@ -102,6 +100,7 @@ class _CategoryPageState extends ConsumerState<CategoryPage> {
                       return ProductCard(
                         product: product,
                         showDiscount: true,
+                        section: section,
                       );
                     },
                   ),
