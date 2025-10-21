@@ -102,6 +102,63 @@ class RiderNotifier extends StateNotifier<Map<String, dynamic>> {
       return state;
     }
   }
+  Future<Map<String, dynamic>> addAddress(
+      String latitude, String longitude, bool isDefault) async {
+    state = {...state, 'isLoading': true};
+    final token = await StorageService.getToken();
+    try {
+      final res = await http.post(
+        Uri.parse(ServerApi.addAddress),
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $token",
+        },
+        body: jsonEncode(
+            {"latitude": latitude, "longitude": longitude,"isDefault":isDefault}),
+      );
+
+      final Map<String, dynamic> jsonBody = jsonDecode(res.body);
+      state = {
+        ...state,
+        'isLoading': false,
+        'success': jsonBody['success'] ?? false,
+        'message': jsonBody['message'] ?? '',
+        'user_detail': jsonBody['data'] ?? {},
+      };
+      print("jsonbody of add-address ${jsonBody}");
+      return jsonBody;
+    } catch (e) {
+      state = {'success': false, 'message': e.toString(), 'isLoading': false};
+      return state;
+    }
+  }
+  Future<Map<String, dynamic>> makeAddressDefault(String addressId) async {
+    state = {...state, 'isLoading': true};
+    final token = await StorageService.getToken();
+    try {
+      final res = await http.put(
+         Uri.parse("${ServerApi.makeaddressdefault}/$addressId"),
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $token",
+        },
+      );
+
+      final Map<String, dynamic> jsonBody = jsonDecode(res.body);
+      state = {
+        ...state,
+        'isLoading': false,
+        'success': jsonBody['success'] ?? false,
+        'message': jsonBody['message'] ?? '',
+        'user_detail': jsonBody['data'] ?? {},
+      };
+      print("jsonbody of add-address ${jsonBody}");
+      return jsonBody;
+    } catch (e) {
+      state = {'success': false, 'message': e.toString(), 'isLoading': false};
+      return state;
+    }
+  }
 }
 
 /// Global Riverpod provider for RiderNotifier

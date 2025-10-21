@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../provider/rider_provider.dart'; // adjust path if needed
 
-class CurrentLocationButton extends StatefulWidget {
+class CurrentLocationButton extends ConsumerStatefulWidget {
   const CurrentLocationButton({super.key});
 
   @override
-  State<CurrentLocationButton> createState() => _CurrentLocationButtonState();
+  ConsumerState<CurrentLocationButton> createState() =>
+      _CurrentLocationButtonState();
 }
 
-class _CurrentLocationButtonState extends State<CurrentLocationButton> {
+class _CurrentLocationButtonState
+    extends ConsumerState<CurrentLocationButton> {
   bool isLoading = false;
 
   Future<void> handleUseCurrentLocation() async {
@@ -35,8 +39,39 @@ class _CurrentLocationButtonState extends State<CurrentLocationButton> {
 
       debugPrint(
           "Latitude: ${position.latitude}, Longitude: ${position.longitude}");
+
+      /// ✅ Call addAddress API after fetching location
+      final riderNotifier = ref.read(riderPod.notifier);
+      final res = await riderNotifier.addAddress(
+        position.latitude.toString(),
+        position.longitude.toString(),true
+      );
+
+      if (res['success'] == true) {
+        debugPrint("Address saved successfully!");
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Current location saved successfully!"),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        debugPrint("Failed to save address: ${res['message']}");
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(res['message'] ?? "Something went wrong!"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     } catch (e) {
       debugPrint("Error fetching location: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Error: $e"),
+          backgroundColor: Colors.red,
+        ),
+      );
     } finally {
       setState(() => isLoading = false);
     }
@@ -59,7 +94,8 @@ class _CurrentLocationButtonState extends State<CurrentLocationButton> {
               )
             : const Icon(Icons.location_on, color: Colors.white),
         label: Text(
-            isLoading ? "Fetching location..." : "Use my current location"),
+          isLoading ? "Fetching location..." : "Use my current location",
+        ),
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFFFF5200),
           minimumSize: const Size.fromHeight(48),

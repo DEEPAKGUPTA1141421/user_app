@@ -11,6 +11,8 @@ class CartNotifier extends StateNotifier<Map<String, dynamic>> {
           'success': false,
           'message': '',
           'cartData': {},
+          'moreCoupons':[],
+          'bestCoupons':[]
         }) {}
 
   /// Fetch the active cart
@@ -189,6 +191,82 @@ class CartNotifier extends StateNotifier<Map<String, dynamic>> {
       }
     } catch (e) {
       state = {...state, 'isLoading': false, 'message': e.toString()};
+    }
+  }
+
+  Future<void> cartCoupon() async {
+    try {
+      state = {...state, 'isLoading': true};
+
+      final token = await StorageService.getToken();
+      final response = await http.get(
+        Uri.parse(ServerApi.cartCoupon),
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $token",
+        },
+      );
+      print("Coupons ${response}");
+      if (response.statusCode == 200) {
+         final body = json.decode(response.body);
+         print("Coupons ${body}");
+        state = {
+          ...state,
+          'isLoading': false,
+          'success': true,
+          'message': 'Cart cleared',
+          'bestCoupons':body['data']['bestCoupons'],
+          'moreCoupons':body['data']['moreCoupons']
+        };
+      } else {
+        state = {
+          ...state,
+          'isLoading': false,
+          'message': 'Failed to fetch cart Coupon',
+        };
+      }
+    } catch (e) {
+      state = {...state, 'isLoading': false, 'message': e.toString()};
+    }
+  }
+  Future<void> ApplyCartCoupon(String couponCode) async {
+    try {
+      state = {...state, 'isLoading': true, 'message': ''};
+
+      final token = await StorageService.getToken();
+      final response = await http.post(
+        Uri.parse("${ServerApi.ApplyCartCoupon}/${couponCode}"),
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $token",
+        },
+      );
+      print("called applycoupon");
+      if (response.statusCode == 200) {
+        final body = json.decode(response.body);
+        print("response of apply coupon ${body}");
+        state = {
+          ...state,
+          'isLoading': false,
+          'success': body['success'] ?? false,
+          'message': body['message'] ?? '',
+          'cartData': body['data'] ?? {},
+        };
+      } else {
+        state = {
+          ...state,
+          'isLoading': false,
+          'success': false,
+          'message': 'Failed to Apply Coupon',
+        };
+      }
+    } catch (e) {
+      state = {
+        ...state,
+        'isLoading': false,
+        'success': false,
+        'message': e.toString(),
+      };
     }
   }
 }
