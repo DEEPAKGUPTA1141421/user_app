@@ -21,21 +21,25 @@ class RiderNotifier extends StateNotifier<Map<String, dynamic>> {
 
   /// Login API
   Future<Map<String, dynamic>> login(String phone, String userType) async {
+    print("login Body 1");
     state = {...state, 'isLoading': true, 'success': false, 'message': ''};
-
+    print("login Body 2");
     try {
+      print("login Body 3");
       final res = await http.post(
         Uri.parse(ServerApi.login),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({"phone": phone, "typeOfUser": userType}),
       );
-
+      print("login Body 4");
       final Map<String, dynamic> jsonBody = jsonDecode(res.body);
 
       // Update state with API response and stop loading
       state = {...jsonBody, 'isLoading': false};
+      print("login Body ${jsonBody}");
       return jsonBody;
     } catch (e) {
+      print("login Body 6 ${e}");
       state = {'success': false, 'message': e.toString(), 'isLoading': false};
       return state;
     }
@@ -95,6 +99,63 @@ class RiderNotifier extends StateNotifier<Map<String, dynamic>> {
         'message': e.toString(),
         'isLoading': false,
       };
+      return state;
+    }
+  }
+  Future<Map<String, dynamic>> addAddress(
+      String latitude, String longitude, bool isDefault) async {
+    state = {...state, 'isLoading': true};
+    final token = await StorageService.getToken();
+    try {
+      final res = await http.post(
+        Uri.parse(ServerApi.addAddress),
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $token",
+        },
+        body: jsonEncode(
+            {"latitude": latitude, "longitude": longitude,"isDefault":isDefault}),
+      );
+
+      final Map<String, dynamic> jsonBody = jsonDecode(res.body);
+      state = {
+        ...state,
+        'isLoading': false,
+        'success': jsonBody['success'] ?? false,
+        'message': jsonBody['message'] ?? '',
+        'user_detail': jsonBody['data'] ?? {},
+      };
+      print("jsonbody of add-address ${jsonBody}");
+      return jsonBody;
+    } catch (e) {
+      state = {'success': false, 'message': e.toString(), 'isLoading': false};
+      return state;
+    }
+  }
+  Future<Map<String, dynamic>> makeAddressDefault(String addressId) async {
+    state = {...state, 'isLoading': true};
+    final token = await StorageService.getToken();
+    try {
+      final res = await http.put(
+         Uri.parse("${ServerApi.makeaddressdefault}/$addressId"),
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $token",
+        },
+      );
+
+      final Map<String, dynamic> jsonBody = jsonDecode(res.body);
+      state = {
+        ...state,
+        'isLoading': false,
+        'success': jsonBody['success'] ?? false,
+        'message': jsonBody['message'] ?? '',
+        'user_detail': jsonBody['data'] ?? {},
+      };
+      print("jsonbody of add-address ${jsonBody}");
+      return jsonBody;
+    } catch (e) {
+      state = {'success': false, 'message': e.toString(), 'isLoading': false};
       return state;
     }
   }

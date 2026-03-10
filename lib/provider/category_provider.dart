@@ -21,15 +21,17 @@ class CategoryNotifier extends StateNotifier<Map<String, dynamic>> {
 
       final token = await StorageService.getToken();
       final response = await http.get(
-        Uri.parse(ServerApi.GetCategory),
+        Uri.parse('${ServerApi.GetCategory}?includeChildItem=false&level=SUPER_CATEGORY'),
         headers: {
           "Content-Type": "application/json",
           "Authorization": "Bearer $token",
         },
       );
 
+      print("response from backend for category ${response.statusCode}");
       if (response.statusCode == 200) {
         final body = json.decode(response.body);
+        print("response from backend for category ${body}");
         final List<Map<String, dynamic>> categories =
             List<Map<String, dynamic>>.from(body['data'] ?? []);
 

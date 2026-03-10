@@ -18,7 +18,11 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     // Fetch cart data when screen loads
     Future.microtask(() => ref.read(cartProvider.notifier).fetchCart());
   }
-
+  Future<void> _refreshCart() async {
+    // Invalidate and refetch
+    ref.invalidate(cartProvider);
+    await ref.read(cartProvider.notifier).fetchCart();
+  }
   @override
   Widget build(BuildContext context) {
     final cartState = ref.watch(cartProvider);
@@ -85,13 +89,16 @@ class _CartScreenState extends ConsumerState<CartScreen> {
   }
 
   Widget _buildCartList(
-      BuildContext context, Map<String, dynamic> cartData, List items) {
-    final totalAmount = cartData['totalAmount'] ?? 0;
-    final totalDiscount = cartData['totalDiscount'] ?? 0;
-    final gstCharge = cartData['gstCharge'] ?? 0;
-    final serviceCharge = cartData['serviceCharge'] ?? 0;
+    BuildContext context, Map<String, dynamic> cartData, List items) {
+  final totalAmount = cartData['totalAmount'] ?? 0;
+  final totalDiscount = cartData['totalDiscount'] ?? 0;
+  final gstCharge = cartData['gstCharge'] ?? 0;
+  final serviceCharge = cartData['serviceCharge'] ?? 0;
 
-    return Column(
+  return RefreshIndicator(
+    onRefresh: _refreshCart, // 👈 your existing refresh logic
+    color: brandColor,
+    child: Column(
       children: [
         Expanded(
           child: ListView(
@@ -101,59 +108,113 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                     margin: const EdgeInsets.symmetric(vertical: 8),
                     child: Padding(
                       padding: const EdgeInsets.all(12),
-                      child: Row(
+                      child: Column(
                         children: [
-                          Image.network(item['image'],
-                              width: 64, height: 64, fit: BoxFit.cover),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(item['name'],
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 14)),
-                                const SizedBox(height: 4),
-                                Text("₹${item['price'] / 100}",
-                                    style: const TextStyle(
-                                        color: brandColor,
-                                        fontWeight: FontWeight.bold)),
-                                const SizedBox(height: 4),
-                                Row(
+                          Row(
+                            children: [
+                              Image.network(item['image'],
+                                  width: 64, height: 64, fit: BoxFit.cover),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    IconButton(
-                                      icon: const Icon(Icons.remove),
-                                      onPressed: item['quantity'] > 1
-                                          ? () {
-                                              ref
-                                                  .read(cartProvider.notifier)
-                                                  .updateCartItem(item['id'],
-                                                      item['quantity'] - 1);
-                                            }
-                                          : null,
-                                    ),
-                                    Text(item['quantity'].toString()),
-                                    IconButton(
-                                      icon: const Icon(Icons.add),
-                                      onPressed: () {
-                                        ref
-                                            .read(cartProvider.notifier)
-                                            .updateCartItem(item['id'],
-                                                item['quantity'] + 1);
-                                      },
-                                    ),
-                                    const Spacer(),
-                                    IconButton(
-                                      icon: const Icon(Icons.delete,
-                                          color: Colors.red),
-                                      onPressed: () {
-                                        ref
-                                            .read(cartProvider.notifier)
-                                            .removeItem(item['id']);
-                                      },
+                                    Text(item['name'],
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 14)),
+                                    const SizedBox(height: 4),
+                                    Text("₹${item['price'] / 100}",
+                                        style: const TextStyle(
+                                            color: brandColor,
+                                            fontWeight: FontWeight.bold)),
+                                    const SizedBox(height: 4),
+                                    Row(
+                                      children: [
+                                        IconButton(
+                                          icon: const Icon(Icons.remove),
+                                          onPressed: item['quantity'] > 1
+                                              ? () {
+                                                  ref
+                                                      .read(cartProvider
+                                                          .notifier)
+                                                      .updateCartItem(
+                                                          item['id'],
+                                                          item['quantity'] - 1);
+                                                }
+                                              : null,
+                                        ),
+                                        Text(item['quantity'].toString()),
+                                        IconButton(
+                                          icon: const Icon(Icons.add),
+                                          onPressed: () {
+                                            ref
+                                                .read(cartProvider.notifier)
+                                                .updateCartItem(
+                                                    item['id'],
+                                                    item['quantity'] + 1);
+                                          },
+                                        ),
+                                      ],
                                     ),
                                   ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Container(
+                            padding:
+                                const EdgeInsets.symmetric(vertical: 1),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Row(
+                              mainAxisAlignment:
+                                  MainAxisAlignment.spaceEvenly,
+                              children: [
+                                TextButton(
+                                  onPressed: () {
+                                    ref
+                                        .read(cartProvider.notifier)
+                                        .removeItem(item['id']);
+                                  },
+                                  style: TextButton.styleFrom(
+                                    backgroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 12, vertical: 8),
+                                  ),
+                                  child: const Text("Remove",
+                                      style:
+                                          TextStyle(color: Colors.black)),
+                                ),
+                                TextButton(
+                                  onPressed: () {
+                                    debugPrint(
+                                        "Saved ${item['name']} for later");
+                                  },
+                                  style: TextButton.styleFrom(
+                                    backgroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 12, vertical: 8),
+                                  ),
+                                  child: const Text("Save For Later",
+                                      style:
+                                          TextStyle(color: Colors.black)),
+                                ),
+                                TextButton(
+                                  onPressed: () {
+                                    debugPrint(
+                                        "Buying ${item['name']} now");
+                                  },
+                                  style: TextButton.styleFrom(
+                                    backgroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 12, vertical: 8),
+                                  ),
+                                  child: const Text("Buy This Now",
+                                      style:
+                                          TextStyle(color: Colors.black)),
                                 ),
                               ],
                             ),
@@ -162,10 +223,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                       ),
                     ),
                   )),
-
               const SizedBox(height: 16),
-
-              // Price details
               Card(
                 child: Padding(
                   padding: const EdgeInsets.all(12),
@@ -183,7 +241,8 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                       Text(
                         "Grand Total: ₹${cartData['grand_total'] ?? totalAmount}",
                         style: const TextStyle(
-                            fontWeight: FontWeight.bold, color: brandColor),
+                            fontWeight: FontWeight.bold,
+                            color: brandColor),
                       ),
                     ],
                   ),
@@ -206,11 +265,12 @@ class _CartScreenState extends ConsumerState<CartScreen> {
               ),
               const Spacer(),
               ElevatedButton(
-                onPressed: () => Navigator.pushNamed(context, '/order-summary'),
+                onPressed: () =>
+                    Navigator.pushNamed(context, '/order-summary'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: brandColor,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 24, vertical: 12),
                 ),
                 child: const Text(
                   "Checkout",
@@ -225,6 +285,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
           ),
         ),
       ],
-    );
-  }
+    ),
+  );
+}
 }

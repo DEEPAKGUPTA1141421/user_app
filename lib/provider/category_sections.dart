@@ -82,6 +82,7 @@ class CategorySectionsNotifier extends StateNotifier<Map<String, dynamic>> {
       );
 
       final body = json.decode(res.body);
+      print("✅ Sections fetched Body: ${body}");
       if (res.statusCode == 200 && body['success'] == true) {
         final List<Map<String, dynamic>> sections =
             List<Map<String, dynamic>>.from(body['data'] ?? []);
@@ -94,7 +95,7 @@ class CategorySectionsNotifier extends StateNotifier<Map<String, dynamic>> {
           'message': body['message'] ?? '',
         };
 
-        debugPrint("✅ Sections fetched: ${sections.length}");
+        print("✅ Sections fetched: ${sections.length}");
       } else {
         state = {
           ...state,

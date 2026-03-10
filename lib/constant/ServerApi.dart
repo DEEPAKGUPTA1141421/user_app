@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 class ServerApi {
   // Base URL for Product Client Service
   static const String productClientService = "http://localhost:8080";
-  //"https://productclientservice-549653694225.asia-south1.run.app";
 
   // Example endpoints (you can add more here)
   static const String login = "$productClientService/api/v1/auth/login";
@@ -13,6 +12,7 @@ class ServerApi {
   static const String GetCategory =
       '$productClientService/api/v1/product/category';
   static const String GetSectionOfCategory =
+      '$productClientService/api/v1/sections/For You';
       '$productClientService/api/v1/sections/For You';
   static const String getProducts = "$productClientService/products";
   static const String getProductDetail = "$productClientService/api/v1/product";
@@ -31,4 +31,12 @@ class ServerApi {
       "$productClientService/api/v1/cart/items";
   static const String removeItemFromCart =
       "$productClientService/api/v1/cart/items";
+  static const String addAddress =
+      "$productClientService/api/v1/user/add-address";
+  static const String makeaddressdefault =
+      "$productClientService/api/v1/user/set-default";
+  static const String cartCoupon =
+      "$productClientService/api/v1/cart/coupons";
+  static const String ApplyCartCoupon =
+      "$productClientService/api/v1/cart/coupons";
 }

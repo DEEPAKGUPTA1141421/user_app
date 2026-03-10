@@ -15,6 +15,7 @@ class ProductNotifier extends StateNotifier<Map<String, dynamic>> {
           'product_detail': {},
           'brands': [],
           'Infinite_Scroll_Products': [],
+          'products_Grid': [],
         });
 
   bool get isLoading => state['isLoading'] ?? false;
@@ -67,7 +68,27 @@ class ProductNotifier extends StateNotifier<Map<String, dynamic>> {
 
     return jsonBody;
   }
+  // fetch
+Future<Map<String, dynamic>> fetchGridProducts() async {
+    state = {...state, 'isLoading': true};
 
+    final res = await http.get(
+      Uri.parse(ServerApi.getProducts),
+      headers: {"Content-Type": "application/json"},
+    );
+
+    final Map<String, dynamic> jsonBody = jsonDecode(res.body);
+
+    state = {
+      ...state,
+      'isLoading': false,
+      'success': jsonBody['success'] ?? false,
+      'message': jsonBody['message'] ?? '',
+      'products': jsonBody['data'] ?? [],
+    };
+
+    return jsonBody;
+  }
   /// ✅ Search product by keyword
   Future<Map<String, dynamic>> searchProduct(String query) async {
     state = {...state, 'isLoading': true};

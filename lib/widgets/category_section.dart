@@ -22,7 +22,7 @@ class _CategorySectionState extends ConsumerState<CategorySection> {
     final state = ref.watch(categoryProvider);
     final isLoading = state['isLoading'] ?? false;
     final categories = state['categoryData'] as List<dynamic>? ?? [];
-
+    print("rendering category section for debug ${categories.length}");
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 16),
       child: SingleChildScrollView(
