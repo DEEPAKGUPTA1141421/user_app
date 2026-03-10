@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'screens/home_screen.dart';
-import 'screens/shop_screen.dart';
 import 'screens/categories_screen.dart';
 import 'screens/people_screen.dart';
 import 'screens/cart_screen.dart';
 import 'widgets/bottom_navbar.dart';
-
+import 'widgets/shop/shops_page.dart';
 class MainLayout extends StatefulWidget {
   const MainLayout({super.key});
 
@@ -18,7 +17,7 @@ class _MainLayoutState extends State<MainLayout> {
 
   final List<Widget> _screens = const [
     HomeScreen(),
-    ShopScreen(),
+    ShopsPage(),
     CategoriesScreen(),
     PeopleScreen(),
     CartScreen(),

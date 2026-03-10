@@ -30,7 +30,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     print("Init the Rendering from Home Page");
     super.initState();
-    Future.microtask(() => checkAuth(context));
+    //Future.microtask(() => checkAuth(context));
     // default to null → CategoryPage can handle empty state
     selectedCategoryId = null;
     isLoading = false;

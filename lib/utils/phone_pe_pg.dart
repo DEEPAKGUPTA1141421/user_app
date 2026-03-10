@@ -16,12 +16,12 @@ class PhonePePg {
   String apiEndPoint = "/pg/v1/pay";
 
   void init() {
-    PhonePePaymentSdk.init("SANDBOX", null, merchantId, true).then((val) {
-      debugPrint('PhonePe SDK Initialized - $val');
-      startTransaction();
-    }).catchError((error) {
-      debugPrint('PhonePe SDK error - $error');
-    });
+    // PhonePePaymentSdk.init("SANDBOX", null, merchantId, true).then((val) {
+    //   debugPrint('PhonePe SDK Initialized - $val');
+    //   startTransaction();
+    // }).catchError((error) {
+    //   debugPrint('PhonePe SDK error - $error');
+    // });
   }
 
   void startTransaction() async {

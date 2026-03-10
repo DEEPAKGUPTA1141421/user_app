@@ -3,7 +3,6 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/home_screen.dart';
-import 'screens/shop_screen.dart';
 import 'screens/categories_screen.dart';
 import 'screens/people_screen.dart';
 import 'screens/cart_screen.dart';
@@ -18,16 +17,16 @@ import 'screens/accounts/my_orders_page.dart';
 import 'screens/accounts/wishlist_screen.dart';
 import 'screens/accounts/order_details_page.dart';
 import 'unknown_page.dart';
-import 'screens/shop/shop_detail_screen.dart';
 import 'widgets/product/product_details_page.dart';
+import 'firebase_options.dart';
 
 Future<void> _firebaseMessagingHandler(RemoteMessage message) async {
-  await Firebase.initializeApp();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 }
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingHandler);
   runApp(
     const ProviderScope(
@@ -69,12 +68,7 @@ class MyApp extends StatelessWidget {
               builder: (context) => OrderDetailsPage(orderId: orderId),
             );
           } // Dynamic shop route: /shop/<id>
-          if (uri.pathSegments.length == 2 && uri.pathSegments[0] == 'shop') {
-            final shopId = uri.pathSegments[1];
-            return MaterialPageRoute(
-              builder: (context) => ShopDetailScreen(shopId: shopId),
-            );
-          }
+          
 
           // Dynamic product detail route: /productDetail/<id>
           if (uri.pathSegments.length == 2 &&
@@ -147,3 +141,4 @@ class _SplashScreenState extends State<SplashScreen> {
     );
   }
 }
+
