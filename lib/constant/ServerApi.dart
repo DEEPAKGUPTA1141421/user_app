@@ -13,7 +13,7 @@ class ServerApi {
       '$productClientService/api/v1/product/category';
   static const String GetSectionOfCategory =
       '$productClientService/api/v1/sections/For You';
-      '$productClientService/api/v1/sections/For You';
+      
   static const String getProducts = "$productClientService/products";
   static const String getProductDetail = "$productClientService/api/v1/product";
   static const String searchProduct =
