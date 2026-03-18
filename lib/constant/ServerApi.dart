@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 class ServerApi {
   // Base URL for Product Client Service
-  static const String productClientService = "http://localhost:8080";
+  static const String productClientService = "http://localhost:8081";
 
   // Example endpoints (you can add more here)
   static const String login = "$productClientService/api/v1/auth/login";
