@@ -16,8 +16,9 @@ class CategoryPage extends ConsumerStatefulWidget {
 }
 
 class _CategoryPageState extends ConsumerState<CategoryPage> {
-  // Track the last fetched categoryId to avoid duplicate calls
-  String? _lastFetchedCategoryId;
+  // Sentinel distinguishes "never fetched" from "fetched with categoryId=null"
+  static const _sentinel = '__never_fetched__';
+  String _lastFetchedKey = _sentinel;
 
   @override
   void initState() {
@@ -25,7 +26,7 @@ class _CategoryPageState extends ConsumerState<CategoryPage> {
     Future.microtask(() => _fetchDataForCategory(widget.categoryId));
   }
 
-  // ✅ This is the key fix — called whenever the parent rebuilds with a new categoryId
+  // ✅ Fires whenever parent passes a new categoryId prop
   @override
   void didUpdateWidget(CategoryPage oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -34,33 +35,30 @@ class _CategoryPageState extends ConsumerState<CategoryPage> {
     }
   }
 
-  /// Central method to trigger all APIs for a given category
   Future<void> _fetchDataForCategory(String? categoryId) async {
-    // Avoid duplicate fetches for same category
-    if (_lastFetchedCategoryId == categoryId) return;
-    _lastFetchedCategoryId = categoryId;
+    // Use a non-null unique key so null vs "never fetched" are distinguishable
+    final fetchKey = categoryId ?? '__null__';
+    if (_lastFetchedKey == fetchKey) return;
+    _lastFetchedKey = fetchKey;
 
-    // 1. Fetch sections for this category (or "For You" if null)
+    debugPrint('🔄 CategoryPage fetching for categoryId=$categoryId');
+
+    // 1. Sections
     ref
         .read(categorySectionsProvider.notifier)
         .fetchSectionsOfCategory(categoryId: categoryId);
 
+    // 2. Banners
+    ref.read(bannerProvider.notifier).clearBanners();
     if (categoryId != null && categoryId.isNotEmpty) {
-      // 2. Clear previous banners before fetching new ones
-      ref.read(bannerProvider.notifier).clearBanners();
-
-      // 3. Fetch banners for this category
       ref.read(bannerProvider.notifier).fetchBannersByCategory(categoryId);
-
-      // 4. Fetch brands for this category
-      ref.read(categorySectionsProvider.notifier).fetchBrands(categoryId);
-    } else {
-      // No category selected — clear banners and fetch default brands
-      ref.read(bannerProvider.notifier).clearBanners();
-      ref
-          .read(categorySectionsProvider.notifier)
-          .fetchBrands('5d70fc95-8a6b-4d04-95e9-9620269ab15e');
     }
+
+    // 3. Brands
+    final brandsId = (categoryId != null && categoryId.isNotEmpty)
+        ? categoryId
+        : '5d70fc95-8a6b-4d04-95e9-9620269ab15e';
+    ref.read(categorySectionsProvider.notifier).fetchBrands(brandsId);
   }
 
   @override
@@ -74,7 +72,7 @@ class _CategoryPageState extends ConsumerState<CategoryPage> {
     final bannerIsLoading = bannerState['isLoading'] ?? false;
     final banners = bannerState['banners'] as List<dynamic>? ?? [];
 
-    // Show a full-page loader only on the very first load
+    // Full-page loader only on the very first load
     if (isLoading && sectionsData.isEmpty) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 32),
@@ -84,101 +82,84 @@ class _CategoryPageState extends ConsumerState<CategoryPage> {
       );
     }
 
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: sectionsData.map((section) {
-          final type = section['type'] ?? '';
-          final title = section['title'] ?? '';
-          final items = section['items'] ?? [];
-          final config = section['config'] ?? {};
+    if (sectionsData.isEmpty) return const SizedBox.shrink();
 
-          switch (type.toUpperCase()) {
-            case 'BANNER':
-              // Show loading shimmer while banners are fetching
-              if (bannerIsLoading) {
-                return _BannerShimmer();
-              }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: sectionsData.map<Widget>((section) {
+        final type = (section['type'] ?? '').toString().toUpperCase();
+        final title = (section['title'] ?? '').toString();
+        final items = (section['items'] ?? []) as List<dynamic>;
 
-              if (banners.isEmpty) {
-                return const SizedBox.shrink();
-              }
+        switch (type) {
+          // ── Banner ──────────────────────────────────────────────────────────
+          case 'BANNER':
+            if (bannerIsLoading) return _BannerShimmer();
+            if (banners.isEmpty) return const SizedBox.shrink();
+            return ResponsiveBannerCarousel(
+              banners: banners,
+              categoryId: widget.categoryId ?? '',
+            );
 
-              return ResponsiveBannerCarousel(
-                banners: banners,
-                categoryId: widget.categoryId ?? '',
-              );
-
-            case 'BRAND':
-              // Show shimmer while brands load
-              if (isLoading && brands.isEmpty) {
-                return _BrandShimmer(title: title);
-              }
-
-              return SectionWrapper(
-                title: title,
-                variant: SectionVariant.primary,
-                hasArrow: false,
-                child: SizedBox(
-                  height: 160,
-                  child: brands.isEmpty
-                      ? const Center(
-                          child: Text('No brands found',
-                              style: TextStyle(color: Colors.white70)),
-                        )
-                      : ListView.separated(
-                          scrollDirection: Axis.horizontal,
-                          itemCount: brands.length,
-                          separatorBuilder: (_, __) =>
-                              const SizedBox(width: 8),
-                          itemBuilder: (_, index) {
-                            final brand = brands[index];
-                            return ProductCard(
-                              product: brand['metadata'] ?? brand,
-                              showDiscount: false,
-                              section: section,
-                            );
-                          },
-                        ),
-                ),
-              );
-
-            case 'SPONSORED':
-            case 'PRODUCT_SCROLL':
-            case 'PRODUCT_GRID':
-            case 'CATEGORY':
-              return SectionWrapper(
-                title: title,
-                variant: SectionVariant.primary,
-                hasArrow: false,
-                child: SizedBox(
-                  height: 160,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: items.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 8),
-                    itemBuilder: (_, index) {
-                      final product = items[index]['metadata'] ?? {};
-                      return ProductCard(
-                        product: product,
-                        showDiscount: true,
-                        section: section,
-                      );
-                    },
+          // ── Brand ───────────────────────────────────────────────────────────
+          case 'BRAND':
+            if (isLoading && brands.isEmpty) {
+              return _BrandShimmer(title: title);
+            }
+            if (brands.isEmpty) return const SizedBox.shrink();
+            return SectionWrapper(
+              title: title,
+              variant: SectionVariant.primary,
+              hasArrow: false,
+              child: SizedBox(
+                height: 160,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: brands.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 8),
+                  itemBuilder: (_, i) => ProductCard(
+                    product: brands[i]['metadata'] ?? brands[i],
+                    showDiscount: false,
+                    section: section,
                   ),
                 ),
-              );
+              ),
+            );
 
-            default:
-              return const SizedBox.shrink();
-          }
-        }).toList(),
-      ),
+          // ── Product sections ─────────────────────────────────────────────────
+          case 'SPONSORED':
+          case 'PRODUCT_SCROLL':
+          case 'PRODUCT_GRID':
+          case 'CATEGORY':
+            if (items.isEmpty) return const SizedBox.shrink();
+            return SectionWrapper(
+              title: title,
+              variant: SectionVariant.primary,
+              hasArrow: false,
+              child: SizedBox(
+                height: 160,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: items.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 8),
+                  itemBuilder: (_, i) => ProductCard(
+                    product: items[i]['metadata'] ?? {},
+                    showDiscount: true,
+                    section: section,
+                  ),
+                ),
+              ),
+            );
+
+          default:
+            return const SizedBox.shrink();
+        }
+      }).toList(),
     );
   }
 }
 
-// ── Shimmer widgets ────────────────────────────────────────────────────────────
+// ── Shimmer placeholders ────────────────────────────────────────────────────────
 
 class _BannerShimmer extends StatelessWidget {
   @override
@@ -190,7 +171,6 @@ class _BannerShimmer extends StatelessWidget {
         color: Colors.grey.shade300,
         borderRadius: BorderRadius.circular(12),
       ),
-      child: const _ShimmerEffect(),
     );
   }
 }
@@ -230,62 +210,10 @@ class _BrandShimmer extends StatelessWidget {
                   color: Colors.white24,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const _ShimmerEffect(),
               ),
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _ShimmerEffect extends StatefulWidget {
-  const _ShimmerEffect();
-
-  @override
-  State<_ShimmerEffect> createState() => _ShimmerEffectState();
-}
-
-class _ShimmerEffectState extends State<_ShimmerEffect>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl;
-  late final Animation<double> _anim;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1200),
-    )..repeat();
-    _anim = Tween<double>(begin: -2, end: 2).animate(
-      CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
-    );
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _anim,
-      builder: (_, __) => ShaderMask(
-        shaderCallback: (bounds) => LinearGradient(
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-          stops: const [0.0, 0.5, 1.0],
-          colors: const [
-            Color(0xFFE0E0E0),
-            Color(0xFFF5F5F5),
-            Color(0xFFE0E0E0),
-          ],
-        ).createShader(bounds),
-        child: Container(color: Colors.white),
       ),
     );
   }

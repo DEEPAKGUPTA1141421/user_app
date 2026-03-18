@@ -30,6 +30,8 @@ class _VerifyOtpScreenState extends ConsumerState<VerifyOtpScreen> {
   void startTimer() {
     Future.doWhile(() async {
       await Future.delayed(const Duration(seconds: 1));
+      // ✅ Always check mounted before calling setState
+      if (!mounted) return false;
       if (timeLeft > 0) {
         setState(() => timeLeft--);
         return true;
@@ -52,44 +54,65 @@ class _VerifyOtpScreenState extends ConsumerState<VerifyOtpScreen> {
       return;
     }
 
-    // Use Riverpod notifier for API call
     final riderNotifier = ref.read(riderPod.notifier);
     final response = await riderNotifier.verifyOtp(
         widget.phone, widget.userType, otpController.text);
-    print(response);
-    Navigator.pushReplacementNamed(context, "/home");
-    if (true || response['success'] == true) {
-      final token = response['data']; // the JWT from API
-      await StorageService.saveToken(token);
+
+    print("OTP response: $response");
+
+    if (!mounted) return;
+
+    if (response['success'] == true) {
+      // ✅ Null-safe: data could be a String token or a Map — handle both
+      final dynamic rawData = response['data'];
+      String? token;
+
+      if (rawData is String && rawData.isNotEmpty) {
+        token = rawData;
+      } else if (rawData is Map) {
+        token = rawData['token']?.toString() ??
+            rawData['accessToken']?.toString() ??
+            rawData['jwt']?.toString();
+      }
+
+      if (token != null && token.isNotEmpty) {
+        await StorageService.saveToken(token);
+      }
+
       showSnack("Success", "You are logged in!");
       if (!mounted) return;
       Navigator.pushReplacementNamed(context, "/home");
     } else {
-      showSnack("Error", response['message'] ?? "OTP verification failed");
+      showSnack("Error", response['message']?.toString() ?? "OTP verification failed");
     }
   }
 
   Future<void> handleResend() async {
     if (!canResend) return;
 
-    setState(() {
-      otpController.clear();
-      timeLeft = 30;
-      canResend = false;
-    });
+    if (mounted) {
+      setState(() {
+        otpController.clear();
+        timeLeft = 30;
+        canResend = false;
+      });
+    }
     startTimer();
 
     final riderNotifier = ref.read(riderPod.notifier);
     final response = await riderNotifier.login(widget.phone, widget.userType);
 
+    if (!mounted) return;
+
     if (response['success'] == true) {
-      showSnack("OTP Sent", response['message']);
+      showSnack("OTP Sent", response['message']?.toString() ?? "OTP sent");
     } else {
-      showSnack("Error", response['message'] ?? "Failed to resend OTP");
+      showSnack("Error", response['message']?.toString() ?? "Failed to resend OTP");
     }
   }
 
   void showSnack(String title, String message) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text("$title: $message")),
     );
@@ -97,7 +120,6 @@ class _VerifyOtpScreenState extends ConsumerState<VerifyOtpScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Watch the isLoading flag from Riverpod
     final isLoading = ref.watch(riderPod)['isLoading'] ?? false;
 
     return Scaffold(
@@ -116,7 +138,7 @@ class _VerifyOtpScreenState extends ConsumerState<VerifyOtpScreen> {
                 controller: otpController,
                 maxLength: 6,
                 keyboardType: TextInputType.number,
-                cursorColor: Colors.black, // cursor color
+                cursorColor: Colors.black,
                 decoration: InputDecoration(
                   labelText: "OTP",
                   labelStyle: const TextStyle(
@@ -145,10 +167,10 @@ class _VerifyOtpScreenState extends ConsumerState<VerifyOtpScreen> {
               if (canResend)
                 TextButton(
                   onPressed: isLoading ? null : handleResend,
-                  child: const Text("Resend OTP"),
                   style: TextButton.styleFrom(
                     foregroundColor: const Color.fromRGBO(255, 82, 0, 1),
                   ),
+                  child: const Text("Resend OTP"),
                 ),
               const Spacer(),
               ElevatedButton(
@@ -159,7 +181,8 @@ class _VerifyOtpScreenState extends ConsumerState<VerifyOtpScreen> {
                 ),
                 child: isLoading
                     ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text("Verify"),
+                    : const Text("Verify",
+                        style: TextStyle(color: Colors.white)),
               )
             ],
           ),
