@@ -15,10 +15,12 @@ class CategorySectionsNotifier extends StateNotifier<Map<String, dynamic>> {
           'sectionsData': [],
           'brands': [],
         }) {
+    // Fetch top-level super categories on startup
     fetchCategories(true, "SUPER_CATEGORY");
   }
 
-  /// ✅ Fetch all categories
+  // ─── Fetch categories ───────────────────────────────────────────────────────
+
   Future<void> fetchCategories(bool includeChildItem, String level) async {
     try {
       state = {...state, 'isLoading': true, 'message': ''};
@@ -38,7 +40,8 @@ class CategorySectionsNotifier extends StateNotifier<Map<String, dynamic>> {
       );
 
       final body = json.decode(res.body);
-      print("data from category ${body}");
+      debugPrint("Categories fetched: ${res.statusCode}");
+
       if (res.statusCode == 200 && body['success'] == true) {
         final List<Map<String, dynamic>> categories =
             List<Map<String, dynamic>>.from(body['data'] ?? []);
@@ -67,14 +70,25 @@ class CategorySectionsNotifier extends StateNotifier<Map<String, dynamic>> {
     }
   }
 
-  /// ✅ Fetch all sections of a category
-  Future<void> fetchSectionsOfCategory() async {
+  // ─── Fetch sections ─────────────────────────────────────────────────────────
+  // ✅ Now accepts an optional categoryId so clicking a category re-fetches
+  // its own sections. Falls back to "For You" when no categoryId is provided.
+
+  Future<void> fetchSectionsOfCategory({String? categoryId}) async {
     try {
-      state = {...state, 'isLoading': true, 'message': ''};
+      state = {...state, 'isLoading': true, 'message': '', 'sectionsData': []};
       final token = await StorageService.getToken();
 
+      // Build URL — use the category-specific endpoint when a categoryId is
+      // provided, otherwise fall back to the default "For You" endpoint.
+      final String url = categoryId != null && categoryId.isNotEmpty
+          ? '${ServerApi.productClientService}/api/v1/sections/$categoryId'
+          : ServerApi.GetSectionOfCategory; // e.g. /api/v1/sections/For You
+
+      debugPrint("Fetching sections from: $url");
+
       final res = await http.get(
-        Uri.parse(ServerApi.GetSectionOfCategory),
+        Uri.parse(url),
         headers: {
           "Content-Type": "application/json",
           "Authorization": "Bearer $token",
@@ -82,7 +96,7 @@ class CategorySectionsNotifier extends StateNotifier<Map<String, dynamic>> {
       );
 
       final body = json.decode(res.body);
-      print("✅ Sections fetched Body: ${body}");
+
       if (res.statusCode == 200 && body['success'] == true) {
         final List<Map<String, dynamic>> sections =
             List<Map<String, dynamic>>.from(body['data'] ?? []);
@@ -95,12 +109,13 @@ class CategorySectionsNotifier extends StateNotifier<Map<String, dynamic>> {
           'message': body['message'] ?? '',
         };
 
-        print("✅ Sections fetched: ${sections.length}");
+        debugPrint("✅ Sections fetched: ${sections.length} for category: $categoryId");
       } else {
         state = {
           ...state,
           'isLoading': false,
           'success': false,
+          'sectionsData': [],
           'message': body['message'] ?? 'Failed to load sections',
         };
       }
@@ -109,22 +124,23 @@ class CategorySectionsNotifier extends StateNotifier<Map<String, dynamic>> {
         ...state,
         'isLoading': false,
         'success': false,
+        'sectionsData': [],
         'message': e.toString(),
       };
     }
   }
 
-  /// ✅ Fetch brands for a specific category
+  // ─── Fetch brands ───────────────────────────────────────────────────────────
+
   Future<void> fetchBrands(String categoryId) async {
     try {
       debugPrint("🔄 Fetching brands for category: $categoryId");
 
-      state = {...state, 'isLoading': true, 'message': ''};
+      state = {...state, 'isLoading': true, 'message': '', 'brands': []};
       final token = await StorageService.getToken();
 
       final res = await http.get(
-        Uri.parse(
-            "${ServerApi.getBrands}/5d70fc95-8a6b-4d04-95e9-9620269ab15e"),
+        Uri.parse("${ServerApi.getBrands}/$categoryId"),
         headers: {
           "Content-Type": "application/json",
           "Authorization": "Bearer $token",
@@ -133,14 +149,16 @@ class CategorySectionsNotifier extends StateNotifier<Map<String, dynamic>> {
 
       final body = json.decode(res.body);
 
-      // Ensure brands is always a list
       List<Map<String, dynamic>> brands = [];
       if (body is List) {
         brands = List<Map<String, dynamic>>.from(body);
       } else if (body is Map<String, dynamic>) {
-        brands = [body]; // wrap single object into a list
-      } else {
-        throw Exception("Unexpected API response format");
+        // Some APIs wrap in { data: [...] }
+        if (body['data'] is List) {
+          brands = List<Map<String, dynamic>>.from(body['data']);
+        } else {
+          brands = [body];
+        }
       }
 
       state = {
@@ -151,7 +169,7 @@ class CategorySectionsNotifier extends StateNotifier<Map<String, dynamic>> {
         'brands': brands,
       };
 
-      debugPrint("✅ Brands fetched: ${brands}");
+      debugPrint("✅ Brands fetched: ${brands.length} for category: $categoryId");
     } catch (e) {
       debugPrint("❌ Brand fetch error: $e");
       state = {
@@ -165,7 +183,7 @@ class CategorySectionsNotifier extends StateNotifier<Map<String, dynamic>> {
   }
 }
 
-/// ✅ Riverpod provider
+// ✅ Riverpod provider
 final categorySectionsProvider =
     StateNotifierProvider<CategorySectionsNotifier, Map<String, dynamic>>(
   (ref) => CategorySectionsNotifier(),
