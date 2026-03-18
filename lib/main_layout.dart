@@ -15,30 +15,25 @@ class MainLayout extends StatefulWidget {
 class _MainLayoutState extends State<MainLayout> {
   int _currentIndex = 0;
 
-  final List<Widget> _screens = const [
-    HomeScreen(),
-    ShopsPage(),
-    CategoriesScreen(),
-    PeopleScreen(),
-    CartScreen(),
+  final List<Widget> _screens = [
+    const HomeScreen(),
+    const ShopsPage(),
+    const CategoriesScreen(),
+    const PeopleScreen(),
+    const CartScreen(),
   ];
-
-  void _onTabTapped(int index) {
-    setState(() {
-      _currentIndex = index;
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _screens,
-      ),
+      body: _screens[_currentIndex], // ✅ ONLY ACTIVE SCREEN BUILDS
       bottomNavigationBar: BottomNavBar(
         currentIndex: _currentIndex,
-        onTap: _onTabTapped,
+        onTap: (index) {
+          setState(() {
+            _currentIndex = index;
+          });
+        },
       ),
     );
   }

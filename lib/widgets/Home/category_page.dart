@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../provider/category_sections.dart'; // adjust the path
-import '../banner_section.dart';
+import '../../provider/category_sections.dart';
+import '../../provider/banner_provider.dart';
+import '../responsive_banner_carousel.dart';
 import './section_wrapper.dart';
 import './product_card.dart';
 
@@ -25,9 +26,17 @@ class _CategoryPageState extends ConsumerState<CategoryPage> {
       ref.read(categorySectionsProvider.notifier).fetchSectionsOfCategory();
       print("catgoryid ${widget.categoryId}");
       if (widget.categoryId != null) {
+        // Clear previous banners
+        ref.read(bannerProvider.notifier).clearBanners();
+        
         ref
             .read(categorySectionsProvider.notifier)
             .fetchBrands("5d70fc95-8a6b-4d04-95e9-9620269ab15e");
+        
+        // Fetch banners for this category
+        ref
+            .read(bannerProvider.notifier)
+            .fetchBannersByCategory(widget.categoryId!);
       }
     });
   }
@@ -35,9 +44,13 @@ class _CategoryPageState extends ConsumerState<CategoryPage> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(categorySectionsProvider);
+    final bannerState = ref.watch(bannerProvider);
+    
     final isLoading = state['isLoading'] ?? false;
     final sectionsData = state['sectionsData'] as List<dynamic>? ?? [];
     final brands = state['brands'] as List<dynamic>? ?? [];
+    final bannerIsLoading = bannerState['isLoading'] ?? false;
+    final banners = bannerState['banners'] as List<dynamic>? ?? [];
 
     if (isLoading) {
       return const Center(
@@ -56,7 +69,24 @@ class _CategoryPageState extends ConsumerState<CategoryPage> {
 
           switch (type.toUpperCase()) {
             case 'BANNER':
-              return BannerSection(section: section);
+              // Show responsive banner carousel with API data
+              if (bannerIsLoading) {
+                return const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 16),
+                  child: Center(
+                    child: CircularProgressIndicator(color: Color(0xFFFF5200)),
+                  ),
+                );
+              }
+              
+              if (banners.isEmpty) {
+                return const SizedBox.shrink();
+              }
+              
+              return ResponsiveBannerCarousel(
+                banners: banners,
+                categoryId: widget.categoryId ?? '',
+              );
 
             case 'BRAND':
               return SectionWrapper(

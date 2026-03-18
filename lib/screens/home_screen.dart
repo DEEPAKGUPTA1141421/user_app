@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../utils/StorageService.dart';
 import '../widgets/address_section.dart';
 import '../widgets/search_section.dart';
-import '../widgets/banner_section.dart';
 import '../widgets/category_section.dart';
 import '../widgets/product_list.dart';
 import '../widgets/product_grid.dart';
