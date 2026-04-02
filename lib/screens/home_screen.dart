@@ -27,7 +27,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       body: SafeArea(
         child: RefreshIndicator(
-          color: const Color(0xFFFF5200),
+          color:  Colors.black,
           onRefresh: () async {
             // Force a full rebuild by toggling state
             setState(() {

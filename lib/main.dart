@@ -14,11 +14,12 @@ import 'screens/cart/order_summary_page.dart';
 import 'screens/cart/payment_page.dart';
 import 'screens/accounts/customer_support_page.dart';
 import 'screens/accounts/my_orders_page.dart';
-import 'screens/accounts/wishlist_screen.dart';
 import 'screens/accounts/order_details_page.dart';
 import 'unknown_page.dart';
 import 'widgets/product/product_details_page.dart';
 import 'firebase_options.dart';
+import 'screens/accounts/wishlist_screen.dart'; // replace the old one with new file
+import 'screens/accounts/addresses_screen.dart';
 
 Future<void> _firebaseMessagingHandler(RemoteMessage message) async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
@@ -53,7 +54,8 @@ class MyApp extends StatelessWidget {
         '/payment': (context) => PaymentPage(),
         '/account/orders': (context) => MyOrdersPage(),
         '/account/wishlist': (context) => WishlistScreen(),
-        '/account/support': (context) => CustomerSupportPage(),
+        '/account/support': (context) => CustomerSupportPage(),  
+        '/account/addresses': (context) => const AddressesScreen(),
       },
 
       // Dynamic routes

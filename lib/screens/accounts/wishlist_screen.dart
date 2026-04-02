@@ -1,114 +1,426 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shimmer/shimmer.dart';
+import '../../provider/wishlist_notifier.dart';
+import '../../provider/cart_provider.dart';
 
-class WishlistScreen extends StatefulWidget {
+class WishlistScreen extends ConsumerStatefulWidget {
   const WishlistScreen({super.key});
 
   @override
-  State<WishlistScreen> createState() => _WishlistScreenState();
+  ConsumerState<WishlistScreen> createState() => _WishlistScreenState();
 }
 
-class _WishlistScreenState extends State<WishlistScreen> {
-  String activeTab = "my";
+class _WishlistScreenState extends ConsumerState<WishlistScreen> {
+  static const brandColor = Colors.black;
+  String activeTab = "wishlist"; // "wishlist" or "priceDrops"
 
-  final List<Map<String, dynamic>> wishlistItems = [
-    {
-      "id": 1,
-      "name": "RedmiBook Pro Core i5 11...",
-      "image": "💻",
-      "price": "₹39,699",
-      "originalPrice": "₹59,999",
-      "discount": "33%",
-      "rating": 4.5,
-      "available": false,
-    },
-    {
-      "id": 2,
-      "name": "SILVER SHINE Party We...",
-      "image": "👂",
-      "price": "",
-      "originalPrice": "",
-      "discount": "",
-      "rating": 0.0,
-      "available": false,
-    },
-  ];
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(() {
+      ref.read(wishlistProvider.notifier).fetchWishlist();
+      ref.read(wishlistProvider.notifier).fetchPriceDrops();
+    });
+  }
 
-  final List<Map<String, dynamic>> collections = [
-    {"image": "💻", "id": 1},
-    {"image": "👂", "id": 2},
-    {"image": "", "id": 3},
-    {"image": "", "id": 4},
-  ];
+  Future<void> _onRefresh() async {
+    await ref.read(wishlistProvider.notifier).fetchWishlist();
+    await ref.read(wishlistProvider.notifier).fetchPriceDrops();
+  }
+
+  void _removeItem(String productId) async {
+    final res = await ref.read(wishlistProvider.notifier).removeItem(productId);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(res['success'] == true ? 'Removed from wishlist' : 'Failed to remove'),
+          backgroundColor: res['success'] == true ? Colors.black87 : Colors.red,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  void _moveToCart(String productId) async {
+    final res = await ref.read(wishlistProvider.notifier).moveToCart(productId);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(res['success'] == true ? 'Added to cart!' : 'Failed to add to cart'),
+          backgroundColor: res['success'] == true ? Colors.green : Colors.red,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  void _shareWishlist() async {
+    final res = await ref.read(wishlistProvider.notifier).shareWishlist();
+    if (mounted && res['success'] == true) {
+      final data = res['data'] ?? {};
+      final url = data['shareUrl'] ?? '';
+      showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text('Share Wishlist'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Your wishlist share link:'),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(url, style: const TextStyle(fontSize: 12, color: Colors.blueAccent)),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
+          ],
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = ref.watch(wishlistProvider);
+    final isLoading = state['isLoading'] as bool? ?? false;
+    final items = (state['items'] ?? []) as List<dynamic>;
+    final priceDrops = (state['priceDrops'] ?? []) as List<dynamic>;
+
+    return Scaffold(
+      backgroundColor: Colors.grey[100],
+      appBar: AppBar(
+        title: const Text('Wishlist'),
+        backgroundColor: brandColor,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.share_outlined),
+            onPressed: _shareWishlist,
+            tooltip: 'Share Wishlist',
+          ),
+        ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(44),
+          child: Container(
+            color: Colors.white,
+            child: Row(
+              children: [
+                _TabButton(
+                  label: 'My Wishlist',
+                  count: items.length,
+                  isActive: activeTab == 'wishlist',
+                  onTap: () => setState(() => activeTab = 'wishlist'),
+                ),
+                _TabButton(
+                  label: 'Price Drops',
+                  count: priceDrops.length,
+                  isActive: activeTab == 'priceDrops',
+                  onTap: () => setState(() => activeTab = 'priceDrops'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+      body: RefreshIndicator(
+        onRefresh: _onRefresh,
+        color: brandColor,
+        child: activeTab == 'wishlist'
+            ? _buildWishlistTab(isLoading, items)
+            : _buildPriceDropsTab(isLoading, priceDrops),
+      ),
+    );
+  }
+
+  Widget _buildWishlistTab(bool isLoading, List<dynamic> items) {
+    if (isLoading && items.isEmpty) {
+      return _buildShimmerGrid();
+    }
+
+    if (items.isEmpty) {
+      return _buildEmptyState(
+        icon: Icons.favorite_border,
+        title: 'Your wishlist is empty',
+        subtitle: 'Save items you love and come back to them anytime',
+        cta: 'Start Exploring',
+        onCta: () => Navigator.pop(context),
+      );
+    }
+
+    return GridView.builder(
+      padding: const EdgeInsets.all(12),
+      itemCount: items.length,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        childAspectRatio: 0.62,
+        crossAxisSpacing: 10,
+        mainAxisSpacing: 10,
+      ),
+      itemBuilder: (context, index) {
+        final item = items[index];
+        return _WishlistCard(
+          item: item,
+          onRemove: () => _removeItem(item['productId']?.toString() ?? ''),
+          onMoveToCart: () => _moveToCart(item['productId']?.toString() ?? ''),
+        );
+      },
+    );
+  }
+
+  Widget _buildPriceDropsTab(bool isLoading, List<dynamic> drops) {
+    if (isLoading && drops.isEmpty) {
+      return _buildShimmerList();
+    }
+
+    if (drops.isEmpty) {
+      return _buildEmptyState(
+        icon: Icons.trending_down,
+        title: 'No price drops yet',
+        subtitle: 'We\'ll notify you when prices drop on your wishlisted items',
+        cta: 'View Wishlist',
+        onCta: () => setState(() => activeTab = 'wishlist'),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(12),
+      itemCount: drops.length,
+      itemBuilder: (context, index) {
+        final drop = drops[index];
+        return _PriceDropCard(drop: drop);
+      },
+    );
+  }
+
+  Widget _buildEmptyState({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required String cta,
+    required VoidCallback onCta,
+  }) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: brandColor.withOpacity(0.08),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, size: 56, color: brandColor),
+            ),
+            const SizedBox(height: 20),
+            Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            Text(
+              subtitle,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.grey, fontSize: 14),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: onCta,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: brandColor,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              child: Text(cta),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildShimmerGrid() {
+    return GridView.builder(
+      padding: const EdgeInsets.all(12),
+      itemCount: 4,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        childAspectRatio: 0.62,
+        crossAxisSpacing: 10,
+        mainAxisSpacing: 10,
+      ),
+      itemBuilder: (_, __) => Shimmer.fromColors(
+        baseColor: Colors.grey.shade300,
+        highlightColor: Colors.grey.shade100,
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildShimmerList() {
+    return ListView.builder(
+      padding: const EdgeInsets.all(12),
+      itemCount: 3,
+      itemBuilder: (_, __) => Shimmer.fromColors(
+        baseColor: Colors.grey.shade300,
+        highlightColor: Colors.grey.shade100,
+        child: Container(
+          height: 100,
+          margin: const EdgeInsets.only(bottom: 10),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TabButton extends StatelessWidget {
+  final String label;
+  final int count;
+  final bool isActive;
+  final VoidCallback onTap;
+
+  const _TabButton({
+    required this.label,
+    required this.count,
+    required this.isActive,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     const brandColor = Color(0xFFFF5200);
-    const secondaryColor = Color(0xFFF5F5F5);
-    const cardColor = Colors.white;
-    const mutedColor = Colors.grey;
-
-    return Scaffold(
-      backgroundColor: secondaryColor,
-      appBar: AppBar(
-        title: const Text("Wishlist & Collections"),
-        backgroundColor: brandColor,
-        foregroundColor: Colors.white,
-      ),
-      body: Column(
-        children: [
-          // Tabs
-          Container(
-            color: cardColor,
-            child: Row(
-              children: [
-                Expanded(
-                  child: InkWell(
-                    onTap: () => setState(() => activeTab = "my"),
-                    child: Column(
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          child: Text(
-                            "My collections",
-                            style: TextStyle(
-                              color:
-                                  activeTab == "my" ? brandColor : mutedColor,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                        if (activeTab == "my")
-                          Container(
-                            height: 2,
-                            color: brandColor,
-                          )
-                      ],
+    return Expanded(
+      child: InkWell(
+        onTap: onTap,
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                      color: isActive ? brandColor : Colors.grey[600],
                     ),
                   ),
-                ),
-                Expanded(
-                  child: InkWell(
-                    onTap: () => setState(() => activeTab = "follow"),
-                    child: Column(
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          child: Text(
-                            "Collections I follow",
-                            style: TextStyle(
-                              color: activeTab == "follow"
-                                  ? brandColor
-                                  : mutedColor,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
+                  if (count > 0) ...[
+                    const SizedBox(width: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: isActive ? brandColor : Colors.grey[300],
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '$count',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: isActive ? Colors.white : Colors.grey[600],
+                          fontWeight: FontWeight.bold,
                         ),
-                        if (activeTab == "follow")
-                          Container(
-                            height: 2,
-                            color: brandColor,
-                          )
-                      ],
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            if (isActive)
+              Container(height: 2, color: brandColor)
+            else
+              Container(height: 2, color: Colors.transparent),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _WishlistCard extends StatelessWidget {
+  final Map<String, dynamic> item;
+  final VoidCallback onRemove;
+  final VoidCallback onMoveToCart;
+
+  const _WishlistCard({
+    required this.item,
+    required this.onRemove,
+    required this.onMoveToCart,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    const brandColor = Color(0xFFFF5200);
+    final name = item['name'] ?? item['productId'] ?? 'Product';
+    final imageUrl = item['imageUrl'] ?? item['image'] ?? '';
+    final price = item['price']?.toString() ?? '';
+    final addedPrice = item['addedPrice']?.toString() ?? '';
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[200]!),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Image + remove button
+          Expanded(
+            flex: 55,
+            child: Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                  child: imageUrl.isNotEmpty
+                      ? Image.network(
+                          imageUrl,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => _placeholder(),
+                        )
+                      : _placeholder(),
+                ),
+                Positioned(
+                  top: 6,
+                  right: 6,
+                  child: GestureDetector(
+                    onTap: onRemove,
+                    child: Container(
+                      padding: const EdgeInsets.all(5),
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4)],
+                      ),
+                      child: const Icon(Icons.close, size: 14, color: Colors.black54),
                     ),
                   ),
                 ),
@@ -116,218 +428,138 @@ class _WishlistScreenState extends State<WishlistScreen> {
             ),
           ),
 
+          // Info
           Expanded(
-            child: activeTab == "my"
-                ? SingleChildScrollView(
-                    child: Column(
-                      children: [
-                        // Collection Preview
-                        Container(
-                          color: cardColor,
-                          padding: const EdgeInsets.all(16),
-                          margin: const EdgeInsets.only(bottom: 8),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              GridView.builder(
-                                itemCount: collections.length,
-                                shrinkWrap: true,
-                                physics: const NeverScrollableScrollPhysics(),
-                                gridDelegate:
-                                    const SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: 4,
-                                  crossAxisSpacing: 8,
-                                  mainAxisSpacing: 8,
-                                ),
-                                itemBuilder: (context, index) {
-                                  final item = collections[index];
-                                  return Container(
-                                    decoration: BoxDecoration(
-                                      color: secondaryColor,
-                                      borderRadius: BorderRadius.circular(12),
-                                      border:
-                                          Border.all(color: Colors.grey[300]!),
-                                    ),
-                                    child: Center(
-                                      child: Text(
-                                        item["image"] ?? "",
-                                        style: const TextStyle(fontSize: 28),
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                              const SizedBox(height: 12),
-                              const Text(
-                                "My Wishlist",
-                                style: TextStyle(
-                                    fontWeight: FontWeight.bold, fontSize: 16),
-                              ),
-                              const SizedBox(height: 4),
-                              Row(
-                                children: const [
-                                  Text("🔒 Private • 2 items",
-                                      style: TextStyle(
-                                          fontSize: 13, color: mutedColor)),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        // Wishlist Items
-                        Container(
-                          color: cardColor,
-                          padding: const EdgeInsets.all(16),
-                          child: GridView.builder(
-                            itemCount: wishlistItems.length,
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            gridDelegate:
-                                const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
-                              mainAxisSpacing: 12,
-                              crossAxisSpacing: 12,
-                              childAspectRatio: 0.7,
-                            ),
-                            itemBuilder: (context, index) {
-                              final item = wishlistItems[index];
-                              return Container(
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: Colors.grey[300]!),
-                                ),
-                                padding: const EdgeInsets.all(12),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Align(
-                                      alignment: Alignment.topRight,
-                                      child: Icon(Icons.more_vert,
-                                          color: Colors.grey[600], size: 18),
-                                    ),
-                                    Container(
-                                      height: 90,
-                                      width: double.infinity,
-                                      margin: const EdgeInsets.only(bottom: 8),
-                                      decoration: BoxDecoration(
-                                        color: secondaryColor,
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      child: Center(
-                                        child: Text(
-                                          item["image"],
-                                          style: const TextStyle(fontSize: 36),
-                                        ),
-                                      ),
-                                    ),
-                                    if (!item["available"])
-                                      const Text(
-                                        "Currently unavailable",
-                                        style: TextStyle(
-                                          color: Colors.redAccent,
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    Text(
-                                      item["name"],
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(fontSize: 13),
-                                    ),
-                                    if (item["price"] != "")
-                                      Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Row(
-                                            children: [
-                                              Text(
-                                                "↓ ${item["discount"]}",
-                                                style: const TextStyle(
-                                                    color: Colors.green,
-                                                    fontSize: 12,
-                                                    fontWeight:
-                                                        FontWeight.w600),
-                                              ),
-                                              const SizedBox(width: 4),
-                                              Text(
-                                                item["originalPrice"],
-                                                style: const TextStyle(
-                                                  fontSize: 12,
-                                                  color: mutedColor,
-                                                  decoration: TextDecoration
-                                                      .lineThrough,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                          Text(
-                                            item["price"],
-                                            style: const TextStyle(
-                                                fontWeight: FontWeight.bold),
-                                          ),
-                                          Row(
-                                            children: List.generate(5, (i) {
-                                              return Icon(
-                                                Icons.star,
-                                                size: 12,
-                                                color: i <
-                                                        (item["rating"]
-                                                                as double)
-                                                            .floor()
-                                                    ? Colors.green
-                                                    : Colors.grey[400],
-                                              );
-                                            }),
-                                          ),
-                                        ],
-                                      ),
-                                    const Spacer(),
-                                    ElevatedButton(
-                                      style: ElevatedButton.styleFrom(
-                                        foregroundColor: brandColor,
-                                        side: BorderSide(color: brandColor),
-                                        backgroundColor: Colors.white,
-                                      ),
-                                      onPressed: () {},
-                                      child: const Text("Add to Cart"),
-                                    )
-                                  ],
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-
-                        // Create New Collection
-                        Container(
-                          color: cardColor,
-                          margin: const EdgeInsets.only(top: 8),
-                          padding: const EdgeInsets.all(16),
-                          child: OutlinedButton.icon(
-                            icon: const Icon(Icons.add, size: 18),
-                            onPressed: () {},
-                            style: OutlinedButton.styleFrom(
-                              side: BorderSide(color: brandColor),
-                              foregroundColor: brandColor,
-                            ),
-                            label: const Text("Create a new collection"),
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                : Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Text(
-                        "No collections followed yet",
-                        style: TextStyle(color: Colors.grey[600]),
+            flex: 45,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, height: 1.3),
+                  ),
+                  const Spacer(),
+                  if (price.isNotEmpty)
+                    Text(
+                      '₹$price',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF111111),
                       ),
                     ),
+                  const SizedBox(height: 6),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      onPressed: onMoveToCart,
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: brandColor,
+                        side: const BorderSide(color: brandColor),
+                        padding: const EdgeInsets.symmetric(vertical: 6),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                        textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                      ),
+                      child: const Text('Add to Cart'),
+                    ),
                   ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _placeholder() {
+    return Container(
+      color: Colors.grey[100],
+      child: const Center(
+        child: Icon(Icons.image_not_supported_outlined, size: 32, color: Colors.grey),
+      ),
+    );
+  }
+}
+
+class _PriceDropCard extends StatelessWidget {
+  final Map<String, dynamic> drop;
+
+  const _PriceDropCard({required this.drop});
+
+  @override
+  Widget build(BuildContext context) {
+    final name = drop['productName'] ?? 'Product';
+    final imageUrl = drop['imageUrl'] ?? '';
+    final currentPrice = drop['currentPrice']?.toString() ?? '';
+    final addedPrice = drop['addedPrice']?.toString() ?? '';
+    final dropAmount = drop['dropAmount']?.toString() ?? '';
+    final dropPercent = (drop['dropPercent'] ?? 0.0).toDouble();
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.green.shade100),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 6, offset: const Offset(0, 2)),
+        ],
+      ),
+      child: Row(
+        children: [
+          // Image
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: imageUrl.isNotEmpty
+                ? Image.network(imageUrl, width: 72, height: 72, fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Container(width: 72, height: 72, color: Colors.grey[100], child: const Icon(Icons.image_not_supported_outlined)))
+                : Container(width: 72, height: 72, color: Colors.grey[100], child: const Icon(Icons.shopping_bag_outlined, color: Colors.grey)),
+          ),
+          const SizedBox(width: 12),
+
+          // Details
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(name, maxLines: 2, overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Text('₹$currentPrice',
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    const SizedBox(width: 6),
+                    if (addedPrice.isNotEmpty)
+                      Text('₹$addedPrice',
+                          style: const TextStyle(
+                              fontSize: 12, color: Colors.grey, decoration: TextDecoration.lineThrough)),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.green[50],
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        '↓ ${dropPercent.toStringAsFixed(1)}% off  ₹$dropAmount saved',
+                        style: TextStyle(fontSize: 11, color: Colors.green[700], fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ],
       ),
