@@ -12,41 +12,37 @@ class BannerNotifier extends StateNotifier<Map<String, dynamic>> {
           'currentCategoryId': null,
         });
 
-  /// ✅ Fetch banners by category
   Future<void> fetchBannersByCategory(String categoryId) async {
     try {
-      // Return early if same category is already loaded
-      if (state['currentCategoryId'] == categoryId && (state['banners'] as List).isNotEmpty) {
+      // Skip if same category already loaded
+      if (state['currentCategoryId'] == categoryId &&
+          (state['banners'] as List).isNotEmpty) {
         return;
       }
 
-      state = {...state, 'isLoading': true, 'message': '', 'banners': []};
+      state = {
+        ...state,
+        'isLoading': true,
+        'message': '',
+        'banners': [],
+        'currentCategoryId': categoryId,
+      };
 
       final uri = Uri.parse('http://localhost:8081/api/v1/banners').replace(
-        queryParameters: {
-          'categoryId': categoryId,
-        },
+        queryParameters: {'categoryId': categoryId},
       );
 
-      final res = await http.get(
-        uri,
-        headers: {
-          "Content-Type": "application/json",
-        },
-      );
+      final res = await http.get(uri, headers: {'Content-Type': 'application/json'});
 
       if (res.statusCode == 200) {
         final body = json.decode(res.body);
-
         if (body['success'] == true) {
-          final bannersList = body['data'] as List? ?? [];
           state = {
             ...state,
             'isLoading': false,
             'success': true,
-            'message': body['message'] ?? 'Banners fetched successfully',
-            'banners': bannersList,
-            'currentCategoryId': categoryId,
+            'message': body['message'] ?? '',
+            'banners': body['data'] as List? ?? [],
           };
         } else {
           state = {
@@ -77,16 +73,22 @@ class BannerNotifier extends StateNotifier<Map<String, dynamic>> {
     }
   }
 
-  /// ✅ Clear banners when category changes
+  // ✅ clearBanners is now a no-op if already clear — avoids spurious
+  //    state mutations that can trigger "modified during build" errors.
   void clearBanners() {
+    if ((state['banners'] as List).isEmpty && state['currentCategoryId'] == null) {
+      return; // already clear, skip mutation
+    }
     state = {
       ...state,
+      'isLoading': false,
       'banners': [],
       'currentCategoryId': null,
     };
   }
 }
 
-final bannerProvider = StateNotifierProvider<BannerNotifier, Map<String, dynamic>>((ref) {
-  return BannerNotifier();
-});
+final bannerProvider =
+    StateNotifierProvider<BannerNotifier, Map<String, dynamic>>(
+  (ref) => BannerNotifier(),
+);

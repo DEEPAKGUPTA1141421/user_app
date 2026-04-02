@@ -8,7 +8,7 @@ class ServerApi {
   static const String login = "$productClientService/api/v1/auth/login";
   static const String verifyOtp = "$productClientService/api/v1/auth/verify";
   static const String GetUserDetails =
-      "$productClientService/api/v1/user/get-user";
+      "$productClientService/api/v1/user";
   static const String GetCategory =
       '$productClientService/api/v1/product/category';
   static const String GetSectionOfCategory =
