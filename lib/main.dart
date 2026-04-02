@@ -20,6 +20,8 @@ import 'widgets/product/product_details_page.dart';
 import 'firebase_options.dart';
 import 'screens/accounts/wishlist_screen.dart'; // replace the old one with new file
 import 'screens/accounts/addresses_screen.dart';
+import 'screens/accounts/saved_cards_upi_screen.dart';
+import 'screens/accounts/notification_settings_screen.dart';
 
 Future<void> _firebaseMessagingHandler(RemoteMessage message) async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
@@ -56,6 +58,8 @@ class MyApp extends StatelessWidget {
         '/account/wishlist': (context) => WishlistScreen(),
         '/account/support': (context) => CustomerSupportPage(),  
         '/account/addresses': (context) => const AddressesScreen(),
+        '/account/cards': (context) => const SavedCardsUpiScreen(),
+        '/account/notifications': (context) => const NotificationSettingsScreen(),
       },
 
       // Dynamic routes
