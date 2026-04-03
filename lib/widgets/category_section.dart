@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shimmer/shimmer.dart';
-import '../provider/category_provider.dart'; // adjust path
+import '../provider/category_provider.dart';
+import '../utils/app_colors.dart';
 
 class CategorySection extends ConsumerStatefulWidget {
   final Function(String) onCategorySelected;
+
   const CategorySection({super.key, required this.onCategorySelected});
 
   @override
@@ -12,19 +14,17 @@ class CategorySection extends ConsumerStatefulWidget {
 }
 
 class _CategorySectionState extends ConsumerState<CategorySection> {
-  int activeIndex = 0; // track selected category
-  final double iconSize = 26;
-  final Color brandColor = const Color(0xFFFF5200);
+  int activeIndex = 0;
 
   @override
   Widget build(BuildContext context) {
-    print("rendering category section");
     final state = ref.watch(categoryProvider);
     final isLoading = state['isLoading'] ?? false;
     final categories = state['categoryData'] as List<dynamic>? ?? [];
-    print("rendering category section for debug ${categories.length}");
+
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16),
+      color: AppColors.bg,
+      padding: const EdgeInsets.symmetric(vertical: 14),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(
@@ -33,50 +33,88 @@ class _CategorySectionState extends ConsumerState<CategorySection> {
               : List.generate(categories.length, (index) {
                   final cat = categories[index];
                   final isActive = activeIndex == index;
+
                   final name = cat['name'] ?? '';
+                  final image = cat['imageUrl'] ?? '';
+
                   final displayName =
-                      name.length > 14 ? '${name.substring(0, 14)}...' : name;
+                      name.length > 12 ? '${name.substring(0, 12)}…' : name;
 
                   return GestureDetector(
                     onTap: () {
-                      setState(() {
-                        activeIndex = index; // update active category
-                      });
+                      setState(() => activeIndex = index);
                       widget.onCategorySelected(cat['id'].toString());
-                      debugPrint("Selected category: ${cat['name']}");
                     },
                     child: Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 12),
+                      margin: const EdgeInsets.symmetric(horizontal: 10),
                       child: Column(
                         children: [
-                          Container(
-                            padding: const EdgeInsets.all(12),
+                          // 🔥 CATEGORY ICON (IMAGE BASED)
+                          AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            padding: const EdgeInsets.all(10),
                             decoration: BoxDecoration(
-                              color: brandColor,
-                              borderRadius: BorderRadius.circular(12),
+                              color: isActive
+                                  ? AppColors.white
+                                  : AppColors.surface2,
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: isActive
+                                    ? AppColors.white
+                                    : AppColors.border,
+                                width: isActive ? 1.5 : 1,
+                              ),
+                              boxShadow: isActive
+                                  ? [
+                                      BoxShadow(
+                                        color: Colors.white.withOpacity(0.1),
+                                        blurRadius: 8,
+                                      )
+                                    ]
+                                  : [],
                             ),
-                            child: Icon(
-                              Icons.category, // placeholder icon
-                              size: iconSize,
-                              color: Colors.white,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            displayName,
-                            style: const TextStyle(
-                                fontSize: 10, fontWeight: FontWeight.w500),
-                          ),
-                          if (isActive)
-                            Container(
-                              margin: const EdgeInsets.only(top: 4),
-                              height: 3,
-                              width: 30,
-                              decoration: BoxDecoration(
-                                color: brandColor,
-                                borderRadius: BorderRadius.circular(2),
+                            child: SizedBox(
+                              width: 28,
+                              height: 28,
+                              child: Image.network(
+                                image,
+                                fit: BoxFit.contain,
+                                errorBuilder: (_, __, ___) => Icon(
+                                  Icons.category_outlined,
+                                  color: AppColors.grey,
+                                  size: 22,
+                                ),
                               ),
                             ),
+                          ),
+
+                          const SizedBox(height: 6),
+
+                          // 🔥 CATEGORY NAME
+                          Text(
+                            displayName,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: isActive
+                                  ? FontWeight.w600
+                                  : FontWeight.w500,
+                              color: isActive
+                                  ? AppColors.white
+                                  : AppColors.grey,
+                            ),
+                          ),
+
+                          // 🔥 ACTIVE INDICATOR (Flipkart style)
+                          AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            margin: const EdgeInsets.only(top: 4),
+                            height: 2,
+                            width: isActive ? 24 : 0,
+                            decoration: BoxDecoration(
+                              color: AppColors.white,
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -87,27 +125,28 @@ class _CategorySectionState extends ConsumerState<CategorySection> {
     );
   }
 
+  /// 🔥 DARK THEME SKELETON
   Widget _buildSkeleton() {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 12),
+      margin: const EdgeInsets.symmetric(horizontal: 10),
       child: Shimmer.fromColors(
-        baseColor: Colors.grey.shade300,
-        highlightColor: Colors.grey.shade100,
+        baseColor: AppColors.surface2,
+        highlightColor: AppColors.surface,
         child: Column(
           children: [
             Container(
-              width: 50,
-              height: 50,
+              width: 48,
+              height: 48,
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: AppColors.surface,
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
             const SizedBox(height: 6),
             Container(
               width: 50,
-              height: 12,
-              color: Colors.white,
+              height: 10,
+              color: AppColors.surface,
             ),
           ],
         ),

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../provider/rider_provider.dart'; // adjust path if needed
+import '../provider/rider_provider.dart';
+import '../utils/app_colors.dart'; // ✅ USE YOUR COLOR FILE
 
 class CurrentLocationButton extends ConsumerStatefulWidget {
   const CurrentLocationButton({super.key});
@@ -20,56 +22,44 @@ class _CurrentLocationButtonState
 
     try {
       LocationPermission permission = await Geolocator.checkPermission();
+
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) {
-          debugPrint("Location permissions are denied");
-          return;
-        }
+        if (permission == LocationPermission.denied) return;
       }
 
-      if (permission == LocationPermission.deniedForever) {
-        debugPrint("Location permissions are permanently denied.");
-        return;
-      }
+      if (permission == LocationPermission.deniedForever) return;
 
       final position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
       );
 
-      debugPrint(
-          "Latitude: ${position.latitude}, Longitude: ${position.longitude}");
-
-      /// ✅ Call addAddress API after fetching location
       final riderNotifier = ref.read(riderPod.notifier);
+
       final res = await riderNotifier.addAddress(
         position.latitude.toString(),
-        position.longitude.toString(),true
+        position.longitude.toString(),
+        true,
       );
 
-      if (res['success'] == true) {
-        debugPrint("Address saved successfully!");
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Current location saved successfully!"),
-            backgroundColor: Colors.green,
-          ),
-        );
-      } else {
-        debugPrint("Failed to save address: ${res['message']}");
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(res['message'] ?? "Something went wrong!"),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } catch (e) {
-      debugPrint("Error fetching location: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text("Error: $e"),
-          backgroundColor: Colors.red,
+          content: Text(
+            res['success'] == true
+                ? "Location saved successfully"
+                : res['message'] ?? "Failed to save",
+            style: const TextStyle(color: AppColors.white),
+          ),
+          backgroundColor: AppColors.surface2,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Error: $e",
+              style: const TextStyle(color: AppColors.white)),
+          backgroundColor: AppColors.surface2,
         ),
       );
     } finally {
@@ -81,24 +71,47 @@ class _CurrentLocationButtonState
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: ElevatedButton.icon(
-        onPressed: isLoading ? null : handleUseCurrentLocation,
-        icon: isLoading
-            ? const SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: Colors.white,
+      child: GestureDetector(
+        onTap: isLoading ? null : handleUseCurrentLocation,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              isLoading
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AppColors.white,
+                      ),
+                    )
+                  : const Icon(
+                      CupertinoIcons.location_fill,
+                      color: AppColors.white,
+                      size: 18,
+                    ),
+              const SizedBox(width: 10),
+              Text(
+                isLoading
+                    ? "Fetching your location..."
+                    : "Use current location",
+                style: const TextStyle(
+                  color: AppColors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: -0.2,
                 ),
-              )
-            : const Icon(Icons.location_on, color: Colors.white),
-        label: Text(
-          isLoading ? "Fetching location..." : "Use my current location",
-        ),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFFFF5200),
-          minimumSize: const Size.fromHeight(48),
+              ),
+            ],
+          ),
         ),
       ),
     );

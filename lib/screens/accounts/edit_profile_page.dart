@@ -63,18 +63,21 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage>
   }
 
   void _loadFromState() {
-    final ud       = ref.read(riderPod)['user_detail'] ?? {};
-    final fullName = (ud['name'] ?? '') as String;
-    final parts    = fullName.trim().split(' ');
-    _firstNameCtrl.text = parts.isNotEmpty ? parts.first : '';
-    _lastNameCtrl.text  = parts.length > 1 ? parts.sublist(1).join(' ') : '';
-    _emailCtrl.text     = ud['email'] ?? '';
-    _gender             = ud['gender'];
-    if (ud['dateOfBirth'] != null) {
-      try { _dob = DateTime.parse(ud['dateOfBirth']); } catch (_) {}
-    }
-    setState(() {});
+  final ud = ref.read(riderPod)['user_detail'] ?? {};
+
+  _firstNameCtrl.text = ud['firstName'] ?? '';
+  _lastNameCtrl.text  = ud['lastName'] ?? '';
+  _emailCtrl.text     = ud['email'] ?? '';
+  _gender             = ud['gender'];
+
+  if (ud['dateOfBirth'] != null) {
+    try {
+      _dob = DateTime.parse(ud['dateOfBirth']);
+    } catch (_) {}
   }
+
+  setState(() {});
+}
 
   @override
   void dispose() {
@@ -280,7 +283,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage>
     final state         = ref.watch(riderPod);
     final ud            = state['user_detail'] ?? {};
     final isLoading     = state['isLoading'] as bool? ?? false;
-    final name          = ud['name']      ?? '';
+    final name =  '${ud['firstName'] ?? ''} ${ud['lastName'] ?? ''}'.trim();
     final phone         = ud['phone']     ?? '';
     final avatarUrl     = ud['avatarUrl'] as String?;
     final emailVerified = ud['emailVerified'] as bool? ?? false;
@@ -408,7 +411,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage>
                         const SizedBox(height: 32),
 
                         // ── Email ─────────────────────────────────────────
-                        _Label('EMAIL ADDRESS'),
+                        _Label('PHONE NUMBER'),
                         const SizedBox(height: 16),
 
                         // Phone read-only strip

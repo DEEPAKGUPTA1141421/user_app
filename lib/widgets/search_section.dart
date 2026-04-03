@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'speech_search_page.dart';
 import 'real_search_page.dart';
-import 'package:flutter/cupertino.dart';
+import '../utils/app_colors.dart'; 
 
 class SearchSection extends StatefulWidget {
   const SearchSection({super.key});
@@ -13,73 +14,92 @@ class SearchSection extends StatefulWidget {
 class _SearchSectionState extends State<SearchSection> {
   @override
   Widget build(BuildContext context) {
-    const brandColor = Color(0xFFFF5200);
-
     return Container(
-      padding: const EdgeInsets.all(12),
+      color: AppColors.bg,
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
       child: Row(
         children: [
+          // ───────── SEARCH BAR ─────────
           Expanded(
-            child: TextField(
-              readOnly: true, // Makes it non-editable but clickable
+            child: GestureDetector(
               onTap: () {
-                // Navigate to real search page
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => const RealSearchPage(),
+                    builder: (_) => const RealSearchPage(),
                   ),
                 );
               },
-              cursorColor: brandColor, // 🔥 cursor color
-              decoration: InputDecoration(
-                hintText: "Search for products, brands and more",
-                hintStyle: const TextStyle(
-                  color: Colors.black, // <-- black color for hint text
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppColors.border),
                 ),
-                prefixIcon: const Icon(
-                  CupertinoIcons.search,
-                  size: 20,
-                  color: Color(0xFFFF5200), // 🔥 brand color
-                ),
-                suffixIcon: const Icon(
-                  CupertinoIcons.mic,
-                  size: 20,
-                  color: Color(0xFFFF5200), // 🔥 brand color
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 14,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide:
-                      const BorderSide(color: brandColor), // 🔥 default border
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide:
-                      const BorderSide(color: brandColor), // 🔥 enabled border
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(
-                      color: brandColor, width: 2), // 🔥 focused border
+                child: Row(
+                  children: [
+                    const Icon(
+                      CupertinoIcons.search,
+                      color: AppColors.grey,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 10),
+
+                    // Hint text
+                    const Expanded(
+                      child: Text(
+                        "Search for products, brands...",
+                        style: TextStyle(
+                          color: AppColors.greyDark,
+                          fontSize: 14,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+
+                    // 🎤 Voice search
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const SpeechSearchPage(),
+                          ),
+                        );
+                      },
+                      child: const Icon(
+                        CupertinoIcons.mic_fill,
+                        color: AppColors.grey,
+                        size: 18,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
           ),
+
           const SizedBox(width: 10),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(
-              CupertinoIcons.qrcode,
-              size: 24,
-              color: brandColor, // 🔥 QR icon in brand color
+
+          // ───────── QR SCANNER ─────────
+          GestureDetector(
+            onTap: () {
+              // TODO: Add QR Scanner navigation
+            },
+            child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: const Icon(
+                CupertinoIcons.qrcode_viewfinder,
+                color: AppColors.white,
+                size: 20,
+              ),
             ),
           ),
         ],

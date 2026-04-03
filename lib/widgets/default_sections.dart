@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shimmer/shimmer.dart';
 import '../../provider/product_provider.dart'; // adjust path
+import '../utils/app_colors.dart';
 
 class DefaultSections extends ConsumerStatefulWidget {
   final List<Map<String, dynamic>> popularProducts;
@@ -64,8 +65,14 @@ class _DefaultSectionsState extends ConsumerState<DefaultSections> {
         children: [
           // ---------------- Recent Searches ----------------
           if (recentSearches.isNotEmpty) ...[
-            Text('Recent Searches',
-                style: Theme.of(context).textTheme.headline6),
+            Text(
+              'Recent Searches',
+              style: const TextStyle(
+                color: AppColors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
             const SizedBox(height: 8),
             SizedBox(
               height: 100,
@@ -86,11 +93,13 @@ class _DefaultSectionsState extends ConsumerState<DefaultSections> {
                             backgroundImage: NetworkImage(item['imageUrl']),
                           ),
                           const SizedBox(height: 6),
-                          Text(item['title'],
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontSize: 12),
-                              textAlign: TextAlign.center),
+                          Text(
+  item['title'],
+  style: const TextStyle(
+    color: AppColors.white,
+    fontSize: 13,
+  ),
+),
                         ],
                       ),
                     ),
@@ -104,7 +113,11 @@ class _DefaultSectionsState extends ConsumerState<DefaultSections> {
           // ---------------- Trending Searches ----------------
           if (trendingSearches.isNotEmpty) ...[
             Text('Trending Searches',
-                style: Theme.of(context).textTheme.headline6),
+                style: const TextStyle(
+                  color: AppColors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                )),
             const SizedBox(height: 8),
             GridView.builder(
               shrinkWrap: true,
@@ -147,8 +160,14 @@ class _DefaultSectionsState extends ConsumerState<DefaultSections> {
           ],
 
           // ---------------- Popular Products ----------------
-          Text('Popular Products',
-              style: Theme.of(context).textTheme.headline6),
+          Text(
+            'Popular Products',
+            style: const TextStyle(
+              color: AppColors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
           const SizedBox(height: 8),
           GridView.builder(
             shrinkWrap: true,
@@ -186,12 +205,20 @@ class _DefaultSectionsState extends ConsumerState<DefaultSections> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(product['brand'],
-                              style:
-                                  const TextStyle(fontWeight: FontWeight.bold)),
-                          Text(product['category'],
-                              style: const TextStyle(
-                                  color: Colors.grey, fontSize: 12)),
+                          Text(
+  product['brand'],
+  style: const TextStyle(
+    color: AppColors.white,
+    fontWeight: FontWeight.w600,
+  ),
+),
+                              Text(
+                                product['category'],
+                                style: const TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: 12,
+                                ),
+                              ),
                         ],
                       ),
                     ),
@@ -202,8 +229,15 @@ class _DefaultSectionsState extends ConsumerState<DefaultSections> {
           ),
           const SizedBox(height: 16),
 
-          // ---------------- Discover More ----------------
-          Text('Discover More', style: Theme.of(context).textTheme.headline6),
+          // ---------------- Discover More ---------------
+          Text(
+            'Discover More',
+            style: const TextStyle(
+              color: AppColors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,

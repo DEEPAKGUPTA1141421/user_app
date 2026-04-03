@@ -3,6 +3,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../provider/rider_provider.dart';
 import '../../widgets/current_location_button.dart';
 
+// SAME COLORS AS EDIT PAGE
+const _bg = Color(0xFF000000);
+const _surface = Color(0xFF111111);
+const _surface2 = Color(0xFF1A1A1A);
+const _border = Color(0xFF2A2A2A);
+const _white = Colors.white;
+const _grey = Color(0xFF888888);
+const _greyDark = Color(0xFF444444);
+
 class AddressesScreen extends ConsumerStatefulWidget {
   const AddressesScreen({super.key});
 
@@ -11,7 +20,6 @@ class AddressesScreen extends ConsumerStatefulWidget {
 }
 
 class _AddressesScreenState extends ConsumerState<AddressesScreen> {
-  static const brandColor = Color(0xFFFF5200);
 
   @override
   void initState() {
@@ -21,13 +29,19 @@ class _AddressesScreenState extends ConsumerState<AddressesScreen> {
 
   Future<void> _setDefault(String addressId) async {
     final res = await ref.read(riderPod.notifier).makeAddressDefault(addressId);
+
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(res['success'] == true
-            ? 'Default address updated'
-            : res['message'] ?? 'Failed to update'),
-        backgroundColor: res['success'] == true ? Colors.green : Colors.red,
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            res['success'] == true
+                ? 'Default address updated'
+                : res['message'] ?? 'Failed',
+            style: const TextStyle(color: _white),
+          ),
+          backgroundColor: _surface2,
+        ),
+      );
     }
   }
 
@@ -35,74 +49,75 @@ class _AddressesScreenState extends ConsumerState<AddressesScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+      backgroundColor: _surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (_) => const _AddAddressSheet(),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final riderState = ref.watch(riderPod);
-    final isLoading = riderState['isLoading'] as bool? ?? false;
-    final userDetail = riderState['user_detail'] ?? {};
-    final addresses = (userDetail['addresses'] ?? []) as List<dynamic>;
+    final state = ref.watch(riderPod);
+    final isLoading = state['isLoading'] as bool? ?? false;
+    final addresses = (state['user_detail']?['addresses'] ?? []) as List<dynamic>;
 
     return Scaffold(
-      backgroundColor: Colors.grey[100],
+      backgroundColor: _bg,
       appBar: AppBar(
-        title: const Text('Saved Addresses'),
-        backgroundColor: brandColor,
-        foregroundColor: Colors.white,
+        backgroundColor: _bg,
         elevation: 0,
+        title: const Text('Saved Addresses',
+            style: TextStyle(color: _white, fontSize: 17, fontWeight: FontWeight.w600)),
+        iconTheme: const IconThemeData(color: _white),
       ),
+
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showAddAddressSheet,
-        backgroundColor: brandColor,
-        icon: const Icon(Icons.add_location_alt_outlined, color: Colors.white),
-        label: const Text('Add Address', style: TextStyle(color: Colors.white)),
+        backgroundColor: _white,
+        icon: const Icon(Icons.add_location_alt_outlined, color: _bg),
+        label: const Text('Add Address', style: TextStyle(color: _bg)),
       ),
+
       body: isLoading
-          ? const Center(child: CircularProgressIndicator(color: brandColor))
+          ? const Center(child: CircularProgressIndicator(color: _white))
           : addresses.isEmpty
-              ? _buildEmpty()
+              ? _emptyState()
               : ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
                   itemCount: addresses.length,
-                  itemBuilder: (context, index) {
-                    final addr = addresses[index] as Map<String, dynamic>;
-                    final isDefault = addr['default'] == true || addr['isDefault'] == true;
+                  itemBuilder: (context, i) {
+                    final addr = addresses[i];
+                    final isDefault = addr['default'] == true;
 
                     return _AddressCard(
                       address: addr,
                       isDefault: isDefault,
-                      onSetDefault: () => _setDefault(addr['id']?.toString() ?? ''),
+                      onSetDefault: () => _setDefault(addr['id']),
                     );
                   },
                 ),
     );
   }
 
-  Widget _buildEmpty() {
+  Widget _emptyState() {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.location_off_outlined, size: 64, color: Colors.grey[400]),
+          const Icon(Icons.location_off_outlined, size: 60, color: _grey),
           const SizedBox(height: 16),
-          const Text('No addresses saved', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          Text('Add your delivery addresses here', style: TextStyle(color: Colors.grey[600])),
-          const SizedBox(height: 24),
-          ElevatedButton.icon(
-            onPressed: _showAddAddressSheet,
-            icon: const Icon(Icons.add_location_alt_outlined),
-            label: const Text('Add Address'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: brandColor,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            ),
-          ),
+          const Text('No addresses saved',
+              style: TextStyle(color: _white, fontSize: 16, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 6),
+          const Text('Add your delivery addresses',
+              style: TextStyle(color: _grey, fontSize: 13)),
+          const SizedBox(height: 20),
+          _OutlineButton(
+            label: 'Add Address',
+            onTap: _showAddAddressSheet,
+          )
         ],
       ),
     );
@@ -122,151 +137,126 @@ class _AddressCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const brandColor = Color(0xFFFF5200);
-    final kind = address['kind']?.toString() ?? 'HOME';
-    final line1 = address['line1']?.toString() ?? '';
-    final city = address['city']?.toString() ?? '';
-    final pincode = address['pincode']?.toString() ?? '';
-    final phone = address['phone']?.toString() ?? '';
+    final kind = address['kind'] ?? 'HOME';
+    final line1 = address['line1'] ?? '';
+    final city = address['city'] ?? '';
+    final pincode = address['pincode'] ?? '';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        color: _surface,
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: isDefault ? brandColor.withOpacity(0.4) : Colors.grey[200]!,
-          width: isDefault ? 1.5 : 1,
+          color: isDefault ? _white : _border,
+          width: isDefault ? 1.3 : 1,
         ),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 6, offset: const Offset(0, 2)),
-        ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                kind == 'WORK' ? Icons.work_outline : Icons.home_outlined,
-                color: isDefault ? brandColor : Colors.grey[600],
-                size: 18,
-              ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(
+          children: [
+            Icon(
+              kind == 'WORK' ? Icons.work_outline : Icons.home_outlined,
+              color: _grey,
+              size: 16,
+            ),
+            const SizedBox(width: 8),
+            Text(kind,
+                style: const TextStyle(
+                    color: _white, fontSize: 13, fontWeight: FontWeight.w600)),
+
+            if (isDefault) ...[
               const SizedBox(width: 8),
-              Text(
-                kind,
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13,
-                  color: isDefault ? brandColor : Colors.black87,
-                ),
-              ),
-              const SizedBox(width: 8),
-              if (isDefault)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: brandColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Text('Default', style: TextStyle(fontSize: 10, color: brandColor, fontWeight: FontWeight.w600)),
-                ),
-              const Spacer(),
-              if (!isDefault)
-                GestureDetector(
-                  onTap: onSetDefault,
-                  child: Text(
-                    'Set as Default',
-                    style: TextStyle(fontSize: 12, color: Colors.blue[700], fontWeight: FontWeight.w500),
-                  ),
-                ),
+              const Text('Default',
+                  style: TextStyle(color: _grey, fontSize: 11)),
             ],
-          ),
-          const SizedBox(height: 10),
-          Text(line1, style: const TextStyle(fontSize: 13, color: Colors.black87)),
-          if (city.isNotEmpty || pincode.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 2),
-              child: Text('$city${pincode.isNotEmpty ? ' - $pincode' : ''}',
-                  style: const TextStyle(fontSize: 12, color: Colors.grey)),
-            ),
-          if (phone.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 2),
-              child: Text(phone, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-            ),
-        ],
+
+            const Spacer(),
+
+            if (!isDefault)
+              GestureDetector(
+                onTap: onSetDefault,
+                child: const Text('Set default',
+                    style: TextStyle(color: _white, fontSize: 12)),
+              )
+          ],
+        ),
+        const SizedBox(height: 10),
+        Text(line1,
+            style: const TextStyle(color: _white, fontSize: 13)),
+        if (city.isNotEmpty)
+          Text('$city - $pincode',
+              style: const TextStyle(color: _grey, fontSize: 12)),
+      ]),
+    );
+  }
+}
+
+class _AddAddressSheet extends StatelessWidget {
+  const _AddAddressSheet();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: _surface,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            const Text('Add New Address',
+                style: TextStyle(
+                    color: _white, fontSize: 16, fontWeight: FontWeight.w600)),
+
+            const SizedBox(height: 20),
+
+            const CurrentLocationButton(),
+
+            const SizedBox(height: 20),
+
+            const Text('or',
+                style: TextStyle(color: _grey, fontSize: 12)),
+
+            const SizedBox(height: 20),
+
+            _OutlineButton(
+              label: 'Enter Address Manually',
+              onTap: () {
+                Navigator.pop(context);
+              },
+            )
+          ]),
+        ),
       ),
     );
   }
 }
 
-class _AddAddressSheet extends ConsumerWidget {
-  const _AddAddressSheet();
+// SAME BUTTON STYLE
+class _OutlineButton extends StatelessWidget {
+  final String label;
+  final VoidCallback onTap;
+
+  const _OutlineButton({required this.label, required this.onTap});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return Container(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      child: SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              margin: const EdgeInsets.only(top: 12),
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-              child: Row(
-                children: [
-                  const Text('Add New Address', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  const Spacer(),
-                  IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close),
-                  ),
-                ],
-              ),
-            ),
-            const Divider(height: 1),
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                children: [
-                  const CurrentLocationButton(),
-                  const SizedBox(height: 16),
-                  const Text('or enter manually', style: TextStyle(color: Colors.grey, fontSize: 13)),
-                  const SizedBox(height: 16),
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      // Navigate to manual address form
-                    },
-                    icon: const Icon(Icons.edit_location_outlined),
-                    label: const Text('Enter Address Manually'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.grey[100],
-                      foregroundColor: Colors.black87,
-                      minimumSize: const Size.fromHeight(48),
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        side: BorderSide(color: Colors.grey[300]!),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: _white),
+        ),
+        child: Center(
+          child: Text(label,
+              style: const TextStyle(
+                  color: _white, fontSize: 14, fontWeight: FontWeight.w600)),
         ),
       ),
     );

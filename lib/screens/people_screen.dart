@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:user_app/screens/auth/login_screen.dart';
 import 'package:user_app/utils/StorageService.dart';
 import '../provider/rider_provider.dart';
-
+import '../utils/app_colors.dart';
 class PeopleScreen extends ConsumerStatefulWidget {
   const PeopleScreen({super.key});
 
@@ -12,8 +12,6 @@ class PeopleScreen extends ConsumerStatefulWidget {
 }
 
 class _PeopleScreenState extends ConsumerState<PeopleScreen> {
-  static const brandColor = Colors.black;
-
   @override
   void initState() {
     super.initState();
@@ -32,182 +30,129 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final riderState = ref.watch(riderPod);
-    final isLoading = riderState['isLoading'] ?? false;
-    final userDetail = riderState['user_detail'] ?? {};
-    final name = userDetail['name'] ?? '';
-    final phone = userDetail['phone'] ?? '';
-    final avatarUrl = userDetail['avatarUrl'];
+    final state = ref.watch(riderPod);
+    final ud = state['user_detail'] ?? {};
+    final isLoading = state['isLoading'] ?? false;
 
-    final quickAccess = [
-      {"label": "My Orders", "icon": Icons.shopping_bag_outlined, "path": "/account/orders"},
-      {"label": "Wishlist", "icon": Icons.favorite_border, "path": "/account/wishlist"},
-      {"label": "Support", "icon": Icons.support_agent_outlined, "path": "/account/support"},
-      {"label": "Addresses", "icon": Icons.location_on_outlined, "path": "/account/addresses"},
-    ];
+    final firstName = ud['firstName'] ?? '';
+    final lastName = ud['lastName'] ?? '';
+    final name = "$firstName $lastName".trim();
 
-    final settingsMenu = [
-      {"icon": Icons.person_outline, "label": "Edit Profile", "path": "/account/profile"},
-      {"icon": Icons.credit_card_outlined, "label": "Saved Cards & UPI", "path": "/account/cards"},
-      {"icon": Icons.location_on_outlined, "label": "Saved Addresses", "path": "/account/addresses"},
-      {"icon": Icons.notifications_outlined, "label": "Notification Settings", "path": "/account/notifications"},
-      {"icon": Icons.privacy_tip_outlined, "label": "Privacy Center", "path": "/account/privacy"},
-    ];
-
-    final activityMenu = [
-      {"icon": Icons.star_border, "label": "My Reviews", "path": "/account/reviews"},
-      {"icon": Icons.quiz_outlined, "label": "Questions & Answers", "path": "/account/qa"},
-    ];
-
-    final infoMenu = [
-      {"icon": Icons.description_outlined, "label": "Terms & Policies", "path": "/account/terms"},
-      {"icon": Icons.help_outline, "label": "Browse FAQs", "path": "/account/faqs"},
-    ];
+    final phone = ud['phone'] ?? '';
+    final avatarUrl = ud['avatarUrl'];
 
     return Scaffold(
-      backgroundColor: Colors.grey[100],
+      backgroundColor: AppColors.bg,
       body: CustomScrollView(
         slivers: [
-          // Header with profile
+
+          // 🔹 Header (same style as EditProfile)
           SliverToBoxAdapter(
             child: Container(
-              decoration: const BoxDecoration(
-                color: Colors.black,
-              ),
-              padding: const EdgeInsets.fromLTRB(20, 56, 20, 28),
+              padding: const EdgeInsets.fromLTRB(24, 60, 24, 32),
               child: Row(
                 children: [
-                  // Avatar
-                  CircleAvatar(
-                    radius: 32,
-                    backgroundColor: Colors.white.withOpacity(0.3),
-                    backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl) : null,
-                    child: avatarUrl == null
-                        ? Text(
-                            name.isNotEmpty ? name[0].toUpperCase() : '?',
-                            style: const TextStyle(
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          )
-                        : null,
-                  ),
+                  _avatar(avatarUrl, name, isLoading),
                   const SizedBox(width: 16),
+
                   Expanded(
-                    child: isLoading
-                        ? Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(height: 18, width: 120, decoration: BoxDecoration(color: Colors.white30, borderRadius: BorderRadius.circular(4))),
-                              const SizedBox(height: 6),
-                              Container(height: 14, width: 90, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(4))),
-                            ],
-                          )
-                        : Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                name.isNotEmpty ? name : 'Hello there!',
-                                style: const TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              if (phone.isNotEmpty)
-                                Text(
-                                  '+91 $phone',
-                                  style: const TextStyle(fontSize: 13, color: Colors.white70),
-                                ),
-                            ],
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          name.isNotEmpty ? name : 'Your Name',
+                          style: const TextStyle(
+                            color: AppColors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
                           ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          phone.isNotEmpty ? '+91 $phone' : '',
+                          style: const TextStyle(
+                            color: AppColors.grey,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
+
                   IconButton(
-                    icon: const Icon(Icons.edit_outlined, color: Colors.white),
-                    onPressed: () => Navigator.pushNamed(context, '/account/profile'),
-                  ),
+                    icon: const Icon(Icons.edit_outlined, color: AppColors.white),
+                    onPressed: () =>
+                        Navigator.pushNamed(context, '/account/profile'),
+                  )
                 ],
               ),
             ),
           ),
 
-          // Quick Access Grid
+          // divider
+          SliverToBoxAdapter(child: Container(height: 1, color: AppColors.divider)),
+
+          // 🔹 Quick Actions
           SliverToBoxAdapter(
-            child: Container(
-              color: Colors.white,
-              padding: const EdgeInsets.all(16),
-              margin: const EdgeInsets.only(bottom: 8),
-              child: GridView.builder(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: GridView.count(
                 shrinkWrap: true,
+                crossAxisCount: 4,
                 physics: const NeverScrollableScrollPhysics(),
-                itemCount: quickAccess.length,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 4,
-                  crossAxisSpacing: 8,
-                  mainAxisSpacing: 8,
-                  childAspectRatio: 0.85,
-                ),
-                itemBuilder: (context, index) {
-                  final item = quickAccess[index];
-                  return InkWell(
-                    onTap: () => Navigator.pushNamed(context, item["path"] as String),
-                    borderRadius: BorderRadius.circular(12),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: brandColor.withOpacity(0.08),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(item["icon"] as IconData, color: brandColor, size: 22),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          item["label"].toString(),
-                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
-                          textAlign: TextAlign.center,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
-                  );
-                },
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 16,
+                childAspectRatio: 0.9,
+                children: [
+                  _quickItem(Icons.shopping_bag_outlined, "Orders", "/account/orders"),
+                  _quickItem(Icons.favorite_border, "Wishlist", "/account/wishlist"),
+                  _quickItem(Icons.support_agent_outlined, "Support", "/account/support"),
+                  _quickItem(Icons.location_on_outlined, "Addresses", "/account/addresses"),
+                ],
               ),
             ),
           ),
 
-          // Settings
-          SliverToBoxAdapter(
-            child: _buildMenuSection(context, "Account Settings", settingsMenu),
-          ),
-          SliverToBoxAdapter(
-            child: _buildMenuSection(context, "My Activity", activityMenu),
-          ),
-          SliverToBoxAdapter(
-            child: _buildMenuSection(context, "Help & Info", infoMenu),
-          ),
+          SliverToBoxAdapter(child: Container(height: 1, color: AppColors.divider)),
 
-          // Logout
+          // 🔹 Menu sections
+          SliverToBoxAdapter(child: _menuSection("ACCOUNT", [
+            _menuItem(Icons.person_outline, "Edit Profile", "/account/profile"),
+            _menuItem(Icons.credit_card_outlined, "Saved Cards", "/account/cards"),
+            _menuItem(Icons.location_on_outlined, "Saved Addresses", "/account/addresses"),
+            _menuItem(Icons.notifications_outlined, "Notifications", "/account/notifications"),
+          ])),
+
+          SliverToBoxAdapter(child: _menuSection("ACTIVITY", [
+            _menuItem(Icons.star_border, "My Reviews", "/account/reviews"),
+          ])),
+
+          SliverToBoxAdapter(child: _menuSection("INFO", [
+            _menuItem(Icons.description_outlined, "Terms & Policies", "/account/terms"),
+            _menuItem(Icons.help_outline, "FAQs", "/account/faqs"),
+          ])),
+
+          // 🔹 Logout
           SliverToBoxAdapter(
-            child: Container(
-              color: Colors.white,
-              margin: const EdgeInsets.only(top: 8),
-              padding: const EdgeInsets.all(16),
-              child: SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: handleLogout,
-                  icon: const Icon(Icons.logout, size: 18),
-                  label: const Text("Log Out"),
-                  style: OutlinedButton.styleFrom(
-                    side: BorderSide(color: brandColor),
-                    foregroundColor: brandColor,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: GestureDetector(
+                onTap: handleLogout,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: AppColors.border),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Center(
+                    child: Text(
+                      "Log Out",
+                      style: TextStyle(
+                        color: AppColors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -220,34 +165,98 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
     );
   }
 
-  Widget _buildMenuSection(BuildContext context, String title, List<Map<String, dynamic>> items) {
+  // 🔹 Avatar widget
+  Widget _avatar(String? url, String name, bool loading) {
     return Container(
-      color: Colors.white,
-      margin: const EdgeInsets.only(bottom: 8),
+      width: 64,
+      height: 64,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: AppColors.white, width: 1.5),
+      ),
+      child: ClipOval(
+        child: loading
+            ? const Center(child: CircularProgressIndicator(color: AppColors.white))
+            : url != null
+                ? Image.network(url, fit: BoxFit.cover)
+                : Center(
+                    child: Text(
+                      name.isNotEmpty ? name[0] : '?',
+                      style: const TextStyle(
+                        color: AppColors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+      ),
+    );
+  }
+
+  // 🔹 Quick item
+  Widget _quickItem(IconData icon, String label, String path) {
+    return GestureDetector(
+      onTap: () => Navigator.pushNamed(context, path),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: AppColors.white, size: 20),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            label,
+            style: const TextStyle(color: AppColors.grey, fontSize: 12),
+          )
+        ],
+      ),
+    );
+  }
+
+  // 🔹 Menu Section
+  Widget _menuSection(String title, List<Widget> items) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
-            child: Text(
-              title,
+          Text(title,
               style: const TextStyle(
-                fontSize: 12,
+                color: AppColors.grey,
+                fontSize: 11,
                 fontWeight: FontWeight.w600,
-                color: Colors.grey,
-                letterSpacing: 0.5,
-              ),
-            ),
-          ),
-          ...items.map((item) => ListTile(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                leading: Icon(item["icon"] as IconData, color: const Color(0xFF444444), size: 22),
-                title: Text(item["label"] as String, style: const TextStyle(fontSize: 14)),
-                trailing: const Icon(Icons.chevron_right, color: Colors.grey, size: 20),
-                dense: true,
-                onTap: () => Navigator.pushNamed(context, item["path"] as String),
+                letterSpacing: 1.2,
               )),
+          const SizedBox(height: 12),
+          ...items,
         ],
+      ),
+    );
+  }
+
+  Widget _menuItem(IconData icon, String label, String path) {
+    return InkWell(
+      onTap: () => Navigator.pushNamed(context, path),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: const BoxDecoration(
+          border: Border(bottom: BorderSide(color: AppColors.divider)),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: AppColors.grey, size: 18),
+            const SizedBox(width: 16),
+            Text(label,
+                style: const TextStyle(color: AppColors.white, fontSize: 14)),
+            const Spacer(),
+            const Icon(Icons.chevron_right, color: AppColors.greyDark, size: 18),
+          ],
+        ),
       ),
     );
   }

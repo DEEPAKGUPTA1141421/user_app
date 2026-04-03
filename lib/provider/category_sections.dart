@@ -44,7 +44,7 @@ class CategorySectionsNotifier extends StateNotifier<Map<String, dynamic>> {
     try {
       _setLoading('categoriesLoading', true);
       final token = await StorageService.getToken();
-      final uri = Uri.parse(ServerApi.GetCategory).replace(
+      final uri = Uri.parse(ServerApi.GetCategoryByLevel).replace(
         queryParameters: {
           'includeChildItem': includeChildItem.toString(),
           'level': level,

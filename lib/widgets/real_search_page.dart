@@ -1,8 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../provider/product_provider.dart';
 import 'default_sections.dart';
 import 'search_results.dart';
-import '../provider/product_provider.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../utils/app_colors.dart';
 
 class RealSearchPage extends ConsumerStatefulWidget {
   const RealSearchPage({super.key});
@@ -13,45 +16,11 @@ class RealSearchPage extends ConsumerStatefulWidget {
 
 class _RealSearchPageState extends ConsumerState<RealSearchPage> {
   String searchQuery = "";
-  static const brandColor = Color(0xFFFF5200);
+  Timer? _debounce;
 
-  final recentSearches = [
-    {
-      "id": 1,
-      "image":
-          "https://i.pinimg.com/736x/61/ee/97/61ee975bfcaa7c5b5c91226a623c1ed8.jpg",
-      "label": "iphone 15 plus"
-    },
-    {
-      "id": 2,
-      "image":
-          "https://i.pinimg.com/736x/61/ee/97/61ee975bfcaa7c5b5c91226a623c1ed8.jpg",
-      "label": "iphone 15 plus"
-    },
-  ];
+  final TextEditingController _controller = TextEditingController();
 
-  final trendingSearches = [
-    {
-      "id": 1,
-      "image":
-          "https://i.pinimg.com/736x/61/ee/97/61ee975bfcaa7c5b5c91226a623c1ed8.jpg",
-      "label": "Vivo v 60 5g"
-    },
-    {
-      "id": 2,
-      "image":
-          "https://i.pinimg.com/736x/61/ee/97/61ee975bfcaa7c5b5c91226a623c1ed8.jpg",
-      "label": "Boat ear buds"
-    },
-    {
-      "id": 3,
-      "image":
-          "https://i.pinimg.com/736x/61/ee/97/61ee975bfcaa7c5b5c91226a623c1ed8.jpg",
-      "label": "Realme 15x 5g"
-    },
-  ];
-
-  final popularProducts = [
+  final List<Map<String, dynamic>> popularProducts = [
     {
       "id": 1,
       "image":
@@ -64,83 +33,152 @@ class _RealSearchPageState extends ConsumerState<RealSearchPage> {
       "image":
           "https://i.pinimg.com/736x/61/ee/97/61ee975bfcaa7c5b5c91226a623c1ed8.jpg",
       "brand": "JBL",
-      "category": "Party Speakers"
+      "category": "Speakers"
     },
   ];
 
-  final categories = [
+  final List<String> categories = [
     "Mobiles",
     "Shoes",
     "Laptops",
     "Watches",
   ];
 
+  /// 🔍 Debounced Search (like Amazon)
+  void _onSearchChanged(String value) {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+
+    _debounce = Timer(const Duration(milliseconds: 400), () {
+      _searchProducts(value);
+    });
+  }
+
   Future<void> _searchProducts(String query) async {
-    if (query.isEmpty || query.length < 3) return;
-    print("make the query to backend");
+    if (query.isEmpty || query.length < 2) return;
+
     await ref.read(productPod.notifier).searchProduct(query);
   }
 
   @override
+  void dispose() {
+    _debounce?.cancel();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final productState = ref.watch(productPod);
+    final isLoading = productState['isLoading'] ?? false;
+
     return Scaffold(
-      backgroundColor: Colors.grey[100],
+      backgroundColor: AppColors.bg,
       body: SafeArea(
         child: Column(
           children: [
-            // Header with Search
+            /// 🔥 HEADER (Premium E-commerce Style)
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xFFFF7A00), Color(0xFFFF5200)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+                color: AppColors.surface,
+                border: Border(
+                  bottom: BorderSide(color: AppColors.divider),
                 ),
               ),
               child: Row(
                 children: [
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back, color: Colors.white),
-                    onPressed: () => Navigator.pop(context),
+                  /// Back Button
+                  InkWell(
+                    onTap: () => Navigator.pop(context),
+                    borderRadius: BorderRadius.circular(10),
+                    child: const Padding(
+                      padding: EdgeInsets.all(8),
+                      child: Icon(Icons.arrow_back_ios_new,
+                          size: 18, color: AppColors.white),
+                    ),
                   ),
+
+                  const SizedBox(width: 8),
+
+                  /// 🔍 Search Field
                   Expanded(
-                    child: TextField(
-                      cursorColor: brandColor,
-                      onChanged: (value) {
-                        setState(() => searchQuery = value);
-                        _searchProducts(value);
-                      },
-                      decoration: InputDecoration(
-                        hintText: 'Search for products',
-                        prefixIcon: Icon(Icons.search, color: brandColor),
-                        filled: true,
-                        fillColor: Colors.white,
-                        contentPadding: const EdgeInsets.symmetric(vertical: 0),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(50),
-                          borderSide: BorderSide.none,
+                    child: Container(
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: AppColors.surface2,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: TextField(
+                        controller: _controller,
+                        cursorColor: AppColors.white,
+                        style: const TextStyle(color: AppColors.white, fontSize: 14),
+                        onChanged: (value) {
+                          setState(() => searchQuery = value);
+                          _onSearchChanged(value);
+                        },
+                        decoration: const InputDecoration(
+                          hintText: "Search for products, brands...",
+                          hintStyle: TextStyle(
+                            color: AppColors.grey,
+                            fontSize: 13,
+                          ),
+                          prefixIcon: Icon(
+                            CupertinoIcons.search,
+                            size: 18,
+                            color: AppColors.grey,
+                          ),
+                          suffixIcon: Icon(
+                            CupertinoIcons.mic,
+                            size: 18,
+                            color: AppColors.grey,
+                          ),
+                          border: InputBorder.none,
+                          contentPadding: EdgeInsets.symmetric(vertical: 12),
                         ),
                       ),
+                    ),
+                  ),
+
+                  const SizedBox(width: 8),
+
+                  /// QR Scanner (like Flipkart)
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface2,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: const Icon(
+                      CupertinoIcons.qrcode_viewfinder,
+                      color: AppColors.white,
+                      size: 20,
                     ),
                   ),
                 ],
               ),
             ),
 
-            // Conditional content
+            /// 🔽 CONTENT
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: searchQuery.isEmpty
-                    ? DefaultSections(
-                        popularProducts: popularProducts,
-                        categories: categories,
-                        onCategoryTap: (val) =>
-                            setState(() => searchQuery = val),
-                      )
-                    : SearchResults(query: searchQuery),
-              ),
+              child: searchQuery.isEmpty
+                  ? DefaultSections(
+                      popularProducts: popularProducts,
+                      categories: categories,
+                      onCategoryTap: (val) {
+                        setState(() {
+                          searchQuery = val;
+                          _controller.text = val;
+                        });
+                        _searchProducts(val);
+                      },
+                    )
+                  : isLoading
+                      ? const Center(
+                          child: CircularProgressIndicator(color: AppColors.white),
+                        )
+                      : SearchResults(query: searchQuery),
             ),
           ],
         ),

@@ -11,6 +11,8 @@ class ServerApi {
       "$productClientService/api/v1/user";
   static const String GetCategory =
       '$productClientService/api/v1/product/category';
+  static const String GetCategoryByLevel =
+      '$productClientService/api/v1/product/categorylevelwise';
   static const String GetSectionOfCategory =
       '$productClientService/api/v1/sections/For You';
       

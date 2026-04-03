@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../provider/rider_provider.dart'; // adjust path
+import '../provider/rider_provider.dart';
+import '../utils/app_colors.dart';
 
 class AddressSection extends ConsumerStatefulWidget {
   final VoidCallback showAddressModal;
@@ -15,8 +16,6 @@ class _AddressSectionState extends ConsumerState<AddressSection> {
   @override
   void initState() {
     super.initState();
-    // Fetch user details when this widget is mounted
-    if (!mounted) return;
     Future.microtask(() {
       ref.read(riderPod.notifier).getUserDetail();
     });
@@ -27,67 +26,41 @@ class _AddressSectionState extends ConsumerState<AddressSection> {
     final rider = ref.watch(riderPod);
     final isLoading = rider['isLoading'] ?? false;
 
-    // Skeleton placeholder
+    // 🔹 Skeleton (dark theme)
     if (isLoading) {
       return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            // Left side skeleton
-            Row(
-              children: [
-                Container(
-                  width: 20,
-                  height: 20,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
+            Row(children: [
+              Container(
+                width: 20,
+                height: 20,
+                decoration: BoxDecoration(
+                  color: AppColors.surface2,
+                  borderRadius: BorderRadius.circular(4),
                 ),
-                const SizedBox(width: 8),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: 60,
-                      height: 14,
-                      color: Colors.grey.shade300,
-                    ),
-                    const SizedBox(height: 4),
-                    Container(
-                      width: 140,
-                      height: 12,
-                      color: Colors.grey.shade300,
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            // Right side skeleton
-            Row(
-              children: [
-                Container(
-                  width: 18,
-                  height: 18,
-                  color: Colors.grey.shade300,
-                ),
-                const SizedBox(width: 4),
-                Container(
-                  width: 20,
-                  height: 14,
-                  color: Colors.grey.shade300,
-                ),
-              ],
-            ),
+              ),
+              const SizedBox(width: 10),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(width: 80, height: 14, color: AppColors.surface2),
+                  const SizedBox(height: 6),
+                  Container(width: 140, height: 12, color: AppColors.surface),
+                ],
+              ),
+            ]),
+            Container(width: 40, height: 16, color: AppColors.surface2),
           ],
         ),
       );
     }
 
-    // Actual content
     final userDetail = rider['user_detail'] ?? {};
     final addresses = (userDetail['addresses'] ?? []) as List;
+
     final defaultAddress = addresses.isNotEmpty
         ? addresses.firstWhere(
             (a) => a['default'] == true,
@@ -96,69 +69,74 @@ class _AddressSectionState extends ConsumerState<AddressSection> {
         : null;
 
     final line1 = defaultAddress?['line1'] ?? 'Select delivery location';
-    final truncatedLine1 = line1.length > 24
-        ? '${defaultAddress?['pincode']}' ' ' ' ${line1.substring(0, 24)}...'
+    final pincode = defaultAddress?['pincode'] ?? '';
+
+    final displayText = line1.length > 28
+        ? '$pincode, ${line1.substring(0, 28)}...'
         : line1;
-    final line2 = 'Select delivery location';
-    final Color primaryOrange = const Color.fromRGBO(255, 82, 0, 1);
 
     return GestureDetector(
       onTap: widget.showAddressModal,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        decoration: const BoxDecoration(
+          color: AppColors.bg,
+          border: Border(
+            bottom: BorderSide(color: AppColors.divider),
+          ),
+        ),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            // Left side - Location
-            Row(
-              children: [
-                const Icon(
-                  CupertinoIcons.map_pin_ellipse,
-                  size: 20,
-                  color: Colors.black,
-                ),
-                const SizedBox(width: 8),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      truncatedLine1,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black,
-                      ),
-                    ),
-                    Text(
-                      line2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Colors.black,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+            // 📍 Location Icon (Premium style)
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(
+                CupertinoIcons.location_solid,
+                size: 18,
+                color: AppColors.white,
+              ),
             ),
-            // Right side - Coins
-            Row(
-              children: [
-                Icon(
-                  CupertinoIcons.bitcoin_circle,
-                  size: 18,
-                  color: primaryOrange,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  "0",
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: primaryOrange,
+
+            const SizedBox(width: 12),
+
+            // 📍 Address text
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    displayText,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: AppColors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 2),
+                  const Text(
+                    "Tap to change location",
+                    style: TextStyle(
+                      color: AppColors.grey,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(width: 8),
+
+            // 👉 Right side (arrow instead of coins → ecommerce style)
+            const Icon(
+              Icons.keyboard_arrow_down_rounded,
+              color: AppColors.grey,
+              size: 22,
             ),
           ],
         ),

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../provider/rider_provider.dart';
 import './current_location_button.dart';
+import '../utils/app_colors.dart';
 
 class DeliveryAddressSelector extends ConsumerStatefulWidget {
   final VoidCallback? onClose;
@@ -23,20 +25,18 @@ class _DeliveryAddressSelectorState
   String searchQuery = '';
   List<Map<String, dynamic>> addresses = [];
 
-  /// ✅ Function to call API for setting default address
   Future<void> makeAddressDefault(String addressId) async {
     final res =
         await ref.read(riderPod.notifier).makeAddressDefault(addressId);
 
     if (res['success'] == true) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Address set as default successfully"),
-          backgroundColor: Colors.green,
+        SnackBar(
+          content: const Text("Default address updated"),
+          backgroundColor: AppColors.surface2,
         ),
       );
 
-      // Refresh user details after updating default address
       await ref.read(riderPod.notifier).getUserDetail();
 
       setState(() {
@@ -47,9 +47,8 @@ class _DeliveryAddressSelectorState
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content:
-              Text(res['message'] ?? "Failed to set default address"),
-          backgroundColor: Colors.red,
+          content: Text(res['message'] ?? "Failed"),
+          backgroundColor: AppColors.surface2,
         ),
       );
     }
@@ -61,19 +60,16 @@ class _DeliveryAddressSelectorState
     final userDetail = riderState['user_detail'] ?? {};
     final addressesData = (userDetail['addresses'] ?? []) as List;
 
-    // Initialize addresses once from API
     if (addresses.isEmpty && addressesData.isNotEmpty) {
       addresses = addressesData
           .map<Map<String, dynamic>>((a) => a as Map<String, dynamic>)
           .toList();
     }
 
-    // Filter search results
     final filteredAddresses = addresses.where((addr) {
       final q = searchQuery.toLowerCase();
-      final line1 = (addr['line1'] ?? '').toLowerCase();
-      final kind = (addr['kind'] ?? '').toLowerCase();
-      return line1.contains(q) || kind.contains(q);
+      return (addr['line1'] ?? '').toLowerCase().contains(q) ||
+          (addr['kind'] ?? '').toLowerCase().contains(q);
     }).toList();
 
     void handleAddressSelect(String selectedId) {
@@ -83,13 +79,15 @@ class _DeliveryAddressSelectorState
           return addr;
         }).toList();
       });
-      final selectedAddress =
+
+      final selected =
           addresses.firstWhere((addr) => addr['id'] == selectedId);
-      widget.onAddressSelect?.call(selectedAddress);
+
+      widget.onAddressSelect?.call(selected);
     }
 
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: AppColors.bg,
       body: SafeArea(
         child: Column(
           children: [
@@ -99,10 +97,10 @@ class _DeliveryAddressSelectorState
             _buildSavedAddressesTitle(),
             Expanded(
               child: ListView.separated(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 itemCount: filteredAddresses.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 8),
+                separatorBuilder: (_, __) =>
+                    const SizedBox(height: 10),
                 itemBuilder: (context, index) {
                   final address = filteredAddresses[index];
                   return _buildAddressCard(address, handleAddressSelect);
@@ -115,127 +113,169 @@ class _DeliveryAddressSelectorState
     );
   }
 
+  // ───────────────── HEADER ─────────────────
   Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: Colors.grey.shade300)),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: AppColors.divider)),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Text(
-            "Select delivery address",
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+          const Expanded(
+            child: Text(
+              "Select delivery address",
+              style: TextStyle(
+                color: AppColors.white,
+                fontSize: 17,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
-          IconButton(
-            icon: const Icon(Icons.close),
-            onPressed: widget.onClose,
+          GestureDetector(
+            onTap: widget.onClose,
+            child: const Icon(CupertinoIcons.xmark, color: AppColors.white, size: 20),
           )
         ],
       ),
     );
   }
 
+  // ───────────────── SEARCH ─────────────────
   Widget _buildSearchBar() {
     return Padding(
       padding: const EdgeInsets.all(16),
       child: TextField(
+        style: const TextStyle(color: AppColors.white),
         decoration: InputDecoration(
-          prefixIcon: const Icon(Icons.search),
-          hintText: "Search by area, street name, pin code",
+          prefixIcon: const Icon(CupertinoIcons.search, color: AppColors.grey),
+          hintText: "Search area, street, pincode",
+          hintStyle: const TextStyle(color: AppColors.greyDark),
           filled: true,
-          fillColor: const Color(0xFFFF5200).withOpacity(0.05),
+          fillColor: AppColors.surface,
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide.none,
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: AppColors.border),
           ),
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(
-              color: Color(0xFFFF5200),
-              width: 2,
-            ),
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: AppColors.white),
           ),
         ),
-        onChanged: (value) => setState(() => searchQuery = value),
+        onChanged: (v) => setState(() => searchQuery = v),
       ),
     );
   }
 
+  // ───────────────── TITLE ─────────────────
   Widget _buildSavedAddressesTitle() {
-    void handleAddNewAddress() {
-      debugPrint('Add New Address tapped');
-      // You can trigger navigation to "Add Address" screen here
-    }
-
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           const Text(
-            "Saved addresses",
-            style: TextStyle(fontWeight: FontWeight.w600),
+            "SAVED ADDRESSES",
+            style: TextStyle(
+              color: AppColors.grey,
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 1.4,
+            ),
           ),
-          TextButton.icon(
-            onPressed: handleAddNewAddress,
-            icon: const Icon(Icons.add, size: 18),
-            label: const Text("Add New"),
+          GestureDetector(
+            onTap: () {},
+            child: const Row(
+              children: [
+                Icon(CupertinoIcons.add, size: 16, color: AppColors.white),
+                SizedBox(width: 4),
+                Text(
+                  "Add New",
+                  style: TextStyle(
+                    color: AppColors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                )
+              ],
+            ),
           )
         ],
       ),
     );
   }
 
+  // ───────────────── CARD ─────────────────
   Widget _buildAddressCard(
-      Map<String, dynamic> address, void Function(String) onSelect) {
+      Map<String, dynamic> address, Function(String) onSelect) {
     final isSelected = address['default'] ?? false;
+    final kind = address['kind'] ?? 'HOME';
 
-    return InkWell(
+    return GestureDetector(
       onTap: () => onSelect(address['id']),
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isSelected
-              ? const Color(0xFFFF5200).withOpacity(0.1)
-              : Colors.white,
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: isSelected
-                ? const Color(0xFFFF5200)
-                : Colors.grey.shade300,
+            color: isSelected ? AppColors.white : AppColors.border,
+            width: isSelected ? 1.5 : 1,
           ),
-          borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Icon(Icons.home, color: Colors.grey),
+            Icon(
+              kind == 'WORK'
+                  ? CupertinoIcons.briefcase
+                  : CupertinoIcons.house,
+              color: isSelected ? AppColors.white : AppColors.grey,
+              size: 20,
+            ),
             const SizedBox(width: 12),
+
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if ((address['kind'] ?? '').isNotEmpty)
-                    Text(
-                      address['kind'],
-                      style: const TextStyle(fontWeight: FontWeight.w500),
+                  Text(
+                    kind,
+                    style: TextStyle(
+                      color: isSelected ? AppColors.white : AppColors.grey,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
                     ),
-                  const SizedBox(height: 4),
+                  ),
+                  const SizedBox(height: 6),
                   Text(
                     address['line1'] ?? '',
-                    style: const TextStyle(
-                        fontSize: 13, color: Colors.grey),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: AppColors.white,
+                      fontSize: 13,
+                    ),
                   ),
                 ],
               ),
             ),
-            IconButton(
-              onPressed: () => makeAddressDefault(address['id']),
-              icon: const Icon(Icons.more_horiz),
-            ),
+
+            if (isSelected)
+              const Icon(
+                CupertinoIcons.check_mark_circled_solid,
+                color: AppColors.white,
+                size: 20,
+              )
+            else
+              GestureDetector(
+                onTap: () => makeAddressDefault(address['id']),
+                child: const Icon(
+                  CupertinoIcons.ellipsis,
+                  color: AppColors.grey,
+                ),
+              )
           ],
         ),
       ),

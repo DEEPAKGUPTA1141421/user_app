@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../utils/app_colors.dart';
 import 'category_card.dart';
 
 class CategoryItem {
@@ -6,7 +7,11 @@ class CategoryItem {
   final String title;
   final String image;
 
-  CategoryItem({required this.id, required this.title, required this.image});
+  CategoryItem({
+    required this.id,
+    required this.title,
+    required this.image,
+  });
 }
 
 class CategorySection extends StatefulWidget {
@@ -30,78 +35,84 @@ class _CategorySectionState extends State<CategorySection> {
 
   @override
   Widget build(BuildContext context) {
-    const brandColor = Color(0xFFFF5200);
     final displayItems = showAll
         ? widget.items
         : widget.items.take(widget.initialCount).toList();
+
     final hasMore = widget.items.length > widget.initialCount;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12.0), // ✅ add safe spacing
+
+    return Container(
+      color: AppColors.bg,
+      padding: const EdgeInsets.only(bottom: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // 🔥 Section title
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-            child: SizedBox(
-              width: 180, // ✅ allow wider titles
-              child: Text(
-                widget.title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Text(
+              widget.title,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: AppColors.white,
               ),
             ),
           ),
 
-          // ✅ Wrap GridView in Padding and remove tight constraints
           GridView.builder(
             shrinkWrap: true,
-            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
             physics: const NeverScrollableScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
             itemCount: displayItems.length + (hasMore ? 1 : 0),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
-              crossAxisSpacing: 8,
-              mainAxisSpacing: 12,
-              mainAxisExtent: 120, // ✅ add a bit more height
+              crossAxisCount: 4, // 🔥 better density like Amazon
+              crossAxisSpacing: 10,
+              mainAxisSpacing: 14,
+              mainAxisExtent: 110,
             ),
             itemBuilder: (context, index) {
+              // 🔥 View All Button
               if (hasMore && index == displayItems.length) {
                 return GestureDetector(
                   onTap: () => setState(() => showAll = !showAll),
                   child: Column(
                     children: [
                       Container(
-                        width: 56,
-                        height: 56,
-                        decoration: const BoxDecoration(
+                        width: 60,
+                        height: 60,
+                        decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: brandColor,
+                          color: AppColors.surface2,
+                          border: Border.all(color: AppColors.border),
                         ),
                         child: Icon(
-                          showAll ? Icons.expand_less : Icons.expand_more,
-                          size: 36,
-                          color: Colors.white,
+                          showAll
+                              ? Icons.keyboard_arrow_up_rounded
+                              : Icons.keyboard_arrow_down_rounded,
+                          size: 30,
+                          color: AppColors.white,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 6),
                       Text(
-                        showAll ? 'View Less' : 'View All',
-                        textAlign: TextAlign.center,
+                        showAll ? "Less" : "More",
                         style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
+                          fontSize: 11,
+                          color: AppColors.grey,
                         ),
                       ),
                     ],
                   ),
                 );
               }
+
               final item = displayItems[index];
-              return CategoryCard(title: item.title, image: item.image);
+
+              return CategoryCard(
+                title: item.title,
+                image: item.image, // ✅ imageUrl used
+              );
             },
           ),
         ],
