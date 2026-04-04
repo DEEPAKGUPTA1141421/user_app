@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 
@@ -32,7 +33,8 @@ class BannerNotifier extends StateNotifier<Map<String, dynamic>> {
         queryParameters: {'categoryId': categoryId},
       );
 
-      final res = await http.get(uri, headers: {'Content-Type': 'application/json'});
+      final res = await http.get(
+          uri, headers: {'Content-Type': 'application/json'});
 
       if (res.statusCode == 200) {
         final body = json.decode(res.body);
@@ -73,18 +75,38 @@ class BannerNotifier extends StateNotifier<Map<String, dynamic>> {
     }
   }
 
-  // ✅ clearBanners is now a no-op if already clear — avoids spurious
-  //    state mutations that can trigger "modified during build" errors.
+  /// Clears banner state safely.
+  ///
+  /// If called during a build frame (which happens when category tabs are
+  /// tapped and didUpdateWidget fires), we defer the mutation to the next
+  /// post-frame so Riverpod never sees "provider modified while building".
   void clearBanners() {
-    if ((state['banners'] as List).isEmpty && state['currentCategoryId'] == null) {
-      return; // already clear, skip mutation
+    // Already clear — nothing to do.
+    if ((state['banners'] as List).isEmpty &&
+        state['currentCategoryId'] == null) {
+      return;
     }
-    state = {
-      ...state,
-      'isLoading': false,
-      'banners': [],
-      'currentCategoryId': null,
-    };
+
+    void doReset() {
+      // Check mounted-equivalent: StateNotifier disposes itself; if already
+      // disposed the assignment is a no-op, so this is safe.
+      state = {
+        ...state,
+        'isLoading': false,
+        'banners': [],
+        'currentCategoryId': null,
+      };
+    }
+
+    // If we are currently in the middle of a frame, defer to post-frame.
+    // SchedulerBinding.instance.schedulerPhase covers build, layout & paint.
+    final phase = SchedulerBinding.instance.schedulerPhase;
+    if (phase == SchedulerPhase.persistentCallbacks ||
+        phase == SchedulerPhase.transientCallbacks) {
+      SchedulerBinding.instance.addPostFrameCallback((_) => doReset());
+    } else {
+      doReset();
+    }
   }
 }
 

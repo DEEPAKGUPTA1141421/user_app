@@ -64,7 +64,9 @@ class _CollapsibleHeaderState extends State<CollapsibleHeader> {
           transform: Matrix4.translationValues(
               0, isCollapsed ? -100 : 0, 0), // collapse effect
           child: Container(
+             color: Colors.black,
             child: SafeArea(
+              top: false,
               child: AddressSection(
                 showAddressModal: () {
                   showAddressModal(context);
