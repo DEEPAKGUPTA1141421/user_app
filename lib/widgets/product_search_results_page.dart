@@ -6,17 +6,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:shimmer/shimmer.dart';
+import '../utils/app_colors.dart';
+import '../widgets/real_search_page.dart';
 
-// ─── Color Scheme (matches EditProfile / AppColors) ───────────────────────────
-const _bg      = Color(0xFF000000);
-const _surface  = Color(0xFF111111);
-const _surface2 = Color(0xFF1A1A1A);
-const _border   = Color(0xFF2A2A2A);
-const _divider  = Color(0xFF222222);
-const _white    = Colors.white;
-const _grey     = Color(0xFF888888);
-const _greyDark = Color(0xFF444444);
-const _brand    = Color(0xFFFF5200);
+
 
 // ─── Models ───────────────────────────────────────────────────────────────────
 class _FilterChip {
@@ -129,7 +122,8 @@ List<_FilterChip> _buildChips() => [
 // ═══════════════════════════════════════════════════════════════════════════════
 class ProductSearchResultsPage extends StatefulWidget {
   final String query;
-  const ProductSearchResultsPage({super.key, required this.query});
+  final Map<String, dynamic> filterPayload; 
+  const ProductSearchResultsPage({super.key, required this.query, this.filterPayload = const {}, });
 
   @override
   State<ProductSearchResultsPage> createState() => _State();
@@ -142,16 +136,20 @@ class _State extends State<ProductSearchResultsPage> {
   bool _loading = true;
   int  _cartCount = 3;
 
-  @override
-  void initState() {
-    super.initState();
-    _ctrl     = TextEditingController(text: widget.query);
-    _chips    = _buildChips();
-    _products = _mockProducts(widget.query);
-    Future.delayed(const Duration(milliseconds: 1100), () {
-      if (mounted) setState(() => _loading = false);
-    });
-  }
+ @override
+void initState() {
+  super.initState();
+  _ctrl     = TextEditingController(text: widget.query);
+  _chips    = _buildChips();
+  _products = _mockProducts(widget.query);
+
+  // TODO: pass widget.filterPayload to your search API
+  debugPrint('filterPayload: ${widget.filterPayload}');
+
+  Future.delayed(const Duration(milliseconds: 1100), () {
+    if (mounted) setState(() => _loading = false);
+  });
+}
 
   @override
   void dispose() { _ctrl.dispose(); super.dispose(); }
@@ -185,10 +183,10 @@ class _State extends State<ProductSearchResultsPage> {
 
   void _snack(String msg, IconData icon) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Row(children: [Icon(icon, color:_brand, size:15), const SizedBox(width:8), Text(msg, style:const TextStyle(color:_white, fontSize:13))]),
-      backgroundColor: _surface2,
+      content: Row(children: [Icon(icon, color:AppColors.bg, size:15), const SizedBox(width:8), Text(msg, style:const TextStyle(color:AppColors.white, fontSize:13))]),
+      backgroundColor: AppColors.surface,
       behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius:BorderRadius.circular(10), side:const BorderSide(color:_border)),
+      shape: RoundedRectangleBorder(borderRadius:BorderRadius.circular(10), side:const BorderSide(color:AppColors.border)),
       margin: const EdgeInsets.all(16),
       duration: const Duration(seconds: 2),
     ));
@@ -197,7 +195,7 @@ class _State extends State<ProductSearchResultsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _bg,
+      backgroundColor: AppColors.bg,
       body: SafeArea(
         child: Column(children: [
           _buildTopBar(),
@@ -211,15 +209,15 @@ class _State extends State<ProductSearchResultsPage> {
   // ── Top bar ────────────────────────────────────────────────────────────────
   Widget _buildTopBar() => Container(
     padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-    decoration: const BoxDecoration(color:_surface, border:Border(bottom:BorderSide(color:_divider))),
+    decoration: const BoxDecoration(color:AppColors.surface, border:Border(bottom:BorderSide(color:AppColors.divider))),
     child: Row(children: [
       // Back
       GestureDetector(
         onTap: () => Navigator.pop(context),
         child: Container(
           padding: const EdgeInsets.all(9),
-          decoration: BoxDecoration(color:_surface2, borderRadius:BorderRadius.circular(10), border:Border.all(color:_border)),
-          child: const Icon(Icons.arrow_back_ios_new_rounded, color:_white, size:16),
+          decoration: BoxDecoration(color:AppColors.surface2, borderRadius:BorderRadius.circular(10), border:Border.all(color:AppColors.border)),
+          child: const Icon(Icons.arrow_back_ios_new_rounded, color:AppColors.white, size:16),
         ),
       ),
       const SizedBox(width:10),
@@ -228,24 +226,31 @@ class _State extends State<ProductSearchResultsPage> {
       Expanded(
         child: Container(
           height: 42,
-          decoration: BoxDecoration(color:_surface2, borderRadius:BorderRadius.circular(12), border:Border.all(color:_border)),
+          decoration: BoxDecoration(color:AppColors.surface2, borderRadius:BorderRadius.circular(12), border:Border.all(color:AppColors.border)),
           child: StatefulBuilder(
-            builder: (_, ss) => TextField(
-              controller: _ctrl,
-              onChanged: (_) => ss((){}),
-              style: const TextStyle(color:_white, fontSize:14),
-              cursorColor: _brand,
-              decoration: InputDecoration(
-                hintText: 'Search products, brands...',
-                hintStyle: const TextStyle(color:_grey, fontSize:13),
-                prefixIcon: const Icon(CupertinoIcons.search, color:_grey, size:18),
-                suffixIcon: _ctrl.text.isNotEmpty
-                    ? GestureDetector(onTap: () { _ctrl.clear(); ss((){}); }, child: const Icon(Icons.close, color:_grey, size:16))
-                    : const Icon(CupertinoIcons.mic_fill, color:_grey, size:16),
-                border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(vertical:12),
-              ),
-            ),
+            builder: (_, ss) => GestureDetector(
+  onTap: () {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const RealSearchPage(),
+      ),
+    );
+  },
+  child: AbsorbPointer(
+    child: TextField(
+      controller: _ctrl,
+      style: const TextStyle(color: AppColors.white, fontSize: 14),
+      decoration: const InputDecoration(
+        hintText: 'Search products, brands...',
+        hintStyle: TextStyle(color: AppColors.grey, fontSize: 13),
+        prefixIcon: Icon(CupertinoIcons.search, color: AppColors.grey, size: 18),
+        border: InputBorder.none,
+        contentPadding: EdgeInsets.symmetric(vertical: 12),
+      ),
+    ),
+  ),
+),
           ),
         ),
       ),
@@ -257,16 +262,16 @@ class _State extends State<ProductSearchResultsPage> {
         child: Stack(clipBehavior:Clip.none, children: [
           Container(
             padding: const EdgeInsets.all(9),
-            decoration: BoxDecoration(color:_surface2, borderRadius:BorderRadius.circular(10), border:Border.all(color:_border)),
-            child: const Icon(Icons.shopping_bag_outlined, color:_white, size:20),
+            decoration: BoxDecoration(color:AppColors.surface2, borderRadius:BorderRadius.circular(10), border:Border.all(color:AppColors.border)),
+            child: const Icon(Icons.shopping_bag_outlined, color:AppColors.white, size:20),
           ),
           if (_cartCount > 0)
             Positioned(
               top:-5, right:-5,
               child: Container(
                 padding: const EdgeInsets.all(4),
-                decoration: const BoxDecoration(color:_brand, shape:BoxShape.circle),
-                child: Text('$_cartCount', style:const TextStyle(color:_white, fontSize:9, fontWeight:FontWeight.w700)),
+                decoration: const BoxDecoration(color:AppColors.bg, shape:BoxShape.circle),
+                child: Text('$_cartCount', style:const TextStyle(color:AppColors.white, fontSize:9, fontWeight:FontWeight.w700)),
               ),
             ),
         ]),
@@ -276,7 +281,7 @@ class _State extends State<ProductSearchResultsPage> {
 
   // ── Filter bar ─────────────────────────────────────────────────────────────
   Widget _buildFilterBar() => Container(
-    color: _surface,
+    color: AppColors.surface,
     child: Column(mainAxisSize:MainAxisSize.min, children: [
       SizedBox(
         height: 46,
@@ -295,24 +300,24 @@ class _State extends State<ProductSearchResultsPage> {
                 duration: const Duration(milliseconds:180),
                 padding: const EdgeInsets.symmetric(horizontal:11, vertical:5),
                 decoration: BoxDecoration(
-                  color: active ? _brand.withOpacity(0.14) : _surface2,
+                  color: active ? AppColors.bg.withOpacity(0.14) : AppColors.surface2,
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: active ? _brand : _border, width: active ? 1.5 : 1),
+                  border: Border.all(color: active ? AppColors.bg : AppColors.border, width: active ? 1.5 : 1),
                 ),
                 child: Row(mainAxisSize:MainAxisSize.min, children: [
-                  Icon(c.icon, size:13, color: active ? _brand : _grey),
+                  Icon(c.icon, size:13, color: active ? AppColors.bg : AppColors.grey),
                   const SizedBox(width:5),
-                  Text(c.label, style:TextStyle(color: active ? _brand : _grey, fontSize:12, fontWeight: active ? FontWeight.w600 : FontWeight.w500)),
+                  Text(c.label, style:TextStyle(color: active ? AppColors.bg : AppColors.grey, fontSize:12, fontWeight: active ? FontWeight.w600 : FontWeight.w500)),
                   if (cnt > 0) ...[
                     const SizedBox(width:5),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal:5, vertical:1),
-                      decoration: BoxDecoration(color:_brand, borderRadius:BorderRadius.circular(8)),
-                      child: Text('$cnt', style:const TextStyle(color:_white, fontSize:9, fontWeight:FontWeight.w700)),
+                      decoration: BoxDecoration(color:AppColors.bg, borderRadius:BorderRadius.circular(8)),
+                      child: Text('$cnt', style:const TextStyle(color:AppColors.white, fontSize:9, fontWeight:FontWeight.w700)),
                     ),
                   ] else ...[
                     const SizedBox(width:3),
-                    Icon(Icons.keyboard_arrow_down_rounded, size:14, color: active ? _brand : _greyDark),
+                    Icon(Icons.keyboard_arrow_down_rounded, size:14, color: active ? AppColors.bg : AppColors.greyDark),
                   ],
                 ]),
               ),
@@ -320,7 +325,7 @@ class _State extends State<ProductSearchResultsPage> {
           },
         ),
       ),
-      Container(height:1, color:_divider),
+      Container(height:1, color:AppColors.divider),
     ]),
   );
 
@@ -332,19 +337,19 @@ class _State extends State<ProductSearchResultsPage> {
         child: Padding(
           padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
           child: Row(children: [
-            Text('${_products.length} results  ', style:const TextStyle(color:_grey, fontSize:12)),
-            Flexible(child: Text('"${widget.query}"', style:const TextStyle(color:_white, fontSize:12, fontWeight:FontWeight.w600), overflow:TextOverflow.ellipsis)),
+            Text('${_products.length} results  ', style:const TextStyle(color:AppColors.grey, fontSize:12)),
+            Flexible(child: Text('"${widget.query}"', style:const TextStyle(color:AppColors.white, fontSize:12, fontWeight:FontWeight.w600), overflow:TextOverflow.ellipsis)),
             const Spacer(),
             if (_activeCount > 0)
               GestureDetector(
                 onTap: () => setState(() { for (final c in _chips) { for (final o in c.options) o.selected=false; c.isActive=false; } }),
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal:8, vertical:4),
-                  decoration: BoxDecoration(color:_brand.withOpacity(0.1), borderRadius:BorderRadius.circular(8), border:Border.all(color:_brand.withOpacity(0.3))),
+                  decoration: BoxDecoration(color:AppColors.bg.withOpacity(0.1), borderRadius:BorderRadius.circular(8), border:Border.all(color:AppColors.bg.withOpacity(0.3))),
                   child: const Row(mainAxisSize:MainAxisSize.min, children:[
-                    Icon(Icons.close, size:11, color:_brand),
+                    Icon(Icons.close, size:11, color:AppColors.bg),
                     SizedBox(width:3),
-                    Text('Clear All', style:TextStyle(color:_brand, fontSize:11, fontWeight:FontWeight.w600)),
+                    Text('Clear All', style:TextStyle(color:AppColors.bg, fontSize:11, fontWeight:FontWeight.w600)),
                   ]),
                 ),
               ),
@@ -376,9 +381,9 @@ class _State extends State<ProductSearchResultsPage> {
     gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount:2, mainAxisSpacing:12, crossAxisSpacing:12, childAspectRatio:0.56),
     itemCount: 6,
     itemBuilder: (_, __) => Shimmer.fromColors(
-      baseColor: _surface,
-      highlightColor: _surface2,
-      child: Container(decoration:BoxDecoration(color:_surface, borderRadius:BorderRadius.circular(14))),
+      baseColor: AppColors.surface,
+      highlightColor: AppColors.surface2,
+      child: Container(decoration:BoxDecoration(color:AppColors.surface, borderRadius:BorderRadius.circular(14))),
     ),
   );
 }
@@ -408,7 +413,7 @@ class _Card extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        decoration: BoxDecoration(color:_surface, borderRadius:BorderRadius.circular(14), border:Border.all(color:_border)),
+        decoration: BoxDecoration(color:AppColors.surface, borderRadius:BorderRadius.circular(14), border:Border.all(color:AppColors.border)),
         child: Column(crossAxisAlignment:CrossAxisAlignment.start, children: [
           // ── Media ──────────────────────────────────────────────────
           Expanded(
@@ -421,8 +426,8 @@ class _Card extends StatelessWidget {
                   width: double.infinity, height: double.infinity,
                   child: p.images.isNotEmpty
                       ? Image.network(p.images.first, fit:BoxFit.cover,
-                          errorBuilder: (_,__,___) => Container(color:_surface2, child:const Center(child:Icon(Icons.image_not_supported_outlined, color:_greyDark, size:28))))
-                      : Container(color:_surface2),
+                          errorBuilder: (_,__,___) => Container(color:AppColors.surface2, child:const Center(child:Icon(Icons.image_not_supported_outlined, color:AppColors.greyDark, size:28))))
+                      : Container(color:AppColors.surface2),
                 ),
               ),
 
@@ -434,9 +439,9 @@ class _Card extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal:7, vertical:3),
                     decoration: BoxDecoration(color:Colors.black.withOpacity(0.72), borderRadius:BorderRadius.circular(12)),
                     child: const Row(mainAxisSize:MainAxisSize.min, children:[
-                      Icon(Icons.play_circle_fill, color:_white, size:13),
+                      Icon(Icons.play_circle_fill, color:AppColors.white, size:13),
                       SizedBox(width:4),
-                      Text('Video', style:TextStyle(color:_white, fontSize:10, fontWeight:FontWeight.w600)),
+                      Text('Video', style:TextStyle(color:AppColors.white, fontSize:10, fontWeight:FontWeight.w600)),
                     ]),
                   ),
                 ),
@@ -447,21 +452,21 @@ class _Card extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal:6, vertical:2),
                     decoration: BoxDecoration(color:Colors.black.withOpacity(0.6), borderRadius:BorderRadius.circular(4)),
-                    child: const Text('Sponsored', style:TextStyle(color:_grey, fontSize:9, fontWeight:FontWeight.w500)),
+                    child: const Text('Sponsored', style:TextStyle(color:AppColors.grey, fontSize:9, fontWeight:FontWeight.w500)),
                   ))
               else if (p.badge != null)
                 Positioned(top:8, left:8,
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal:7, vertical:3),
-                    decoration: BoxDecoration(color: p.badge!.contains('%') ? Colors.green.shade700 : _brand, borderRadius:BorderRadius.circular(5)),
-                    child: Text(p.badge!, style:const TextStyle(color:_white, fontSize:9, fontWeight:FontWeight.w700, letterSpacing:0.2)),
+                    decoration: BoxDecoration(color: p.badge!.contains('%') ? Colors.green.shade700 : AppColors.bg, borderRadius:BorderRadius.circular(5)),
+                    child: Text(p.badge!, style:const TextStyle(color:AppColors.white, fontSize:9, fontWeight:FontWeight.w700, letterSpacing:0.2)),
                   ))
               else if (p.discountPercent != null)
                 Positioned(top:8, left:8,
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal:7, vertical:3),
                     decoration: BoxDecoration(color:Colors.green.shade700, borderRadius:BorderRadius.circular(5)),
-                    child: Text('${p.discountPercent}% off', style:const TextStyle(color:_white, fontSize:9, fontWeight:FontWeight.w700)),
+                    child: Text('${p.discountPercent}% off', style:const TextStyle(color:AppColors.white, fontSize:9, fontWeight:FontWeight.w700)),
                   )),
 
               // Wishlist heart
@@ -477,7 +482,7 @@ class _Card extends StatelessWidget {
                       child: Icon(
                         p.isWishlisted ? Icons.favorite_rounded : Icons.favorite_border_rounded,
                         key: ValueKey(p.isWishlisted),
-                        color: p.isWishlisted ? Colors.red.shade400 : _white,
+                        color: p.isWishlisted ? Colors.red.shade400 : AppColors.white,
                         size: 16,
                       ),
                     ),
@@ -494,10 +499,10 @@ class _Card extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
               child: Column(crossAxisAlignment:CrossAxisAlignment.start, children: [
                 // Brand
-                Text(p.brand.toUpperCase(), style:const TextStyle(color:_grey, fontSize:9, fontWeight:FontWeight.w700, letterSpacing:1)),
+                Text(p.brand.toUpperCase(), style:const TextStyle(color:AppColors.grey, fontSize:9, fontWeight:FontWeight.w700, letterSpacing:1)),
                 const SizedBox(height:3),
                 // Name
-                Text(p.name, maxLines:2, overflow:TextOverflow.ellipsis, style:const TextStyle(color:_white, fontSize:12, fontWeight:FontWeight.w500, height:1.3)),
+                Text(p.name, maxLines:2, overflow:TextOverflow.ellipsis, style:const TextStyle(color:AppColors.white, fontSize:12, fontWeight:FontWeight.w500, height:1.3)),
                 const SizedBox(height:6),
                 // Rating
                 Row(children: [
@@ -505,29 +510,29 @@ class _Card extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal:5, vertical:2),
                     decoration: BoxDecoration(color: p.rating >= 4 ? Colors.green.shade800 : Colors.orange.shade800, borderRadius:BorderRadius.circular(4)),
                     child: Row(mainAxisSize:MainAxisSize.min, children:[
-                      const Icon(Icons.star_rounded, color:_white, size:10),
+                      const Icon(Icons.star_rounded, color:AppColors.white, size:10),
                       const SizedBox(width:2),
-                      Text(p.rating.toStringAsFixed(1), style:const TextStyle(color:_white, fontSize:10, fontWeight:FontWeight.w700)),
+                      Text(p.rating.toStringAsFixed(1), style:const TextStyle(color:AppColors.white, fontSize:10, fontWeight:FontWeight.w700)),
                     ]),
                   ),
                   const SizedBox(width:5),
-                  Text('(${_fmtN(p.reviewCount)})', style:const TextStyle(color:_greyDark, fontSize:10)),
+                  Text('(${_fmtN(p.reviewCount)})', style:const TextStyle(color:AppColors.grey, fontSize:10)),
                 ]),
                 const SizedBox(height:6),
                 // Price
                 Row(crossAxisAlignment:CrossAxisAlignment.end, children:[
-                  Text(_fmt(p.price), style:const TextStyle(color:_white, fontSize:15, fontWeight:FontWeight.w700)),
+                  Text(_fmt(p.price), style:const TextStyle(color:AppColors.white, fontSize:15, fontWeight:FontWeight.w700)),
                   if (p.originalPrice != null) ...[
                     const SizedBox(width:5),
-                    Text(_fmt(p.originalPrice!), style:const TextStyle(color:_greyDark, fontSize:10, decoration:TextDecoration.lineThrough, decorationColor:_greyDark)),
+                    Text(_fmt(p.originalPrice!), style:const TextStyle(color:AppColors.grey, fontSize:10, decoration:TextDecoration.lineThrough, decorationColor:AppColors.grey)),
                   ],
                 ]),
                 const SizedBox(height:3),
                 // Delivery
                 Row(children:[
-                  const Icon(Icons.local_shipping_outlined, color:Colors.green, size:11),
+                  const Icon(Icons.local_shipping_outlined, color:AppColors.green, size:11),
                   const SizedBox(width:3),
-                  Flexible(child:Text(p.deliveryText, style:const TextStyle(color:Colors.green, fontSize:10, fontWeight:FontWeight.w500), overflow:TextOverflow.ellipsis)),
+                  Flexible(child:Text(p.deliveryText, style:const TextStyle(color:AppColors.green, fontSize:10, fontWeight:FontWeight.w500), overflow:TextOverflow.ellipsis)),
                 ]),
                 const Spacer(),
                 // Add to cart
@@ -536,11 +541,11 @@ class _Card extends StatelessWidget {
                   child: Container(
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(vertical:7),
-                    decoration: BoxDecoration(color:_surface2, borderRadius:BorderRadius.circular(8), border:Border.all(color:_border)),
+                    decoration: BoxDecoration(color:AppColors.surface, borderRadius:BorderRadius.circular(8), border:Border.all(color:AppColors.border)),
                     child: const Row(mainAxisAlignment:MainAxisAlignment.center, children:[
-                      Icon(Icons.add_shopping_cart_rounded, color:_brand, size:13),
+                      Icon(Icons.add_shopping_cart_rounded, color:AppColors.white, size:13),
                       SizedBox(width:5),
-                      Text('Add to Cart', style:TextStyle(color:_brand, fontSize:11, fontWeight:FontWeight.w600)),
+                      Text('Add to Cart', style:TextStyle(color:AppColors.white, fontSize:11, fontWeight:FontWeight.w600)),
                     ]),
                   ),
                 ),
@@ -584,39 +589,39 @@ class _SheetState extends State<_Sheet> {
     final cnt = _opts.where((o) => o.selected).length;
     return Container(
       padding: EdgeInsets.only(bottom:MediaQuery.of(context).viewInsets.bottom),
-      decoration: const BoxDecoration(color:_surface, borderRadius:BorderRadius.vertical(top:Radius.circular(20))),
+      decoration: const BoxDecoration(color:AppColors.surface, borderRadius:BorderRadius.vertical(top:Radius.circular(20))),
       child: SafeArea(child: Column(mainAxisSize:MainAxisSize.min, children:[
         // Handle
-        Container(margin:const EdgeInsets.only(top:12), width:36, height:4, decoration:BoxDecoration(color:_border, borderRadius:BorderRadius.circular(2))),
+        Container(margin:const EdgeInsets.only(top:12), width:36, height:4, decoration:BoxDecoration(color:AppColors.border, borderRadius:BorderRadius.circular(2))),
         // Header
         Padding(
           padding: const EdgeInsets.fromLTRB(20,16,20,12),
           child: Row(children:[
-            Icon(widget.chip.icon, color:_brand, size:18),
+            Icon(widget.chip.icon, color:AppColors.bg, size:18),
             const SizedBox(width:10),
-            Text(widget.chip.label, style:const TextStyle(color:_white, fontSize:16, fontWeight:FontWeight.w700)),
+            Text(widget.chip.label, style:const TextStyle(color:AppColors.white, fontSize:16, fontWeight:FontWeight.w700)),
             if (cnt > 0) ...[
               const SizedBox(width:8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal:7, vertical:2),
-                decoration: BoxDecoration(color:_brand, borderRadius:BorderRadius.circular(10)),
-                child: Text('$cnt selected', style:const TextStyle(color:_white, fontSize:10, fontWeight:FontWeight.w600)),
+                decoration: BoxDecoration(color:AppColors.bg, borderRadius:BorderRadius.circular(10)),
+                child: Text('$cnt selected', style:const TextStyle(color:AppColors.white, fontSize:10, fontWeight:FontWeight.w600)),
               ),
             ],
             const Spacer(),
-            if (cnt > 0) GestureDetector(onTap:_clear, child:const Text('Clear', style:TextStyle(color:_brand, fontSize:13))),
+            if (cnt > 0) GestureDetector(onTap:_clear, child:const Text('Clear', style:TextStyle(color:AppColors.bg, fontSize:13))),
             const SizedBox(width:12),
             GestureDetector(
               onTap: () => Navigator.pop(context),
               child: Container(
                 padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(color:_surface2, borderRadius:BorderRadius.circular(8), border:Border.all(color:_border)),
-                child: const Icon(Icons.close, color:_grey, size:14),
+                decoration: BoxDecoration(color:AppColors.surface2, borderRadius:BorderRadius.circular(8), border:Border.all(color:AppColors.border)),
+                child: const Icon(Icons.close, color:AppColors.grey, size:14),
               ),
             ),
           ]),
         ),
-        Container(height:1, color:_divider),
+        Container(height:1, color:AppColors.divider),
         const SizedBox(height:14),
         // Options
         Flexible(
@@ -630,13 +635,13 @@ class _SheetState extends State<_Sheet> {
                   duration: const Duration(milliseconds:150),
                   padding: const EdgeInsets.symmetric(horizontal:16, vertical:10),
                   decoration: BoxDecoration(
-                    color: o.selected ? _brand.withOpacity(0.12) : _surface2,
+                    color: o.selected ? AppColors.bg.withOpacity(0.12) : AppColors.surface2,
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: o.selected ? _brand : _border, width: o.selected ? 1.5 : 1),
+                    border: Border.all(color: o.selected ? AppColors.bg : AppColors.border, width: o.selected ? 1.5 : 1),
                   ),
                   child: Row(mainAxisSize:MainAxisSize.min, children:[
-                    if (o.selected) ...[const Icon(Icons.check_rounded, color:_brand, size:13), const SizedBox(width:5)],
-                    Text(o.label, style:TextStyle(color: o.selected ? _brand : _grey, fontSize:13, fontWeight: o.selected ? FontWeight.w600 : FontWeight.w400)),
+                    if (o.selected) ...[const Icon(Icons.check_rounded, color:AppColors.bg, size:13), const SizedBox(width:5)],
+                    Text(o.label, style:TextStyle(color: o.selected ? AppColors.bg : AppColors.grey, fontSize:13, fontWeight: o.selected ? FontWeight.w600 : FontWeight.w400)),
                   ]),
                 ),
               )).toList(),
@@ -653,8 +658,8 @@ class _SheetState extends State<_Sheet> {
                 onTap: _clear,
                 child: Container(
                   padding: const EdgeInsets.symmetric(vertical:13),
-                  decoration: BoxDecoration(borderRadius:BorderRadius.circular(12), border:Border.all(color:_border)),
-                  child: const Center(child:Text('Clear All', style:TextStyle(color:_grey, fontSize:14, fontWeight:FontWeight.w600))),
+                  decoration: BoxDecoration(borderRadius:BorderRadius.circular(12), border:Border.all(color:AppColors.border)),
+                  child: const Center(child:Text('Clear All', style:TextStyle(color:AppColors.grey, fontSize:14, fontWeight:FontWeight.w600))),
                 ),
               ),
             ),
@@ -665,8 +670,8 @@ class _SheetState extends State<_Sheet> {
                 onTap: _apply,
                 child: Container(
                   padding: const EdgeInsets.symmetric(vertical:13),
-                  decoration: BoxDecoration(color:_white, borderRadius:BorderRadius.circular(12)),
-                  child: Center(child:Text(cnt > 0 ? 'Apply ($cnt)' : 'Apply', style:const TextStyle(color:_bg, fontSize:14, fontWeight:FontWeight.w700))),
+                  decoration: BoxDecoration(color:AppColors.white, borderRadius:BorderRadius.circular(12)),
+                  child: Center(child:Text(cnt > 0 ? 'Apply ($cnt)' : 'Apply', style:const TextStyle(color:AppColors.bg, fontSize:14, fontWeight:FontWeight.w700))),
                 ),
               ),
             ),

@@ -8,6 +8,7 @@ import '../provider/product_provider.dart';
 import '../utils/app_colors.dart';
 import '../utils/StorageService.dart';
 import '../constant/ServerApi.dart';
+import '../widgets/product_search_results_page.dart';
 
 // ─── Suggestion Model ─────────────────────────────────────────────────────────
 class SearchSuggestion {
@@ -249,10 +250,16 @@ class _RealSearchPageState extends ConsumerState<RealSearchPage>
   }
 
   void _selectSuggestion(SearchSuggestion s) {
-    _controller.text = s.keyword;
-    setState(() => _query = s.keyword);
-    _performSearch(s.keyword);
-  }
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => ProductSearchResultsPage(
+        query: s.keyword,
+        filterPayload: s.filterPayload,
+      ),
+    ),
+  );
+}
 
   @override
   Widget build(BuildContext context) {
