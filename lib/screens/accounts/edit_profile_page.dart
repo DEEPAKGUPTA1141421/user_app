@@ -7,16 +7,7 @@ import 'dart:convert';
 import '../../provider/rider_provider.dart';
 import '../../utils/StorageService.dart';
 import '../../constant/ServerApi.dart';
-
-// ─── Color constants (black & white only) ─────────────────────────────────────
-const _bg        = Color(0xFF000000);
-const _surface   = Color(0xFF111111);
-const _surface2  = Color(0xFF1A1A1A);
-const _border    = Color(0xFF2A2A2A);
-const _white     = Colors.white;
-const _grey      = Color(0xFF888888);
-const _greyDark  = Color(0xFF444444);
-const _divider   = Color(0xFF222222);
+import '../../utils/app_colors.dart';
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 class EditProfilePage extends ConsumerStatefulWidget {
@@ -93,7 +84,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage>
   Future<void> _pickAvatar() async {
     final src = await showModalBottomSheet<ImageSource>(
       context: context,
-      backgroundColor: _surface,
+      backgroundColor: AppColors.surface,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (_) => SafeArea(
@@ -102,7 +93,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage>
             margin: const EdgeInsets.only(top: 12),
             width: 36, height: 4,
             decoration: BoxDecoration(
-                color: _border, borderRadius: BorderRadius.circular(2)),
+                color: AppColors.border, borderRadius: BorderRadius.circular(2)),
           ),
           const SizedBox(height: 20),
           _sheetOption(Icons.camera_alt_outlined, 'Take Photo',
@@ -250,8 +241,8 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage>
   void _toast(String msg, {required bool success}) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(msg,
-          style: const TextStyle(color: _white, fontSize: 14)),
-      backgroundColor: _surface2,
+          style: const TextStyle(color: AppColors.white, fontSize: 14)),
+      backgroundColor: AppColors.surface2,
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(10),
@@ -268,10 +259,10 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage>
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
         child: Row(children: [
-          Icon(icon, color: _white, size: 22),
+          Icon(icon, color: AppColors.white, size: 22),
           const SizedBox(width: 16),
           Text(label, style: const TextStyle(
-              color: _white, fontSize: 15, fontWeight: FontWeight.w500)),
+              color: AppColors.white, fontSize: 15, fontWeight: FontWeight.w500)),
         ]),
       ),
     );
@@ -289,7 +280,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage>
     final emailVerified = ud['emailVerified'] as bool? ?? false;
 
     return Scaffold(
-      backgroundColor: _bg,
+      backgroundColor: AppColors.bg,
       body: FadeTransition(
         opacity: _fadeAnim,
         child: CustomScrollView(
@@ -297,17 +288,17 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage>
             // ── App Bar ───────────────────────────────────────────────────
             SliverAppBar(
               pinned: true,
-              backgroundColor: _bg,
+              backgroundColor: AppColors.surface,
               surfaceTintColor: Colors.transparent,
               elevation: 0,
               leading: IconButton(
                 icon: const Icon(Icons.arrow_back_ios_new,
-                    color: _white, size: 20),
+                    color: AppColors.white, size: 20),
                 onPressed: () => Navigator.pop(context),
               ),
               title: const Text('Edit Profile',
                   style: TextStyle(
-                      color: _white,
+                      color: AppColors.white,
                       fontSize: 17,
                       fontWeight: FontWeight.w600,
                       letterSpacing: -0.3)),
@@ -318,19 +309,19 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage>
                       ? const SizedBox(
                           width: 20, height: 20,
                           child: CircularProgressIndicator(
-                              color: _white, strokeWidth: 2))
+                              color: AppColors.white, strokeWidth: 2))
                       : GestureDetector(
                           onTap: _savePersonal,
                           child: Container(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 18, vertical: 8),
                             decoration: BoxDecoration(
-                              color: _white,
+                              color: AppColors.white,
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: const Text('Save',
                                 style: TextStyle(
-                                    color: _bg,
+                                    color: AppColors.bg,
                                     fontSize: 13,
                                     fontWeight: FontWeight.w700)),
                           ),
@@ -339,7 +330,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage>
               ],
               bottom: PreferredSize(
                 preferredSize: const Size.fromHeight(1),
-                child: Container(height: 1, color: _divider),
+                child: Container(height: 1, color: AppColors.divider),
               ),
             ),
 
@@ -358,7 +349,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage>
                   ),
 
                   // thin divider
-                  Container(height: 1, color: _divider),
+                  Container(height: 1, color: AppColors.divider),
 
                   Padding(
                     padding: const EdgeInsets.all(24),
@@ -406,7 +397,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage>
                         const SizedBox(height: 32),
 
                         // thin divider
-                        Container(height: 1, color: _divider),
+                        Container(height: 1, color: AppColors.divider),
 
                         const SizedBox(height: 32),
 
@@ -431,7 +422,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage>
                           keyboardType: TextInputType.emailAddress,
                           suffix: emailVerified
                               ? const Icon(Icons.check_circle_outline,
-                                  color: _white, size: 18)
+                                  color: AppColors.white, size: 18)
                               : null,
                         ),
 
@@ -441,7 +432,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage>
                             padding: EdgeInsets.only(left: 4),
                             child: Text('Verified',
                                 style: TextStyle(
-                                    color: _grey, fontSize: 12)),
+                                    color: AppColors.grey, fontSize: 12)),
                           ),
                         ],
 
@@ -481,13 +472,13 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage>
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 18, vertical: 14),
                                 decoration: BoxDecoration(
-                                  color:  _surface,
+                                  color:  AppColors.surface,
                                   borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: _border),
+                                  border: Border.all(color: AppColors.border),
                                 ),
                                 child: const Text('Cancel',
                                     style: TextStyle(
-                                        color: _grey, fontSize: 14)),
+                                        color: AppColors.grey, fontSize: 14)),
                               ),
                             ),
                           ]),
@@ -496,7 +487,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage>
                             padding: const EdgeInsets.only(left: 4),
                             child: Text('OTP sent to ${_emailCtrl.text}',
                                 style: const TextStyle(
-                                    color: _grey, fontSize: 12)),
+                                    color: AppColors.grey, fontSize: 12)),
                           ),
                         ],
                       ],
@@ -538,7 +529,7 @@ class _AvatarHeader extends StatelessWidget {
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
-        color: _bg,
+        color: AppColors.bg,
         child: Row(children: [
           // Avatar circle
           Stack(children: [
@@ -546,15 +537,15 @@ class _AvatarHeader extends StatelessWidget {
               width: 76, height: 76,
               decoration: BoxDecoration(
                 shape:  BoxShape.circle,
-                border: Border.all(color: _white, width: 1.5),
+                border: Border.all(color: AppColors.white, width: 1.5),
               ),
               child: ClipOval(
                 child: loading
                     ? Container(
-                        color: _surface2,
+                        color: AppColors.surface2,
                         child: const Center(
                             child: CircularProgressIndicator(
-                                color: _white, strokeWidth: 2)))
+                                color: AppColors.white, strokeWidth: 2)))
                     : avatarFile != null
                         ? Image.file(avatarFile!, fit: BoxFit.cover)
                         : avatarUrl != null
@@ -569,12 +560,12 @@ class _AvatarHeader extends StatelessWidget {
               child: Container(
                 width: 24, height: 24,
                 decoration: BoxDecoration(
-                  color:  _white,
+                  color:  AppColors.white,
                   shape:  BoxShape.circle,
-                  border: Border.all(color: _bg, width: 2),
+                  border: Border.all(color: AppColors.bg, width: 2),
                 ),
                 child: const Icon(Icons.camera_alt,
-                    size: 12, color: _bg),
+                    size: 12, color: AppColors.bg),
               ),
             ),
           ]),
@@ -588,7 +579,7 @@ class _AvatarHeader extends StatelessWidget {
                 Text(
                   name.isNotEmpty ? name : 'Your Name',
                   style: const TextStyle(
-                      color:       _white,
+                      color:       AppColors.white,
                       fontSize:    20,
                       fontWeight:  FontWeight.w700,
                       letterSpacing: -0.5),
@@ -596,14 +587,14 @@ class _AvatarHeader extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   phone.isNotEmpty ? '+91 $phone' : '—',
-                  style: const TextStyle(color: _grey, fontSize: 14),
+                  style: const TextStyle(color: AppColors.grey, fontSize: 14),
                 ),
                 const SizedBox(height: 8),
                 const Row(mainAxisSize: MainAxisSize.min, children: [
-                  Icon(Icons.edit_outlined, size: 12, color: _grey),
+                  Icon(Icons.edit_outlined, size: 12, color: AppColors.grey),
                   SizedBox(width: 4),
                   Text('Change photo',
-                      style: TextStyle(color: _grey, fontSize: 12)),
+                      style: TextStyle(color: AppColors.grey, fontSize: 12)),
                 ]),
               ],
             ),
@@ -614,12 +605,12 @@ class _AvatarHeader extends StatelessWidget {
   }
 
   Widget _initials(String n) => Container(
-    color:     _surface2,
+    color:     AppColors.surface2,
     alignment: Alignment.center,
     child: Text(
       n.isNotEmpty ? n[0].toUpperCase() : '?',
       style: const TextStyle(
-          color: _white, fontSize: 28, fontWeight: FontWeight.bold),
+          color: AppColors.white, fontSize: 28, fontWeight: FontWeight.bold),
     ),
   );
 }
@@ -651,14 +642,14 @@ class _GenderSelector extends StatelessWidget {
             duration: const Duration(milliseconds: 150),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
-              color:  sel ? _white : _surface,
+              color:  sel ? AppColors.white : AppColors.surface,
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
-                  color: sel ? _white : _border, width: 1.5),
+                  color: sel ? AppColors.white : AppColors.border, width: 1.5),
             ),
             child: Text(o.$2,
                 style: TextStyle(
-                    color:      sel ? _bg : _grey,
+                    color:      sel ? AppColors.bg : AppColors.grey,
                     fontSize:   13,
                     fontWeight: sel
                         ? FontWeight.w700
@@ -696,12 +687,12 @@ class _DobPicker extends StatelessWidget {
           builder: (ctx, child) => Theme(
             data: ThemeData.dark().copyWith(
               colorScheme: const ColorScheme.dark(
-                primary:   _white,
-                onPrimary: _bg,
+                primary:   AppColors.white,
+                onPrimary: AppColors.bg,
                 surface:   Color(0xFF1A1A1A),
-                onSurface: _white,
+                onSurface: AppColors.white,
               ),
-              dialogBackgroundColor: _surface,
+              dialogBackgroundColor: AppColors.surface,
             ),
             child: child!,
           ),
@@ -711,22 +702,22 @@ class _DobPicker extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color:  _surface,
+          color:  AppColors.surface,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-              color: value != null ? Colors.white38 : _border),
+              color: value != null ? Colors.white38 : AppColors.border),
         ),
         child: Row(children: [
           Icon(Icons.cake_outlined,
               size: 18,
-              color: value != null ? _white : _grey),
+              color: value != null ? AppColors.white : AppColors.grey),
           const SizedBox(width: 12),
           Text(_fmt(value),
               style: TextStyle(
-                  color:   value != null ? _white : _grey,
+                  color:   value != null ? AppColors.white : AppColors.grey,
                   fontSize: 15)),
           const Spacer(),
-          const Icon(Icons.chevron_right, size: 18, color: _greyDark),
+          const Icon(Icons.chevron_right, size: 18, color: AppColors.greyDark),
         ]),
       ),
     );
@@ -751,24 +742,24 @@ class _ReadOnlyStrip extends StatelessWidget {
       Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color:  _surface,
+          color:  AppColors.surface,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: _border),
+          border: Border.all(color: AppColors.border),
         ),
         child: Row(children: [
-          Icon(icon, color: _grey, size: 18),
+          Icon(icon, color: AppColors.grey, size: 18),
           const SizedBox(width: 12),
           Text(value,
-              style: const TextStyle(color: _white, fontSize: 15)),
+              style: const TextStyle(color: AppColors.white, fontSize: 15)),
           const Spacer(),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: _surface2,
+              color: AppColors.surface2,
               borderRadius: BorderRadius.circular(6),
             ),
             child: const Text('Locked',
-                style: TextStyle(color: _greyDark, fontSize: 11)),
+                style: TextStyle(color: AppColors.greyDark, fontSize: 11)),
           ),
         ]),
       ),
@@ -776,7 +767,7 @@ class _ReadOnlyStrip extends StatelessWidget {
       Padding(
         padding: const EdgeInsets.only(left: 4),
         child: Text(note,
-            style: const TextStyle(color: _greyDark, fontSize: 11)),
+            style: const TextStyle(color: AppColors.greyDark, fontSize: 11)),
       ),
     ]);
   }
@@ -808,7 +799,7 @@ class _Field extends StatelessWidget {
       if (label.isNotEmpty) ...[
         Text(label,
             style: const TextStyle(
-                color:       _grey,
+                color:      AppColors.grey,
                 fontSize:    11,
                 fontWeight:  FontWeight.w500,
                 letterSpacing: 0.4)),
@@ -818,25 +809,25 @@ class _Field extends StatelessWidget {
         controller:   controller,
         keyboardType: keyboardType,
         maxLength:    maxLength,
-        style: const TextStyle(color: _white, fontSize: 15),
-        cursorColor: _white,
+        style: const TextStyle(color: AppColors.white, fontSize: 15),
+        cursorColor: AppColors.white,
         decoration: InputDecoration(
           hintText:  hint,
-          hintStyle: const TextStyle(color: _greyDark, fontSize: 15),
-          prefixIcon: Icon(icon, color: _grey, size: 18),
+          hintStyle: const TextStyle(color: AppColors.greyDark, fontSize: 15),
+          prefixIcon: Icon(icon, color: AppColors.grey, size: 18),
           suffixIcon: suffix,
           filled:      true,
-          fillColor:   _surface,
+          fillColor:   AppColors.surface,
           counterText: '',
           border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: _border)),
+              borderSide: const BorderSide(color: AppColors.border)),
           enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: _border)),
+              borderSide: const BorderSide(color: AppColors.border)),
           focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: _white, width: 1.5)),
+              borderSide: const BorderSide(color: AppColors.white, width: 1.5)),
           contentPadding: const EdgeInsets.symmetric(
               horizontal: 16, vertical: 14),
         ),
@@ -864,7 +855,7 @@ class _FilledButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
-          color:  loading ? _surface2 : _white,
+          color:  loading ? AppColors.surface2 : AppColors.white,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Center(
@@ -872,10 +863,10 @@ class _FilledButton extends StatelessWidget {
               ? const SizedBox(
                   width: 18, height: 18,
                   child: CircularProgressIndicator(
-                      color: _white, strokeWidth: 2))
+                      color: AppColors.white, strokeWidth: 2))
               : Text(label,
                   style: const TextStyle(
-                      color:      _bg,
+                      color:      AppColors.white,
                       fontSize:   14,
                       fontWeight: FontWeight.w700)),
         ),
@@ -907,17 +898,17 @@ class _OutlineButton extends StatelessWidget {
           color: Colors.transparent,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-              color: loading ? _border : _white, width: 1.5),
+              color: loading ? AppColors.border : AppColors.white, width: 1.5),
         ),
         child: Center(
           child: loading
               ? const SizedBox(
                   width: 18, height: 18,
                   child: CircularProgressIndicator(
-                      color: _white, strokeWidth: 2))
+                      color: AppColors.white, strokeWidth: 2))
               : Text(label,
                   style: const TextStyle(
-                      color:      _white,
+                      color:      AppColors.white,
                       fontSize:   14,
                       fontWeight: FontWeight.w600)),
         ),
@@ -935,7 +926,7 @@ class _Label extends StatelessWidget {
   Widget build(BuildContext context) => Text(
     text,
     style: const TextStyle(
-        color:        _grey,
+        color:        AppColors.grey,
         fontSize:     10,
         fontWeight:   FontWeight.w600,
         letterSpacing: 1.4),
