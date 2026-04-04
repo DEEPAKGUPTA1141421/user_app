@@ -1,6 +1,7 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
+import 'package:user_app/utils/app_colors.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/categories_screen.dart';
@@ -23,7 +24,7 @@ import 'screens/accounts/addresses_screen.dart';
 import 'screens/accounts/saved_cards_upi_screen.dart';
 import 'screens/accounts/notification_settings_screen.dart';
 import 'screens/accounts/edit_profile_page.dart';
-
+import 'widgets/product_search_results_page.dart'; // ← your new file
 Future<void> _firebaseMessagingHandler(RemoteMessage message) async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 }
@@ -96,6 +97,10 @@ class MyApp extends StatelessWidget {
               settings: settings, // Keep arguments available via ModalRoute
             );
           }
+          if (uri.pathSegments[0] == 'search') {
+  final q = settings.arguments as String? ?? '';
+  return MaterialPageRoute(builder: (_) => ProductSearchResultsPage(query: q));
+}
         }
 
         // Unknown route fallback
@@ -143,7 +148,7 @@ class _SplashScreenState extends State<SplashScreen> {
     return const Scaffold(
       body: Center(
         child: CircularProgressIndicator(
-          color: Color.fromRGBO(255, 82, 0, 1), // orange loader
+          color: AppColors.bg,
         ),
       ),
     );

@@ -1,7 +1,9 @@
+// lib/widgets/search_results.dart  ← REPLACE existing file
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../provider/product_provider.dart';
 import 'search_result_item.dart';
+import '../widgets/product_search_results_page.dart';
 
 class SearchResults extends ConsumerWidget {
   final String query;
@@ -28,11 +30,6 @@ class SearchResults extends ConsumerWidget {
       );
     }
 
-    print(
-        "✅ Brands count: ${brands.length}, Products count: ${products.length}");
-
-    // ❌ Old: only checked products
-    // ✅ New: check if both are empty
     if (products.isEmpty && brands.isEmpty) {
       return Center(
         child: Padding(
@@ -45,18 +42,15 @@ class SearchResults extends ConsumerWidget {
       );
     }
 
-    // ✅ Use SingleChildScrollView + Column to show both brands & products
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // ── Brands ────────────────────────────────────────────────────────
           if (brands.isNotEmpty) ...[
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Text(
-                "Brands",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
+              child: Text("Brands", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             ),
             ListView.builder(
               shrinkWrap: true,
@@ -68,24 +62,25 @@ class SearchResults extends ConsumerWidget {
                   image: brand['logoUrl'] ?? "https://via.placeholder.com/150",
                   title: brand['name'] ?? "Unknown Brand",
                   category: brand['description'] ?? "No description",
-                  onTap: () {
-                    Navigator.pushNamed(
-                      context,
-                      '/brandDetail',
-                      arguments: brand['id'],
-                    );
-                  },
+                  // ✅ Navigate to full results page using the brand name as query
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ProductSearchResultsPage(
+                        query: brand['name'] ?? query,
+                      ),
+                    ),
+                  ),
                 );
               },
             ),
           ],
+
+          // ── Products ──────────────────────────────────────────────────────
           if (products.isNotEmpty) ...[
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Text(
-                "Products",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
+              child: Text("Products", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             ),
             ListView.builder(
               shrinkWrap: true,
@@ -101,22 +96,13 @@ class SearchResults extends ConsumerWidget {
                       : "https://via.placeholder.com/150",
                   title: product['name'] ?? "Unnamed Product",
                   category: product['description'] ?? "Unknown",
-                  onTap: () {
-                    Navigator.pushNamed(
-                      context,
-                      '/productDetail/${product['id']}',
-                      arguments: {
-                        'itemType': "PRODUCT",
-                        'title': product['name'] ?? "Unnamed Product",
-                        'imageUrl': (product['images'] != null &&
-                                product['images'] is List &&
-                                product['images'].isNotEmpty)
-                            ? product['images'][0]
-                            : "https://via.placeholder.com/150",
-                        'itemId': product['id'] ?? "",
-                      }, // dynamic URL
-                    );
-                  },
+                  // ✅ Navigate to full search results page with filters + grid
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ProductSearchResultsPage(query: query),
+                    ),
+                  ),
                 );
               },
             ),
