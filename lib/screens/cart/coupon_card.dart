@@ -47,7 +47,7 @@ class _CouponCardState extends State<CouponCard> {
           Container(
             width: 48,
             decoration: BoxDecoration(
-              color: isActive ? widget.brandColor : Colors.grey,
+              color: isActive ? Colors.grey.shade800 : Colors.grey,
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(12),
                 bottomLeft: Radius.circular(12),
@@ -86,7 +86,7 @@ class _CouponCardState extends State<CouponCard> {
                           fontSize: 12,
                           color: widget.disable
                               ? Colors.grey
-                              : Colors.grey.shade700,
+                              : (widget.brandColor == Colors.white ? Colors.grey.shade600 : Colors.grey.shade700),
                         ),
                       ),
                     ),
@@ -123,7 +123,7 @@ class _CouponCardState extends State<CouponCard> {
                           fontSize: 13,
                           fontWeight: FontWeight.bold,
                           color:
-                              widget.disable ? Colors.grey : widget.brandColor,
+                              widget.disable ? Colors.grey : (widget.brandColor == Colors.white ? Colors.black : widget.brandColor),
                         ),
                       ),
                     ),
@@ -158,7 +158,7 @@ class _CouponCardState extends State<CouponCard> {
                                 style: TextStyle(
                                   color: widget.disable
                                       ? Colors.grey
-                                      : widget.brandColor,
+                                      : (widget.brandColor == Colors.white ? Colors.black : widget.brandColor),
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -168,7 +168,7 @@ class _CouponCardState extends State<CouponCard> {
                                     : Icons.keyboard_arrow_down,
                                 color: widget.disable
                                     ? Colors.grey
-                                    : widget.brandColor,
+                                    : (widget.brandColor == Colors.white ? Colors.black : widget.brandColor),
                                 size: 20,
                               ),
                             ],
@@ -205,7 +205,7 @@ class _CouponCardState extends State<CouponCard> {
               onPressed: (!isActive || widget.disable)
                   ? null
                   : () {
-                      final code = coupon['code'] ?? '';
+                      final code = (coupon['code'] ?? '') as String;
                       if (widget.currentappliedCouponOnCart == code) {
                         widget.onApply(''); // 🔹 Remove coupon
                       } else {
@@ -215,20 +215,22 @@ class _CouponCardState extends State<CouponCard> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: (!isActive || widget.disable)
                     ? Colors.grey
-                    : (widget.currentappliedCouponOnCart == coupon['code']
+                    : (widget.currentappliedCouponOnCart == (coupon['code'] ?? '')
                         ? Colors.red
-                        : widget.brandColor),
+                        : (widget.brandColor == Colors.white ? Colors.white : widget.brandColor)),
                 padding:
                     const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8)),
               ),
               child: Text(
-                widget.currentappliedCouponOnCart == coupon['code']
+                widget.currentappliedCouponOnCart == (coupon['code'] ?? '')
                     ? "REMOVE"
                     : "APPLY",
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: (widget.currentappliedCouponOnCart == (coupon['code'] ?? ''))
+                      ? Colors.white
+                      : (widget.brandColor == Colors.white ? Colors.black : Colors.white),
                   fontWeight: FontWeight.bold,
                 ),
               ),

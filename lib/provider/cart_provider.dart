@@ -234,33 +234,44 @@ class CartNotifier extends StateNotifier<Map<String, dynamic>> {
       state = {...state, 'isLoading': true, 'message': ''};
 
       final token = await StorageService.getAccessToken();
+      final url = couponCode.isEmpty 
+          ? Uri.parse("${ServerApi.ApplyCartCoupon}/remove")
+          : Uri.parse("${ServerApi.ApplyCartCoupon}/$couponCode");
+      
       final response = await http.post(
-        Uri.parse("${ServerApi.ApplyCartCoupon}/${couponCode}"),
+        url,
         headers: {
           "Content-Type": "application/json",
           "Authorization": "Bearer $token",
         },
       );
-      print("called applycoupon");
-      if (response.statusCode == 200) {
+      
+      print("Apply coupon response: ${response.statusCode} - ${response.body}");
+      
+      if (response.statusCode == 200 || response.statusCode == 201) {
         final body = json.decode(response.body);
-        print("response of apply coupon ${body}");
+        final cartData = (body['data'] as Map<String, dynamic>?) ?? {};
+        
         state = {
           ...state,
           'isLoading': false,
           'success': body['success'] ?? false,
           'message': body['message'] ?? '',
-          'cartData': body['data'] ?? {},
+          'cartData': {
+            ...cartData,
+            'cartCoupon': couponCode.isEmpty ? '' : couponCode,
+          },
         };
       } else {
         state = {
           ...state,
           'isLoading': false,
           'success': false,
-          'message': 'Failed to Apply Coupon',
+          'message': 'Failed to apply coupon',
         };
       }
     } catch (e) {
+      print("Apply coupon error: $e");
       state = {
         ...state,
         'isLoading': false,

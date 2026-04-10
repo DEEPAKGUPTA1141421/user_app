@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shimmer/shimmer.dart';
 import 'coupon_card.dart';
 import '../../provider/cart_provider.dart';
-import './order_summary_page.dart';
+import '../../utils/app_colors.dart';
+
 class CouponScreen extends ConsumerStatefulWidget {
   const CouponScreen({super.key});
 
@@ -14,189 +16,198 @@ class CouponScreen extends ConsumerStatefulWidget {
 class _CouponScreenState extends ConsumerState<CouponScreen> {
   final TextEditingController _couponController = TextEditingController();
 
+  @override
+  void initState() {
+    super.initState();
+    // Fetch coupons when page opens to show available options
+    Future.microtask(() => ref.read(cartProvider.notifier).cartCoupon());
+  }
+
   Future<void> _onRefresh() async {
     await ref.read(cartProvider.notifier).cartCoupon();
   }
 
-  @override
-  void initState() {
-    super.initState();
-    Future.microtask(() => ref.read(cartProvider.notifier).cartCoupon());
-  }
-
   void _handleApplyCoupon(String code) async {
-    // ✅ If empty string passed, treat as remove
     if (code.isEmpty) {
-      //ref.watch(cartProvider.notifier).removeItem(itemId);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Coupon removed from your cart!"),
-          backgroundColor: Colors.redAccent,
-          duration: Duration(seconds: 2),
-        ),
-      );
-
+      await ref.read(cartProvider.notifier).ApplyCartCoupon("");
+      if (mounted) {
+        final cartState = ref.read(cartProvider);
+        final success = cartState['success'] as bool? ?? false;
+        final message = cartState['message'] as String? ?? 'Coupon removed from your cart!';
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(message),
+            backgroundColor: success ? Colors.redAccent : Colors.red,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
       return;
     }
 
-    // ✅ Apply coupon flow
-    ref.watch(cartProvider.notifier).ApplyCartCoupon(code);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text("Coupon $code has been applied to your cart!"),
-        backgroundColor: Colors.green,
-        duration: const Duration(seconds: 2),
-      ),
-    );
+    // Fetch coupons from backend and apply
+    await ref.read(cartProvider.notifier).cartCoupon();
+    await ref.read(cartProvider.notifier).ApplyCartCoupon(code);
+    
     if (mounted) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const OrderSummaryPage()),
-    );
-  }
+      final cartState = ref.read(cartProvider);
+      final success = cartState['success'] as bool? ?? false;
+      final message = cartState['message'] as String? ?? 'Coupon $code has been applied!';
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: success ? Colors.green : Colors.red,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final Color brandColor = Colors.deepOrange;
     final cartState = ref.watch(cartProvider);
     final isLoading = cartState['isLoading'] as bool? ?? false;
     final bestCoupons = (cartState['bestCoupons'] ?? []) as List<dynamic>;
     final moreCoupons = (cartState['moreCoupons'] ?? []) as List<dynamic>;
-    final currentappliedCouponOnCart = cartState['cartData']['cartCoupon'];
-    final appliedCoupon = (bestCoupons + moreCoupons).firstWhere(
-      (c) => c['code'] == currentappliedCouponOnCart,
-      orElse: () => null,
-    );
+    final cartData = (cartState['cartData'] as Map<String, dynamic>?) ?? {};
+    final currentappliedCouponOnCart = (cartData['cartCoupon'] as String?) ?? '';
+    
+    final appliedCoupon = bestCoupons.isEmpty && moreCoupons.isEmpty
+        ? <String, dynamic>{}
+        : (bestCoupons + moreCoupons).cast<Map<String, dynamic>>().firstWhere(
+              (c) => c['code'] == currentappliedCouponOnCart,
+              orElse: () => <String, dynamic>{},
+            );
 
     return Scaffold(
-      backgroundColor: Colors.grey.shade50,
+      backgroundColor: AppColors.bg,
       body: RefreshIndicator(
         onRefresh: _onRefresh,
-        color: brandColor,
+        color: Colors.white,
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
-          child: Padding(
-            padding: const EdgeInsets.only(top: 32),
-            child: Column(
-              children: [
-                _buildHeader(brandColor),
-                const SizedBox(height: 16),
-
-                // Coupon Input
-                _buildCouponInput(brandColor),
-
-                const SizedBox(height: 16),
-
-                if (isLoading) ...[
-                  const CouponShimmer(),
-                  const CouponShimmer(),
-                ] else ...[
-                  // ✅ Applied Coupon Section
-                  if (appliedCoupon != null) ...[
-                    _buildSectionTitle("Applied Coupon"),
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: CouponCard(
-                        coupon: appliedCoupon,
-                        brandColor: brandColor,
-                        onApply: _handleApplyCoupon,
-                        disable: false,
-                        currentappliedCouponOnCart: currentappliedCouponOnCart,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-
-                  // ✅ Best Coupon Section
-                  if (bestCoupons.isNotEmpty) _buildSectionTitle("Best Coupons"),
-...bestCoupons
-    .where((coupon) => coupon['code'] != currentappliedCouponOnCart) // exclude applied coupon
-    .map(
-      (coupon) => Padding(
-        padding: const EdgeInsets.only(bottom: 12),
-        child: CouponCard(
-          coupon: coupon,
-          brandColor: brandColor,
-          onApply: _handleApplyCoupon,
-          disable: false,
-          currentappliedCouponOnCart: currentappliedCouponOnCart,
-        ),
-      ),
-    ),
-
-
-                  const SizedBox(height: 16),
-
-                  // ✅ More Offers Section
-                  if (moreCoupons.isNotEmpty) _buildSectionTitle("More Offers"),
-                  ...moreCoupons.map(
-                    (coupon) => Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: CouponCard(
-                        coupon: coupon,
-                        brandColor: brandColor,
-                        onApply: _handleApplyCoupon,
-                        disable: true,
-                        currentappliedCouponOnCart: currentappliedCouponOnCart,
-                      ),
+          child: Column(
+            children: [
+              _buildHeader(),
+              const SizedBox(height: 16),
+              _buildCouponInput(),
+              const SizedBox(height: 16),
+              if (isLoading) ...[
+                const CouponShimmer(),
+                const CouponShimmer(),
+              ] else ...[
+                if (appliedCoupon.isNotEmpty) ...[
+                  _buildSectionTitle("Applied Coupon"),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: CouponCard(
+                      coupon: appliedCoupon,
+                      brandColor: AppColors.white,
+                      onApply: _handleApplyCoupon,
+                      disable: false,
+                      currentappliedCouponOnCart: currentappliedCouponOnCart,
                     ),
                   ),
-
-                  if (bestCoupons.isEmpty && moreCoupons.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.only(top: 40),
-                      child: Text(
-                        "No coupons available currently",
-                        style: TextStyle(color: Colors.grey),
-                      ),
-                    ),
+                  const SizedBox(height: 16),
                 ],
-                const SizedBox(height: 80),
+                if (bestCoupons.isNotEmpty) _buildSectionTitle("Best Coupons"),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Column(
+                    children: bestCoupons
+                        .cast<Map<String, dynamic>>()
+                        .where((coupon) => (coupon['code'] ?? '') != currentappliedCouponOnCart)
+                        .map(
+                          (coupon) => Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: CouponCard(
+                              coupon: coupon,
+                              brandColor: AppColors.white,
+                              onApply: _handleApplyCoupon,
+                              disable: false,
+                              currentappliedCouponOnCart: currentappliedCouponOnCart,
+                            ),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                if (moreCoupons.isNotEmpty) _buildSectionTitle("More Offers"),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Column(
+                    children: moreCoupons
+                        .cast<Map<String, dynamic>>()
+                        .map(
+                          (coupon) => Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: CouponCard(
+                              coupon: coupon,
+                              brandColor: AppColors.white,
+                              onApply: _handleApplyCoupon,
+                              disable: true,
+                              currentappliedCouponOnCart: currentappliedCouponOnCart,
+                            ),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ),
+                if (bestCoupons.isEmpty && moreCoupons.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 40),
+                    child: Text(
+                      "No coupons available",
+                      style: TextStyle(color: AppColors.grey),
+                    ),
+                  ),
               ],
-            ),
+              const SizedBox(height: 80),
+            ],
           ),
         ),
       ),
-
-      // ✅ Bottom Button (unchanged)
-      bottomNavigationBar: _buildBottomBar(),
     );
   }
 
-  Widget _buildHeader(Color brandColor) {
+  Widget _buildHeader() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(bottom: BorderSide(color: Colors.grey.shade300)),
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        border: Border(bottom: BorderSide(color: AppColors.border)),
       ),
-      child: Row(
-        children: [
-          IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new, size: 20),
-            onPressed: () => Navigator.pop(context),
-          ),
-          const SizedBox(width: 8),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                "APPLY COUPON",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              Text(
-                "Your cart: ₹219",
-                style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
-              ),
-            ],
-          ),
-        ],
+      child: SafeArea(
+        child: Row(
+          children: [
+            IconButton(
+              icon: const Icon(Icons.arrow_back_ios_new, size: 20, color: AppColors.white),
+              onPressed: () => Navigator.pop(context),
+            ),
+            const SizedBox(width: 8),
+            const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "APPLY COUPON",
+                  style: TextStyle(color: AppColors.white, fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  "Get amazing discounts!",
+                  style: TextStyle(fontSize: 12, color: AppColors.grey),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildCouponInput(Color brandColor) {
+  Widget _buildCouponInput() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
@@ -205,35 +216,44 @@ class _CouponScreenState extends ConsumerState<CouponScreen> {
             child: TextField(
               controller: _couponController,
               textCapitalization: TextCapitalization.characters,
+              style: const TextStyle(color: AppColors.white, fontWeight: FontWeight.normal),
               decoration: InputDecoration(
                 hintText: "Enter Coupon Code",
+                hintStyle: const TextStyle(color: AppColors.grey, fontWeight: FontWeight.normal),
                 filled: true,
-                fillColor: Colors.white,
+                fillColor: AppColors.surface,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
-                  borderSide:
-                      BorderSide(color: Colors.grey.shade300, width: 1),
+                  borderSide: const BorderSide(color: AppColors.border, width: 1),
                 ),
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: AppColors.border, width: 1),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: AppColors.white, width: 1),
+                ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
               ),
             ),
           ),
           const SizedBox(width: 8),
           ElevatedButton(
-            onPressed: () => _handleApplyCoupon(_couponController.text),
+            onPressed: () {
+              if (_couponController.text.isNotEmpty) {
+                _handleApplyCoupon(_couponController.text);
+                _couponController.clear();
+              }
+            },
             style: ElevatedButton.styleFrom(
-              backgroundColor: brandColor,
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
+              backgroundColor: AppColors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
             child: const Text(
               "APPLY",
-              style:
-                  TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+              style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.bg),
             ),
           ),
         ],
@@ -241,45 +261,14 @@ class _CouponScreenState extends ConsumerState<CouponScreen> {
     );
   }
 
-  Widget _buildBottomBar() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: Colors.grey.shade300)),
-      ),
-      padding: const EdgeInsets.all(12),
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.black,
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-        ),
-        onPressed: () {},
-        child: const Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text("🎯 ", style: TextStyle(fontSize: 18)),
-            Text("View Add-On Payment Offers",
-                style:
-                    TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-            Spacer(),
-            Text("↓", style: TextStyle(color: Colors.white)),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildSectionTitle(String title) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Align(
         alignment: Alignment.centerLeft,
         child: Text(
           title,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.white),
         ),
       ),
     );
@@ -292,15 +281,15 @@ class CouponShimmer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Shimmer.fromColors(
-      baseColor: Colors.grey.shade300,
-      highlightColor: Colors.grey.shade100,
+      baseColor: AppColors.surface,
+      highlightColor: AppColors.surface2,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Container(
           height: 100,
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(10),
+            color: AppColors.border,
+            borderRadius: BorderRadius.circular(12),
           ),
         ),
       ),
