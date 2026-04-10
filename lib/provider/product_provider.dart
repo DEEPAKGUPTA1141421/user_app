@@ -24,7 +24,7 @@ class ProductNotifier extends StateNotifier<Map<String, dynamic>> {
   Future<Map<String, dynamic>> fetchProductDetail(String productId) async {
     state = {...state, 'isLoading': true};
 
-    final token = await StorageService.getToken();
+    final token = await StorageService.getAccessToken();
 
     final res = await http.get(
       Uri.parse("${ServerApi.getProductDetail}/$productId"),
@@ -126,7 +126,7 @@ Future<Map<String, dynamic>> fetchGridProducts() async {
       {String? meta}) async {
     state = {...state, 'isLoading': true};
 
-    final token = await StorageService.getToken();
+    final token = await StorageService.getAccessToken();
 
     // Build the request body
     final body = jsonEncode({
@@ -162,7 +162,7 @@ Future<Map<String, dynamic>> fetchGridProducts() async {
   Future<Map<String, dynamic>> RecentSearchOfUser() async {
     state = {...state, 'isLoading': true};
 
-    final token = await StorageService.getToken();
+    final token = await StorageService.getAccessToken();
 
     final res = await http.get(
       Uri.parse(ServerApi.recentSearchOfUser),
@@ -188,7 +188,7 @@ Future<Map<String, dynamic>> fetchGridProducts() async {
   Future<Map<String, dynamic>> TrendingSearch() async {
     state = {...state, 'isLoading': true};
 
-    final token = await StorageService.getToken();
+    final token = await StorageService.getAccessToken();
 
     final res = await http.get(
       Uri.parse(ServerApi.TrendingSearch),

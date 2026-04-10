@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 
 class ServerApi {
   // Base URL for Product Client Service
-  static const String productClientService = "http://localhost:8081";
-  static const String OrderPaymentNotificationService = "http://localhost:8082";
+  static const String productClientService = "http://192.168.1.105:8081";
+  static const String OrderPaymentNotificationService = "http://192.168.1.105:8082";
   // Example endpoints (you can add more here)
   static const String login = "$productClientService/api/v1/auth/login";
   static const String verifyOtp = "$productClientService/api/v1/auth/verify";
@@ -41,4 +41,7 @@ class ServerApi {
       "$productClientService/api/v1/cart/coupons";
   static const String ApplyCartCoupon =
       "$productClientService/api/v1/cart/coupons";
+  static const String createPayment=     "$OrderPaymentNotificationService/api/v1/payment"; 
+  static const String checkoutBooking = "$OrderPaymentNotificationService/api/v1/booking/checkout";
+  static const String validatePayment = "$OrderPaymentNotificationService/api/v1/payment/validate-payment";
 }

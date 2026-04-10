@@ -3,23 +3,45 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 class StorageService {
   static final _storage = FlutterSecureStorage();
 
-  // Save token
-  static Future<void> saveToken(String token) async {
-    await _storage.write(key: 'jwt_token', value: token);
+  // 🔑 Keys
+  static const _accessTokenKey = 'access_token';
+  static const _refreshTokenKey = 'refresh_token';
+
+  // =============================
+  // ✅ SAVE TOKENS
+  // =============================
+  static Future<void> saveTokens({
+    required String accessToken,
+    required String refreshToken,
+  }) async {
+    await _storage.write(key: _accessTokenKey, value: accessToken);
+    await _storage.write(key: _refreshTokenKey, value: refreshToken);
   }
 
-  // Read token
-  static Future<String?> getToken() async {
-    return await _storage.read(key: 'jwt_token');
+  // =============================
+  // ✅ GET TOKENS
+  // =============================
+  static Future<String?> getAccessToken() async {
+    return await _storage.read(key: _accessTokenKey);
   }
 
-  // Delete token (logout)
-  static Future<void> deleteToken() async {
-    await _storage.delete(key: 'jwt_token');
+  static Future<String?> getRefreshToken() async {
+    return await _storage.read(key: _refreshTokenKey);
   }
 
-  static Future<bool> checkAuth() async {
-    final token = await getToken();
+  // =============================
+  // ❌ DELETE TOKENS (LOGOUT)
+  // =============================
+  static Future<void> clearTokens() async {
+    await _storage.delete(key: _accessTokenKey);
+    await _storage.delete(key: _refreshTokenKey);
+  }
+
+  // =============================
+  // 🔍 CHECK AUTH
+  // =============================
+  static Future<bool> isLoggedIn() async {
+    final token = await getAccessToken();
     return token != null && token.isNotEmpty;
   }
 }

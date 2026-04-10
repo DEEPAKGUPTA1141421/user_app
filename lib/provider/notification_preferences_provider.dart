@@ -17,7 +17,7 @@ class NotificationPreferencesNotifier
         });
 
   Future<Map<String, String>> _headers() async {
-    final token = await StorageService.getToken();
+    final token = await StorageService.getAccessToken();
     return {
       'Content-Type': 'application/json',
       'Authorization': 'Bearer $token',

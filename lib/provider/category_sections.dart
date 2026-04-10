@@ -43,7 +43,7 @@ class CategorySectionsNotifier extends StateNotifier<Map<String, dynamic>> {
   Future<void> fetchCategories(bool includeChildItem, String level) async {
     try {
       _setLoading('categoriesLoading', true);
-      final token = await StorageService.getToken();
+      final token = await StorageService.getAccessToken();
       final uri = Uri.parse(ServerApi.GetCategoryByLevel).replace(
         queryParameters: {
           'includeChildItem': includeChildItem.toString(),
@@ -87,7 +87,7 @@ class CategorySectionsNotifier extends StateNotifier<Map<String, dynamic>> {
         'sectionsData': [],
       };
 
-      final token = await StorageService.getToken();
+      final token = await StorageService.getAccessToken();
 
       final String url = (categoryId != null && categoryId.isNotEmpty)
           ? '${ServerApi.productClientService}/api/v1/sections/$categoryId'
@@ -149,7 +149,7 @@ class CategorySectionsNotifier extends StateNotifier<Map<String, dynamic>> {
         'brands': [],
       };
 
-      final token = await StorageService.getToken();
+      final token = await StorageService.getAccessToken();
       final res = await http.get(
         Uri.parse('${ServerApi.getBrands}/$categoryId'),
         headers: {

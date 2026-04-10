@@ -86,6 +86,7 @@ class _VerifyOtpScreenState extends ConsumerState<VerifyOtpScreen> {
 
   Future<void> handleVerify() async {
     final otp = _otpValue;
+
     if (otp.length != 6) {
       _showSnack("Please enter the complete 6-digit OTP");
       return;
@@ -110,10 +111,16 @@ class _VerifyOtpScreenState extends ConsumerState<VerifyOtpScreen> {
       }
 
       if (token != null && token.isNotEmpty) {
-        await StorageService.saveToken(token);
+        final data = response['data'];
+
+        await StorageService.saveTokens(
+          accessToken: data['accessToken'],
+          refreshToken: data['refreshToken'],
+        );
       }
 
       if (!mounted) return;
+
       Navigator.pushReplacementNamed(context, "/home");
     } else {
       _showSnack(response['message']?.toString() ?? "OTP verification failed");
@@ -271,9 +278,8 @@ class _VerifyOtpScreenState extends ConsumerState<VerifyOtpScreen> {
                       decoration: InputDecoration(
                         counterText: '',
                         filled: true,
-                        fillColor: hasValue
-                            ? AppColors.surface2
-                            : AppColors.surface,
+                        fillColor:
+                            hasValue ? AppColors.surface2 : AppColors.surface,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: const BorderSide(color: AppColors.border),
@@ -407,8 +413,7 @@ class _VerifyOtpScreenState extends ConsumerState<VerifyOtpScreen> {
                   SizedBox(width: 6),
                   Text(
                     "Your data is encrypted and secure",
-                    style:
-                        TextStyle(color: AppColors.greyDark, fontSize: 12),
+                    style: TextStyle(color: AppColors.greyDark, fontSize: 12),
                   ),
                 ],
               ),

@@ -157,7 +157,7 @@ class _RealSearchPageState extends ConsumerState<RealSearchPage>
     setState(() => _isLoadingSuggestions = true);
 
     try {
-      final token = await StorageService.getToken();
+      final token = await StorageService.getAccessToken();
       final uri = Uri.parse(
           '${ServerApi.productClientService}/api/v1/product/search')
           .replace(queryParameters: {'keyword': query});
@@ -200,7 +200,7 @@ class _RealSearchPageState extends ConsumerState<RealSearchPage>
     _focusNode.unfocus();
 
     try {
-      final token = await StorageService.getToken();
+      final token = await StorageService.getAccessToken();
       final uri = Uri.parse(
           '${ServerApi.searchProduct}?keyword=${Uri.encodeComponent(query)}');
 

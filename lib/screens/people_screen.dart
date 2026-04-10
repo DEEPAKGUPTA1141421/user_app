@@ -19,7 +19,7 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
   }
 
   Future<void> handleLogout() async {
-    await StorageService.deleteToken();
+    await StorageService.clearTokens();
     if (mounted) {
       Navigator.pushReplacement(
         context,

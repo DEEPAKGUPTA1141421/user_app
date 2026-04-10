@@ -1,319 +1,209 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../provider/cart_provider.dart';
-import '../../provider/rider_provider.dart';
 import '../../widgets/address_selector.dart';
-import 'package:flutter/services.dart';
-import 'package:vibration/vibration.dart';
+import '../../utils/app_colors.dart';
 import 'coupon_and_offers_screen.dart';
+
 class OrderSummaryPage extends ConsumerStatefulWidget {
   const OrderSummaryPage({super.key});
-  static const brandColor = Color(0xFFFF5200);
 
   @override
-  ConsumerState<OrderSummaryPage> createState() => _OrderSummaryPageState();
+  ConsumerState<OrderSummaryPage> createState() =>
+      _OrderSummaryPageState();
 }
 
-class _OrderSummaryPageState extends ConsumerState<OrderSummaryPage> {
+class _OrderSummaryPageState
+    extends ConsumerState<OrderSummaryPage> {
   Map<String, dynamic>? selectedAddress;
 
   void showAddressModal() {
     showModalBottomSheet(
       context: context,
-      isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => SizedBox(
-        height: MediaQuery.of(context).size.height * 0.75,
-        child: ClipRRect(
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-          child: DeliveryAddressSelector(
-            onAddressSelect: (address) {
-              // Directly set selectedAddress when user selects
-              setState(() {
-                selectedAddress = address;
-              });
-            },
-            onClose: () => Navigator.pop(context),
-          ),
-        ),
+      builder: (_) => DeliveryAddressSelector(
+        onAddressSelect: (address) {
+          setState(() => selectedAddress = address);
+        },
+        onClose: () => Navigator.pop(context),
       ),
     );
-  }
-
-  void createSound(BuildContext context) async {
-    bool? canVibrate = await Vibration.hasVibrator();
-    const vibrationDuration = Duration(milliseconds: 2000);
-
-    if (canVibrate ?? false) {
-      Vibration.vibrate(
-        pattern: [0, 100, 50, 100, 50, 100, 50, 100, 50, 100],
-        intensities: [128, 255, 200, 255, 200],
-      );
-      await Future.delayed(vibrationDuration);
-    } else {
-      HapticFeedback.heavyImpact();
-      await Future.delayed(const Duration(milliseconds: 500));
-    }
-
-    if (context.mounted) {
-      Navigator.pushNamed(context, "/payment");
-    }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Listen to riderPod changes to automatically update selectedAddress
-    ref.listen<Map<String, dynamic>>(riderPod, (previous, next) {
-      final userDetail = next['user_detail'] ?? {};
-      final addresses = (userDetail['addresses'] ?? []) as List<dynamic>;
-
-      if (addresses.isNotEmpty) {
-        final newDefault = addresses.firstWhere(
-          (a) => a['default'] == true,
-          orElse: () => addresses.first,
-        );
-
-        if (selectedAddress == null ||
-            selectedAddress!['id'] != newDefault['id']) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            setState(() {
-              selectedAddress = newDefault;
-            });
-          });
-        }
-      }
-    });
-
     final cartState = ref.watch(cartProvider);
     final cartData = cartState['cartData'] ?? {};
-    final items = (cartData['items'] ?? []) as List<dynamic>;
-    final discountAmount = cartData['discount_amount'] ?? 0;
+    final items = (cartData['items'] ?? []) as List;
 
-    // Fallback if riderPod already has addresses but selectedAddress is null
-    final riderState = ref.watch(riderPod);
-    final userDetail = riderState['user_detail'] ?? {};
-    final addresses = (userDetail['addresses'] ?? []) as List<dynamic>;
-
-    if (addresses.isNotEmpty && selectedAddress == null) {
-      selectedAddress = addresses.firstWhere(
-        (a) => a['default'] == true,
-        orElse: () => addresses.first,
-      );
-    }
-
-    final userName = selectedAddress?['name'] ?? 'John Doe';
-    final kind = selectedAddress?['kind'] ?? 'HOME';
-    final line1 = selectedAddress?['line1'] ?? '';
-    final pincode = selectedAddress?['pincode'] ?? '';
-    final phone = selectedAddress?['phone'] ?? '';
+    final totalAmount =
+        (cartData['totalAmount'] as num?)?.toDouble() ?? 0.0;
+    final discount =
+        (cartData['totalDiscount'] as num?)?.toDouble() ?? 0.0;
+    final gst =
+        (cartData['gstCharge'] as num?)?.toDouble() ?? 0.0;
+    final service =
+        (cartData['serviceCharge'] as num?)?.toDouble() ?? 0.0;
+    final delivery =
+        (cartData['deliveryCharge'] as num?)?.toDouble() ?? 0.0;
+    final grandTotal =
+        (cartData['grandTotal'] as num?)?.toDouble() ??
+            totalAmount;
 
     return Scaffold(
-      backgroundColor: Colors.grey[100],
+      backgroundColor: AppColors.bg,
       appBar: AppBar(
-        title: const Text("Order Summary"),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
-        ),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        elevation: 1,
+        backgroundColor: AppColors.surface,
+        elevation: 0,
+        title: const Text("Order Summary",
+            style: TextStyle(color: AppColors.white)),
+        iconTheme: const IconThemeData(color: AppColors.white),
       ),
       body: Stack(
         children: [
-          ListView(
+          Padding(
             padding: const EdgeInsets.only(bottom: 80),
-            children: [
-              // Progress Steps
-              _buildProgressSteps(),
-              // Delivery Address Card
-              _buildDeliveryAddressCard(userName, kind, line1, pincode, phone),
+            child: ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                _buildAddressCard(),
 
-              // Cart Items
-              ...items.map((item) => _buildCartItem(item)).toList(),
+                const SizedBox(height: 12),
 
-              // Discount Info
-              if (discountAmount > 0) _buildDiscountCard(discountAmount),
-              
-              // Price Details
-              _buildPriceDetails(cartData, discountAmount),
-              CouponAndOffersCard(
-  onApply: () => print("Apply Coupon Pressed"),
-  onBuy: () => print("Buy Prime Pressed"),
-),
+                ...items.map((e) =>
+                    _buildCartItem(e as Map<String, dynamic>)),
 
-            ],
+                const SizedBox(height: 12),
+
+                if (discount > 0)
+                  _discountBanner(discount),
+
+                const SizedBox(height: 12),
+
+                _priceSection(
+                    totalAmount, discount, gst, service, delivery, grandTotal),
+
+                const SizedBox(height: 12),
+
+                CouponAndOffersCard(
+                  onApply: () {},
+                  onBuy: () {},
+                ),
+              ],
+            ),
           ),
 
-          // Bottom Checkout Button
-          _buildCheckoutButton(cartData, discountAmount),
+          /// ✅ Checkout Button
+          _buildCheckoutButton(cartData, discount.toInt()),
         ],
       ),
     );
   }
 
-  Widget _buildProgressSteps() {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      padding: const EdgeInsets.all(12),
-      color: Colors.white,
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              children: [
-                CircleAvatar(
-                  radius: 16,
-                  backgroundColor: OrderSummaryPage.brandColor,
-                  child: const Icon(Icons.check, size: 16, color: Colors.white),
-                ),
-                const SizedBox(height: 4),
-                const Text("Address",
-                    style: TextStyle(fontSize: 10, color: Colors.grey)),
-              ],
-            ),
-          ),
-          Container(height: 1, color: OrderSummaryPage.brandColor, width: 20),
-          Expanded(
-            child: Column(
-              children: [
-                CircleAvatar(
-                  radius: 16,
-                  backgroundColor: OrderSummaryPage.brandColor,
-                  child: const Text(
-                    "2",
-                    style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                const Text("Order Summary",
-                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500)),
-              ],
-            ),
-          ),
-          Container(height: 1, color: Colors.grey, width: 20),
-          Expanded(
-            child: Column(
-              children: [
-                CircleAvatar(
-                  radius: 16,
-                  backgroundColor: Colors.grey[300],
-                  child: const Text(
-                    "3",
-                    style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                const Text("Payment",
-                    style: TextStyle(fontSize: 10, color: Colors.grey)),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  /// ================= ADDRESS =================
+  Widget _buildAddressCard() {
+    final name = selectedAddress?['name'] ?? 'John Doe';
+    final line = selectedAddress?['line1'] ?? '';
+    final phone = selectedAddress?['phone'] ?? '';
 
-  Widget _buildDeliveryAddressCard(String userName, String kind, String line1,
-      String pincode, String phone) {
     return Container(
-      margin: const EdgeInsets.all(12),
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.shade300),
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text("Deliver to:",
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+              const Text("Delivery Address",
+                  style: TextStyle(
+                      color: AppColors.white,
+                      fontWeight: FontWeight.bold)),
+              const Spacer(),
               TextButton(
                 onPressed: showAddressModal,
                 child: const Text("Change",
-                    style: TextStyle(color: OrderSummaryPage.brandColor)),
-              ),
+                    style: TextStyle(color: AppColors.grey)),
+              )
             ],
           ),
+          const SizedBox(height: 6),
+          Text(name,
+              style: const TextStyle(
+                  color: AppColors.white,
+                  fontWeight: FontWeight.w500)),
           const SizedBox(height: 4),
-          Row(
-            children: [
-              Text(userName, style: const TextStyle(fontWeight: FontWeight.w500)),
-              const SizedBox(width: 6),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                    color: Colors.grey[300], borderRadius: BorderRadius.circular(4)),
-                child: Text(kind,
-                    style: const TextStyle(fontSize: 10, color: Colors.black)),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text("$line1, $pincode",
-              style: const TextStyle(fontSize: 12, color: Colors.grey)),
+          Text(line,
+              style: const TextStyle(color: AppColors.grey)),
           const SizedBox(height: 2),
           Text(phone,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+              style: const TextStyle(
+                  color: AppColors.white, fontSize: 12)),
         ],
       ),
     );
   }
 
-  Widget _buildCartItem(dynamic item) {
+  /// ================= CART ITEM =================
+  Widget _buildCartItem(Map<String, dynamic> item) {
+    final price =
+        (item['price'] as num?)?.toDouble() ?? 0.0;
+
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.grey.shade300)),
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
       child: Row(
         children: [
-          Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-                color: Colors.grey[200],
-                borderRadius: BorderRadius.circular(8),
-                image: DecorationImage(
-                    image: NetworkImage(item['image'] ?? ''), fit: BoxFit.cover)),
-          ),
+          item['image'] != null &&
+                  (item['image'] as String).isNotEmpty
+              ? Container(
+                  width: 70,
+                  height: 70,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    image: DecorationImage(
+                      image:
+                          NetworkImage(item['image'] as String),
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                )
+              : Container(
+                  width: 70,
+                  height: 70,
+                  decoration: BoxDecoration(
+                    color: AppColors.surface2,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                      Icons.shopping_bag_outlined,
+                      color: AppColors.grey),
+                ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment:
+                  CrossAxisAlignment.start,
               children: [
-                if ((item['badge'] ?? '').isNotEmpty)
-                  Container(
-                    margin: const EdgeInsets.only(bottom: 4),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                        color: Colors.green[100],
-                        borderRadius: BorderRadius.circular(4)),
-                    child: Text(item['badge'] ?? '',
-                        style: const TextStyle(fontSize: 10, color: Colors.green)),
-                  ),
                 Text(item['name'] ?? '',
                     style: const TextStyle(
-                        fontWeight: FontWeight.w500, fontSize: 14)),
-                const SizedBox(height: 2),
-                Text(item['subtitle'] ?? '',
-                    style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                        color: AppColors.white,
+                        fontWeight: FontWeight.w600)),
                 const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Text("Qty: ${item['quantity'] ?? 1}"),
-                    const SizedBox(width: 8),
-                    Text(
-                        "Price: ₹${item['price'] ?? item['originalPrice'] ?? 0}",
-                        style: const TextStyle(fontWeight: FontWeight.bold)),
-                  ],
+                Text(
+                  "₹${price.toStringAsFixed(2)}",
+                  style: const TextStyle(
+                      color: AppColors.white,
+                      fontWeight: FontWeight.bold),
                 ),
               ],
             ),
@@ -323,100 +213,182 @@ class _OrderSummaryPageState extends ConsumerState<OrderSummaryPage> {
     );
   }
 
-  Widget _buildDiscountCard(int discountAmount) {
+  /// ================= DISCOUNT =================
+  Widget _discountBanner(double value) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-          color: Colors.green[50],
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.green.shade200)),
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
       child: Row(
         children: [
-          const Icon(Icons.check_circle, color: Colors.green, size: 20),
-          const SizedBox(width: 6),
-          Text("You'll save ₹$discountAmount on this order!",
-              style: const TextStyle(color: Colors.green, fontWeight: FontWeight.w500)),
+          const Icon(Icons.check_circle,
+              color: Colors.greenAccent),
+          const SizedBox(width: 8),
+          Text("You saved ₹${value.toStringAsFixed(2)}",
+              style: const TextStyle(
+                  color: Colors.greenAccent,
+                  fontWeight: FontWeight.w500)),
         ],
       ),
     );
   }
 
-  Widget _buildPriceDetails(Map<String, dynamic> cartData, int discountAmount) {
+  /// ================= PRICE =================
+  Widget _priceSection(double total, double discount,
+      double gst, double service, double delivery, double grand) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.grey.shade300)),
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text("Price Details", style: TextStyle(fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          Text("Items Total: ₹${cartData['totalAmount'] ?? 0}"),
-          Text("Discount: -₹$discountAmount"),
-          Text("GST: ₹${cartData['gstCharge'] ?? 0}"),
-          Text("Service Charge: ₹${cartData['serviceCharge'] ?? 0}"),
-          const Divider(),
-          Text(
-              "Grand Total: ₹${cartData['grand_total'] ?? cartData['totalAmount'] ?? 0}",
-              style: const TextStyle(
-                  fontWeight: FontWeight.bold, color: OrderSummaryPage.brandColor)),
+          const Text("Price Details",
+              style: TextStyle(
+                  color: AppColors.white,
+                  fontWeight: FontWeight.bold)),
+          const SizedBox(height: 10),
+          _priceRow("Items Total", total),
+          if (discount > 0)
+            _priceRow("Discount", -discount,
+                isDiscount: true),
+          if (gst > 0) _priceRow("GST", gst),
+          if (service > 0)
+            _priceRow("Service Charge", service),
+          if (delivery > 0)
+            _priceRow("Delivery", delivery)
+          else
+            _priceRow("Delivery", 0, isFree: true),
+          const Divider(color: AppColors.divider),
+          _priceRow("Grand Total", grand,
+              isBold: true),
         ],
       ),
     );
   }
 
-  Widget _buildCheckoutButton(Map<String, dynamic> cartData, int discountAmount) {
+  /// ================= CHECKOUT BUTTON =================
+  Widget _buildCheckoutButton(
+      Map<String, dynamic> cartData, int discountAmount) {
+    final total =
+        (cartData['grandTotal'] as num?)?.toDouble() ??
+            (cartData['totalAmount'] as num?)?.toDouble() ??
+            0.0;
+
+    final original =
+        (cartData['totalAmount'] as num?)?.toDouble() ??
+            0.0;
+
     return Positioned(
       bottom: 0,
       left: 0,
       right: 0,
       child: Container(
-        color: Colors.white,
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(14),
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          border: Border(
+              top: BorderSide(color: AppColors.border)),
+        ),
         child: Row(
           children: [
             Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment:
+                  CrossAxisAlignment.start,
               children: [
-                Text(
-                  "₹${cartData['grand_total'] ?? cartData['totalAmount'] ?? 0}",
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
+                Text("₹${total.toStringAsFixed(2)}",
+                    style: const TextStyle(
+                        color: AppColors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16)),
                 if (discountAmount > 0)
                   Text(
-                    "₹${cartData['totalAmount'] ?? 0}",
+                    "₹${original.toStringAsFixed(2)}",
                     style: const TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey,
-                        decoration: TextDecoration.lineThrough),
+                      color: AppColors.grey,
+                      fontSize: 12,
+                      decoration:
+                          TextDecoration.lineThrough,
+                    ),
                   ),
               ],
             ),
             const Spacer(),
             ElevatedButton(
-              onPressed: () => createSound(context),
+              onPressed: () => Navigator.pushNamed(
+                context,
+                '/payment',
+                arguments: {
+                  'grandTotal': total,
+                },
+              ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: OrderSummaryPage.brandColor,
-                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                backgroundColor: AppColors.white,
+                foregroundColor: Colors.black,
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 24, vertical: 12),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: const [
-                  Text(
-                    "Continue",
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                  ),
-                  SizedBox(width: 4),
+                  Text("Continue",
+                      style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14)),
+                  SizedBox(width: 6),
                   Icon(Icons.arrow_forward, size: 16),
                 ],
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// ================= PRICE ROW =================
+  Widget _priceRow(String title, double value,
+      {bool isBold = false,
+      bool isDiscount = false,
+      bool isFree = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        children: [
+          Text(title,
+              style: TextStyle(
+                  color: isBold
+                      ? AppColors.white
+                      : AppColors.grey,
+                  fontWeight: isBold
+                      ? FontWeight.bold
+                      : FontWeight.normal)),
+          const Spacer(),
+          isFree
+              ? const Text("FREE",
+                  style: TextStyle(
+                      color: Colors.greenAccent,
+                      fontWeight: FontWeight.bold))
+              : Text(
+                  "${isDiscount ? '-' : ''}₹${value.abs().toStringAsFixed(2)}",
+                  style: TextStyle(
+                    color: isDiscount
+                        ? Colors.greenAccent
+                        : isBold
+                            ? AppColors.white
+                            : AppColors.grey,
+                    fontWeight: isBold
+                        ? FontWeight.bold
+                        : FontWeight.normal,
+                  ),
+                ),
+        ],
       ),
     );
   }

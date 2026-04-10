@@ -71,7 +71,7 @@ class RiderNotifier extends StateNotifier<Map<String, dynamic>> {
 
   Future<Map<String, dynamic>> getUserDetail() async {
     state = {...state, 'isLoading': true};
-    final token = await StorageService.getToken();
+    final token = await StorageService.getAccessToken();
 
     try {
       final res = await http.get(
@@ -105,7 +105,7 @@ class RiderNotifier extends StateNotifier<Map<String, dynamic>> {
   Future<Map<String, dynamic>> addAddress(
       String latitude, String longitude, bool isDefault) async {
     state = {...state, 'isLoading': true};
-    final token = await StorageService.getToken();
+    final token = await StorageService.getAccessToken();
     try {
       final res = await http.post(
         Uri.parse(ServerApi.addAddress),
@@ -134,7 +134,7 @@ class RiderNotifier extends StateNotifier<Map<String, dynamic>> {
   }
   Future<Map<String, dynamic>> makeAddressDefault(String addressId) async {
     state = {...state, 'isLoading': true};
-    final token = await StorageService.getToken();
+    final token = await StorageService.getAccessToken();
     try {
       final res = await http.put(
          Uri.parse("${ServerApi.makeaddressdefault}/$addressId"),

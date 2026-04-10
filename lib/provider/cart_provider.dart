@@ -20,7 +20,7 @@ class CartNotifier extends StateNotifier<Map<String, dynamic>> {
     try {
       state = {...state, 'isLoading': true, 'message': ''};
 
-      final token = await StorageService.getToken();
+      final token = await StorageService.getAccessToken();
       final response = await http.get(
         Uri.parse(ServerApi.getCart),
         headers: {
@@ -62,7 +62,7 @@ class CartNotifier extends StateNotifier<Map<String, dynamic>> {
     try {
       state = {...state, 'isLoading': true, 'message': ''};
 
-      final token = await StorageService.getToken();
+      final token = await StorageService.getAccessToken();
       final url =
           Uri.parse("${ServerApi.updateItemQtyToCart}/$itemId?qty=$qty");
       final response = await http.put(
@@ -107,7 +107,7 @@ class CartNotifier extends StateNotifier<Map<String, dynamic>> {
     try {
       state = {...state, 'isLoading': true};
 
-      final token = await StorageService.getToken();
+      final token = await StorageService.getAccessToken();
       final response = await http.post(
         Uri.parse(ServerApi.getCart),
         headers: {
@@ -136,7 +136,7 @@ class CartNotifier extends StateNotifier<Map<String, dynamic>> {
     try {
       state = {...state, 'isLoading': true};
 
-      final token = await StorageService.getToken();
+      final token = await StorageService.getAccessToken();
       final url = Uri.parse("${ServerApi.removeItemFromCart}/$itemId");
       final response = await http.delete(
         url,
@@ -165,7 +165,7 @@ class CartNotifier extends StateNotifier<Map<String, dynamic>> {
     try {
       state = {...state, 'isLoading': true};
 
-      final token = await StorageService.getToken();
+      final token = await StorageService.getAccessToken();
       final response = await http.delete(
         Uri.parse(ServerApi.getCart),
         headers: {
@@ -198,7 +198,7 @@ class CartNotifier extends StateNotifier<Map<String, dynamic>> {
     try {
       state = {...state, 'isLoading': true};
 
-      final token = await StorageService.getToken();
+      final token = await StorageService.getAccessToken();
       final response = await http.get(
         Uri.parse(ServerApi.cartCoupon),
         headers: {
@@ -233,7 +233,7 @@ class CartNotifier extends StateNotifier<Map<String, dynamic>> {
     try {
       state = {...state, 'isLoading': true, 'message': ''};
 
-      final token = await StorageService.getToken();
+      final token = await StorageService.getAccessToken();
       final response = await http.post(
         Uri.parse("${ServerApi.ApplyCartCoupon}/${couponCode}"),
         headers: {

@@ -115,7 +115,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage>
       _avatarLoading = true;
     });
 
-    final token = await StorageService.getToken();
+    final token = await StorageService.getAccessToken();
     final req   = http.MultipartRequest(
         'PATCH',
         Uri.parse('${ServerApi.productClientService}/api/v1/user/profile/avatar'));
@@ -144,7 +144,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage>
       return;
     }
     setState(() => _saving = true);
-    final token = await StorageService.getToken();
+    final token = await StorageService.getAccessToken();
     final body  = <String, dynamic>{
       'firstName': _firstNameCtrl.text.trim(),
       'lastName':  _lastNameCtrl.text.trim(),
@@ -182,7 +182,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage>
       return;
     }
     setState(() => _emailLoading = true);
-    final token = await StorageService.getToken();
+    final token = await StorageService.getAccessToken();
     try {
       final res = await http.post(
         Uri.parse('${ServerApi.productClientService}/api/v1/user/verify-email/request'),
@@ -212,7 +212,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage>
       return;
     }
     setState(() => _emailLoading = true);
-    final token = await StorageService.getToken();
+    final token = await StorageService.getAccessToken();
     try {
       final res = await http.post(
         Uri.parse('${ServerApi.productClientService}/api/v1/user/verify-email/confirm'),

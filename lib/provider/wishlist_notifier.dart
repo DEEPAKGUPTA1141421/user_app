@@ -16,7 +16,7 @@ class WishlistNotifier extends StateNotifier<Map<String, dynamic>> {
         });
 
   Future<Map<String, String>> _authHeaders() async {
-    final token = await StorageService.getToken();
+    final token = await StorageService.getAccessToken();
     return {
       'Content-Type': 'application/json',
       'Authorization': 'Bearer $token',

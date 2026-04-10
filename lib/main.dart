@@ -12,7 +12,6 @@ import 'widgets/bottom_navbar.dart';
 import './utils/StorageService.dart'; // <-- import your storage service
 import './main_layout.dart';
 import 'screens/cart/order_summary_page.dart';
-import 'screens/cart/payment_page.dart';
 import 'screens/accounts/customer_support_page.dart';
 import 'screens/accounts/my_orders_page.dart';
 import 'screens/accounts/order_details_page.dart';
@@ -25,6 +24,10 @@ import 'screens/accounts/saved_cards_upi_screen.dart';
 import 'screens/accounts/notification_settings_screen.dart';
 import 'screens/accounts/edit_profile_page.dart';
 import 'widgets/product_search_results_page.dart'; // ← your new file
+import 'screens/order_success_screen.dart';
+import 'screens/order_tracking_screen.dart';
+import 'screens/payment_page.dart';
+
 Future<void> _firebaseMessagingHandler(RemoteMessage message) async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 }
@@ -63,6 +66,9 @@ class MyApp extends StatelessWidget {
         '/account/cards': (context) => const SavedCardsUpiScreen(),
         '/account/notifications': (context) => const NotificationSettingsScreen(),
         '/account/profile': (context) => const EditProfilePage(),
+        '/order-success':  (context) => const OrderSuccessScreen(),
+         '/order-tracking': (context) => const OrderTrackingScreen(),
+         '/payment':        (context) => const PaymentPage(), 
       },
 
       // Dynamic routes
@@ -132,7 +138,7 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _checkAuth() async {
-    final isLoggedIn = await StorageService.checkAuth();
+    final isLoggedIn = await StorageService.isLoggedIn();
 
     if (!mounted) return;
 

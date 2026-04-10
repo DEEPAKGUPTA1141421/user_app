@@ -19,7 +19,7 @@ class CategoryNotifier extends StateNotifier<Map<String, dynamic>> {
     try {
       state = {...state, 'isLoading': true, 'message': ''};
 
-      final token = await StorageService.getToken();
+      final token = await StorageService.getAccessToken();
       final response = await http.get(
         Uri.parse('${ServerApi.GetCategory}?includeChildItem=false&level=SUPER_CATEGORY'),
         headers: {

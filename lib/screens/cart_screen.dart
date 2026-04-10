@@ -26,9 +26,9 @@ class _CartScreenState extends ConsumerState<CartScreen> {
   @override
   Widget build(BuildContext context) {
     final cartState = ref.watch(cartProvider);
-    final isLoading = cartState['isLoading'] as bool;
-    final cartData = cartState['cartData'] ?? {};
-    final items = (cartData['items'] ?? []) as List<dynamic>;
+    final isLoading = cartState['isLoading'] as bool? ?? false;
+    final cartData = cartState['cartData'] as Map<String, dynamic>? ?? {};
+    final items = (cartData['items'] as List<dynamic>?) ?? [];
 
     return Scaffold(
       backgroundColor: AppColors.bg,
@@ -38,37 +38,32 @@ class _CartScreenState extends ConsumerState<CartScreen> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text("My Cart",
-                style: TextStyle(color: AppColors.white)),
+            const Text("My Cart", style: TextStyle(color: AppColors.white)),
             Text(
-              "${items.length} ${items.length == 1 ? "item" : "items"}",
+              "${items.length} ${items.length == 1 ? 'item' : 'items'}",
               style: const TextStyle(fontSize: 12, color: AppColors.grey),
-            )
+            ),
           ],
         ),
         actions: const [
           Padding(
             padding: EdgeInsets.only(right: 16),
             child: Icon(CupertinoIcons.bag, color: AppColors.white),
-          )
+          ),
         ],
       ),
-
       body: AbsorbPointer(
         absorbing: isLoading,
         child: Stack(
           children: [
-            items.isEmpty
+            items.isEmpty && !isLoading
                 ? _buildEmptyCart(context)
                 : _buildCartList(context, cartData, items),
-
             if (isLoading)
               Container(
                 color: Colors.black.withOpacity(0.5),
                 child: const Center(
-                  child: CircularProgressIndicator(
-                    color: AppColors.white,
-                  ),
+                  child: CircularProgressIndicator(color: AppColors.white),
                 ),
               ),
           ],
@@ -77,7 +72,6 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     );
   }
 
-  /// ---------------- EMPTY CART ----------------
   Widget _buildEmptyCart(BuildContext context) {
     return Center(
       child: Padding(
@@ -85,48 +79,39 @@ class _CartScreenState extends ConsumerState<CartScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(CupertinoIcons.cart,
-                size: 70, color: AppColors.greyDark),
+            const Icon(CupertinoIcons.cart, size: 70, color: AppColors.greyDark),
             const SizedBox(height: 16),
             const Text("Your cart is empty",
-                style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.white)),
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.white)),
             const SizedBox(height: 6),
             const Text("Add items to get started",
                 style: TextStyle(color: AppColors.grey)),
-
             const SizedBox(height: 20),
-
-            /// 🔥 Browse Category Button (WHITE)
             ElevatedButton.icon(
-              onPressed: () {
-                Navigator.pushNamed(context, "/home");
-              },
-              icon: const Icon(CupertinoIcons.square_grid_2x2,
-                  color: Colors.black),
+              onPressed: () => Navigator.pushNamed(context, "/home"),
+              icon: const Icon(CupertinoIcons.square_grid_2x2, color: Colors.black),
               label: const Text("Browse Categories"),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.white,
                 foregroundColor: Colors.black,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               ),
-            )
+            ),
           ],
         ),
       ),
     );
   }
 
-  /// ---------------- CART LIST ----------------
-  Widget _buildCartList(
-      BuildContext context, Map<String, dynamic> cartData, List items) {
-    final totalAmount = cartData['totalAmount'] ?? 0;
-    final totalDiscount = cartData['totalDiscount'] ?? 0;
-    final gstCharge = cartData['gstCharge'] ?? 0;
-    final serviceCharge = cartData['serviceCharge'] ?? 0;
+  Widget _buildCartList(BuildContext context, Map<String, dynamic> cartData, List items) {
+    // ✅ FIX: prices from API are already in rupees — no division needed
+    final totalAmount = (cartData['totalAmount'] as num?)?.toDouble() ?? 0.0;
+    final totalDiscount = (cartData['totalDiscount'] as num?)?.toDouble() ?? 0.0;
+    final gstCharge = (cartData['gstCharge'] as num?)?.toDouble() ?? 0.0;
+    final serviceCharge = (cartData['serviceCharge'] as num?)?.toDouble() ?? 0.0;
+    final deliveryCharge = (cartData['deliveryCharge'] as num?)?.toDouble() ?? 0.0;
+    // ✅ FIX: API returns 'grandTotal' not 'grand_total'
+    final grandTotal = (cartData['grandTotal'] as num?)?.toDouble() ?? totalAmount;
 
     return RefreshIndicator(
       onRefresh: _refreshCart,
@@ -137,11 +122,11 @@ class _CartScreenState extends ConsumerState<CartScreen> {
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                ...items.map((item) => _buildCartItem(item)),
-
+                // ✅ FIX: cast each item properly
+                ...items.map((item) => _buildCartItem(item as Map<String, dynamic>)),
                 const SizedBox(height: 16),
 
-                /// PRICE DETAILS
+                // Price breakdown
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
@@ -153,18 +138,21 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text("Price Details",
-                          style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.white)),
+                          style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.white)),
                       const SizedBox(height: 10),
                       _priceRow("Items Total", totalAmount),
-                      _priceRow("Discount", -totalDiscount),
-                      _priceRow("GST", gstCharge),
-                      _priceRow("Service Charge", serviceCharge),
+                      if (totalDiscount > 0)
+                        _priceRow("Discount", -totalDiscount, isDiscount: true),
+                      if (gstCharge > 0)
+                        _priceRow("GST", gstCharge),
+                      if (serviceCharge > 0)
+                        _priceRow("Service Charge", serviceCharge),
+                      if (deliveryCharge > 0)
+                        _priceRow("Delivery", deliveryCharge)
+                      else
+                        _priceRow("Delivery", 0, isFree: true),
                       const Divider(color: AppColors.divider),
-                      _priceRow("Grand Total",
-                          cartData['grand_total'] ?? totalAmount,
-                          isBold: true),
+                      _priceRow("Grand Total", grandTotal, isBold: true),
                     ],
                   ),
                 ),
@@ -172,7 +160,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
             ),
           ),
 
-          /// CHECKOUT BAR
+          // Checkout bar
           Container(
             padding: const EdgeInsets.all(14),
             decoration: const BoxDecoration(
@@ -181,25 +169,32 @@ class _CartScreenState extends ConsumerState<CartScreen> {
             ),
             child: Row(
               children: [
-                Text(
-                  "₹${cartData['grand_total'] ?? totalAmount}",
-                  style: const TextStyle(
-                      color: AppColors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      "₹${grandTotal.toStringAsFixed(2)}",
+                      style: const TextStyle(
+                          color: AppColors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                    if (totalDiscount > 0)
+                      Text(
+                        "You save ₹${totalDiscount.toStringAsFixed(2)}",
+                        style: const TextStyle(color: Colors.greenAccent, fontSize: 11),
+                      ),
+                  ],
                 ),
                 const Spacer(),
                 ElevatedButton(
-                  onPressed: () =>
-                      Navigator.pushNamed(context, '/order-summary'),
+                  onPressed: () => Navigator.pushNamed(context, '/order-summary'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.white,
                     foregroundColor: Colors.black,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 26, vertical: 12),
+                    padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 12),
                   ),
                   child: const Text("Checkout"),
-                )
+                ),
               ],
             ),
           ),
@@ -208,8 +203,12 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     );
   }
 
-  /// ---------------- CART ITEM ----------------
   Widget _buildCartItem(Map<String, dynamic> item) {
+    final price = (item['price'] as num?)?.toDouble() ?? 0.0;
+    final quantity = item['quantity'] as int? ?? 1;
+    // ✅ FIX: image can be null — use placeholder
+    final imageUrl = item['image'] as String?;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
@@ -222,29 +221,46 @@ class _CartScreenState extends ConsumerState<CartScreen> {
         children: [
           Row(
             children: [
+              // ✅ FIX: null-safe image widget
               ClipRRect(
                 borderRadius: BorderRadius.circular(10),
-                child: Image.network(item['image'],
-                    width: 70, height: 70, fit: BoxFit.cover),
+                child: imageUrl != null && imageUrl.isNotEmpty
+                    ? Image.network(
+                        imageUrl,
+                        width: 70,
+                        height: 70,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => _imagePlaceholder(),
+                      )
+                    : _imagePlaceholder(),
               ),
               const SizedBox(width: 12),
-
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(item['name'],
-                        style: const TextStyle(
-                            color: AppColors.white,
-                            fontWeight: FontWeight.w600)),
+                    Text(
+                      item['name'] as String? ?? 'Product',
+                      style: const TextStyle(color: AppColors.white, fontWeight: FontWeight.w600),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (item['description'] != null) ...[
+                      const SizedBox(height: 3),
+                      Text(
+                        item['description'] as String,
+                        style: const TextStyle(color: AppColors.grey, fontSize: 11),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
                     const SizedBox(height: 6),
-                    Text("₹${item['price'] / 100}",
-                        style: const TextStyle(
-                            color: AppColors.white,
-                            fontWeight: FontWeight.bold)),
+                    Text(
+                      "₹${price.toStringAsFixed(2)}",
+                      style: const TextStyle(color: AppColors.white, fontWeight: FontWeight.bold),
+                    ),
                     const SizedBox(height: 8),
-
-                    /// Quantity Controls
+                    // Quantity controls
                     Container(
                       decoration: BoxDecoration(
                         border: Border.all(color: AppColors.border),
@@ -254,54 +270,53 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           IconButton(
-                            icon: const Icon(CupertinoIcons.minus,
-                                size: 16, color: AppColors.white),
-                            onPressed: item['quantity'] > 1
-                                ? () {
-                                    ref
-                                        .read(cartProvider.notifier)
-                                        .updateCartItem(item['id'],
-                                            item['quantity'] - 1);
-                                  }
+                            icon: const Icon(CupertinoIcons.minus, size: 16, color: AppColors.white),
+                            onPressed: quantity > 1
+                                ? () => ref
+                                    .read(cartProvider.notifier)
+                                    .updateCartItem(item['id'] as String, quantity - 1)
                                 : null,
                           ),
-                          Text(item['quantity'].toString(),
-                              style:
-                                  const TextStyle(color: AppColors.white)),
+                          Text(quantity.toString(),
+                              style: const TextStyle(color: AppColors.white)),
                           IconButton(
-                            icon: const Icon(CupertinoIcons.plus,
-                                size: 16, color: AppColors.white),
-                            onPressed: () {
-                              ref
-                                  .read(cartProvider.notifier)
-                                  .updateCartItem(
-                                      item['id'], item['quantity'] + 1);
-                            },
+                            icon: const Icon(CupertinoIcons.plus, size: 16, color: AppColors.white),
+                            onPressed: () => ref
+                                .read(cartProvider.notifier)
+                                .updateCartItem(item['id'] as String, quantity + 1),
                           ),
                         ],
                       ),
-                    )
+                    ),
                   ],
                 ),
               ),
             ],
           ),
-
           const SizedBox(height: 10),
-
-          /// Actions
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               _actionButton("Remove", CupertinoIcons.delete, () {
-                ref.read(cartProvider.notifier).removeItem(item['id']);
+                ref.read(cartProvider.notifier).removeItem(item['id'] as String);
               }),
-              _actionButton("Save", CupertinoIcons.heart, () {}),
-              _actionButton("Buy Now", CupertinoIcons.bolt, () {}),
+              _actionButton("Save for later", CupertinoIcons.heart, () {}),
             ],
-          )
+          ),
         ],
       ),
+    );
+  }
+
+  Widget _imagePlaceholder() {
+    return Container(
+      width: 70,
+      height: 70,
+      decoration: BoxDecoration(
+        color: AppColors.surface2,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: const Icon(Icons.shopping_bag_outlined, color: AppColors.greyDark, size: 28),
     );
   }
 
@@ -309,27 +324,34 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     return TextButton.icon(
       onPressed: onTap,
       icon: Icon(icon, size: 16, color: AppColors.grey),
-      label: Text(text,
-          style: const TextStyle(color: AppColors.grey, fontSize: 12)),
+      label: Text(text, style: const TextStyle(color: AppColors.grey, fontSize: 12)),
     );
   }
 
-  Widget _priceRow(String title, num value, {bool isBold = false}) {
+  Widget _priceRow(String title, double value,
+      {bool isBold = false, bool isDiscount = false, bool isFree = false}) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
+      padding: const EdgeInsets.symmetric(vertical: 3),
       child: Row(
         children: [
           Text(title,
               style: TextStyle(
-                  color: AppColors.grey,
-                  fontWeight:
-                      isBold ? FontWeight.bold : FontWeight.normal)),
-          const Spacer(),
-          Text("₹${value / 100}",
-              style: TextStyle(
                   color: isBold ? AppColors.white : AppColors.grey,
-                  fontWeight:
-                      isBold ? FontWeight.bold : FontWeight.normal)),
+                  fontWeight: isBold ? FontWeight.bold : FontWeight.normal)),
+          const Spacer(),
+          isFree
+              ? const Text("FREE",
+                  style: TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold, fontSize: 13))
+              : Text(
+                  "${isDiscount ? '-' : ''}₹${value.abs().toStringAsFixed(2)}",
+                  style: TextStyle(
+                      color: isDiscount
+                          ? Colors.greenAccent
+                          : isBold
+                              ? AppColors.white
+                              : AppColors.grey,
+                      fontWeight: isBold ? FontWeight.bold : FontWeight.normal),
+                ),
         ],
       ),
     );

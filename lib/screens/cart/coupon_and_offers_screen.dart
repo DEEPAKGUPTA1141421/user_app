@@ -1,65 +1,89 @@
 import 'package:flutter/material.dart';
+import '../../utils/app_colors.dart';
 import 'coupon_screen.dart';
+
 class CouponAndOffersCard extends StatelessWidget {
   final VoidCallback? onApply;
   final VoidCallback? onBuy;
 
   const CouponAndOffersCard({super.key, this.onApply, this.onBuy});
-  void onprssedApplyCoupon(){
-    
-  }
+
   @override
   Widget build(BuildContext context) {
-    final Color brandColor = Colors.deepOrange;
-
-    Widget buildRow(String title, String subtitle,
-        {bool isButton = false, bool isBuyButton = false, VoidCallback? onPressed}) {
+    Widget buildRow(
+      String title,
+      String subtitle, {
+      bool isArrow = false,
+      bool isBuyButton = false,
+      VoidCallback? onPressed,
+    }) {
       return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8.0),
+        padding: const EdgeInsets.symmetric(vertical: 10),
         child: Row(
           children: [
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.bold, fontSize: 14)),
-                  const SizedBox(height: 2),
-                  Text(subtitle,
-                      style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: AppColors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      color: AppColors.grey,
+                      fontSize: 12,
+                    ),
+                  ),
                 ],
               ),
             ),
-            if (isButton)
-          GestureDetector(
-          onTap: () {
-            // Navigate to CouponScreen
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const CouponScreen(),
+
+            /// 👉 Arrow (Apply Coupon)
+            if (isArrow)
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const CouponScreen(),
+                    ),
+                  );
+                  if (onApply != null) onApply!();
+                },
+                child: const Icon(
+                  Icons.chevron_right,
+                  color: AppColors.white,
+                  size: 24,
+                ),
               ),
-            );
-          },
-          child: Icon(
-            Icons.chevron_right,
-            color: brandColor,
-            size: 30,
-          ),
-        ),
+
+            /// 👉 Buy Button
             if (isBuyButton)
               ElevatedButton(
                 onPressed: onPressed,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: brandColor,
+                  backgroundColor: AppColors.white,
+                  foregroundColor: Colors.black,
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8)),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
-                child: const Text("Add To Cart",
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                child: const Text(
+                  "Add To Cart",
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                ),
               ),
           ],
         ),
@@ -67,30 +91,43 @@ class CouponAndOffersCard extends StatelessWidget {
     }
 
     return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black12,
-            blurRadius: 3,
-            offset: const Offset(0, 2),
-          )
-        ],
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         children: [
-          buildRow("Apply Coupon", "Use a coupon code for your cart",
-              isButton: true, onPressed: onApply),
-          const Divider(height: 1, color: Colors.grey),
-          buildRow("₹121 saved", "Items at ₹99 applied"),
-          const Divider(height: 1, color: Colors.grey),
-          buildRow("₹45 saved", "Delivery Applied"),
-          const Divider(height: 1, color: Colors.grey),
-          buildRow("Unlimited Free Deliveries", "D2D Prime Membership",
-              isBuyButton: true, onPressed: onBuy),
+          buildRow(
+            "Apply Coupon",
+            "Use a coupon code for your cart",
+            isArrow: true,
+            onPressed: onApply,
+          ),
+
+          const Divider(color: AppColors.divider),
+
+          buildRow(
+            "₹121 saved",
+            "Items at ₹99 applied",
+          ),
+
+          const Divider(color: AppColors.divider),
+
+          buildRow(
+            "₹45 saved",
+            "Delivery applied",
+          ),
+
+          const Divider(color: AppColors.divider),
+
+          buildRow(
+            "Unlimited Free Deliveries",
+            "D2D Prime Membership",
+            isBuyButton: true,
+            onPressed: onBuy,
+          ),
         ],
       ),
     );
