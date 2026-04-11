@@ -1,287 +1,214 @@
-import 'dart:convert';
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:http/http.dart' as http;
-import '../constant/ServerApi.dart';
-import '../utils/StorageService.dart';
+import '../core/api/api_client.dart';
+import '../core/api/api_endpoints.dart';
+import '../core/errors/app_exception.dart';
 
-class CartNotifier extends StateNotifier<Map<String, dynamic>> {
-  CartNotifier()
-      : super({
-          'isLoading': false,
-          'success': false,
-          'message': '',
-          'cartData': {},
-          'moreCoupons':[],
-          'bestCoupons':[]
-        }) {}
+// ── Typed State ───────────────────────────────────────────────────────────────
 
-  /// Fetch the active cart
+class CartState {
+  final bool isLoading;
+  final String? error;
+  final Map<String, dynamic> cartData;
+  final List<dynamic> bestCoupons;
+  final List<dynamic> moreCoupons;
+
+  const CartState({
+    this.isLoading = false,
+    this.error,
+    this.cartData = const {},
+    this.bestCoupons = const [],
+    this.moreCoupons = const [],
+  });
+
+  // Convenience getters so UI doesn't need to cast raw map values
+  List<dynamic> get items =>
+      (cartData['items'] as List<dynamic>?) ?? const [];
+
+  double get totalAmount =>
+      (cartData['totalAmount'] as num?)?.toDouble() ?? 0.0;
+
+  double get discount =>
+      (cartData['discount'] as num?)?.toDouble() ?? 0.0;
+
+  double get deliveryFee =>
+      (cartData['deliveryFee'] as num?)?.toDouble() ?? 0.0;
+
+  String? get appliedCoupon => cartData['cartCoupon'] as String?;
+
+  bool get isEmpty => items.isEmpty;
+
+  CartState copyWith({
+    bool? isLoading,
+    String? error,
+    Map<String, dynamic>? cartData,
+    List<dynamic>? bestCoupons,
+    List<dynamic>? moreCoupons,
+  }) {
+    return CartState(
+      isLoading: isLoading ?? this.isLoading,
+      error: error,                         // null intentionally clears error
+      cartData: cartData ?? this.cartData,
+      bestCoupons: bestCoupons ?? this.bestCoupons,
+      moreCoupons: moreCoupons ?? this.moreCoupons,
+    );
+  }
+}
+
+// ── Notifier ──────────────────────────────────────────────────────────────────
+
+class CartNotifier extends StateNotifier<CartState> {
+  CartNotifier() : super(const CartState());
+
+  Dio get _client => ApiClient.instance.productClient;
+
+  // ── Fetch cart ───────────────────────────────────────────────────────────
+
   Future<void> fetchCart() async {
+    state = state.copyWith(isLoading: true, error: null);
     try {
-      state = {...state, 'isLoading': true, 'message': ''};
-
-      final token = await StorageService.getAccessToken();
-      final response = await http.get(
-        Uri.parse(ServerApi.getCart),
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer $token",
-        },
+      final res = await _client.get(ApiEndpoints.cart);
+      final data = (res.data as Map<String, dynamic>?)?['data']
+          as Map<String, dynamic>? ?? {};
+      state = state.copyWith(isLoading: false, cartData: data);
+    } on DioException catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        error: AppException.fromDioError(e).message,
       );
-
-      if (response.statusCode == 200) {
-        final body = json.decode(response.body);
-
-        state = {
-          ...state,
-          'isLoading': false,
-          'success': body['success'] ?? false,
-          'message': body['message'] ?? '',
-          'cartData': body['data'] ?? {},
-        };
-        print("jsonbody ${body}");
-      } else {
-        state = {
-          ...state,
-          'isLoading': false,
-          'success': false,
-          'message': 'Failed to load cart',
-        };
-      }
     } catch (e) {
-      state = {
-        ...state,
-        'isLoading': false,
-        'success': false,
-        'message': e.toString(),
-      };
+      state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
+
+  // ── Add item ─────────────────────────────────────────────────────────────
+
+  Future<void> addItem(Map<String, dynamic> itemRequest) async {
+    state = state.copyWith(isLoading: true, error: null);
+    try {
+      await _client.post(ApiEndpoints.cart, data: itemRequest);
+      await fetchCart();
+    } on DioException catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        error: AppException.fromDioError(e).message,
+      );
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: e.toString());
+    }
+  }
+
+  // ── Update quantity ───────────────────────────────────────────────────────
 
   Future<void> updateCartItem(String itemId, int qty) async {
+    state = state.copyWith(isLoading: true, error: null);
     try {
-      state = {...state, 'isLoading': true, 'message': ''};
-
-      final token = await StorageService.getAccessToken();
-      final url =
-          Uri.parse("${ServerApi.updateItemQtyToCart}/$itemId?qty=$qty");
-      final response = await http.put(
-        url,
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer $token",
-        },
+      final res = await _client.put(
+        '${ApiEndpoints.cartItems}/$itemId',
+        queryParameters: {'qty': qty},
       );
-
-      if (response.statusCode == 200) {
-        final body = json.decode(response.body);
-
-        state = {
-          ...state,
-          'isLoading': false,
-          'success': body['success'] ?? false,
-          'message': body['message'] ?? '',
-          'cartData': body['data'] ?? {},
-        };
-        print("jsonbody ${body}");
-      } else {
-        state = {
-          ...state,
-          'isLoading': false,
-          'success': false,
-          'message': 'Failed to load cart',
-        };
-      }
+      final data = (res.data as Map<String, dynamic>?)?['data']
+          as Map<String, dynamic>? ?? {};
+      state = state.copyWith(isLoading: false, cartData: data);
+    } on DioException catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        error: AppException.fromDioError(e).message,
+      );
     } catch (e) {
-      state = {
-        ...state,
-        'isLoading': false,
-        'success': false,
-        'message': e.toString(),
-      };
+      state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
 
-  /// Add item to cart
-  Future<void> addItem(Map<String, dynamic> itemRequest) async {
-    try {
-      state = {...state, 'isLoading': true};
+  // ── Remove item ───────────────────────────────────────────────────────────
 
-      final token = await StorageService.getAccessToken();
-      final response = await http.post(
-        Uri.parse(ServerApi.getCart),
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer $token",
-        },
-        body: json.encode(itemRequest),
-      );
-
-      if (response.statusCode == 201) {
-        await fetchCart(); // Refresh cart
-      } else {
-        state = {
-          ...state,
-          'isLoading': false,
-          'message': 'Failed to add item',
-        };
-      }
-    } catch (e) {
-      state = {...state, 'isLoading': false, 'message': e.toString()};
-    }
-  }
-
-  /// Remove item from cart
   Future<void> removeItem(String itemId) async {
+    state = state.copyWith(isLoading: true, error: null);
     try {
-      state = {...state, 'isLoading': true};
-
-      final token = await StorageService.getAccessToken();
-      final url = Uri.parse("${ServerApi.removeItemFromCart}/$itemId");
-      final response = await http.delete(
-        url,
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer $token",
-        },
+      await _client.delete('${ApiEndpoints.cartItems}/$itemId');
+      await fetchCart();
+    } on DioException catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        error: AppException.fromDioError(e).message,
       );
-
-      if (response.statusCode == 201 || response.statusCode == 200) {
-        await fetchCart(); // Refresh cart
-      } else {
-        state = {
-          ...state,
-          'isLoading': false,
-          'message': 'Failed to remove item',
-        };
-      }
     } catch (e) {
-      state = {...state, 'isLoading': false, 'message': e.toString()};
+      state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
 
-  /// Clear cart
+  // ── Clear cart ────────────────────────────────────────────────────────────
+
   Future<void> clearCart() async {
+    state = state.copyWith(isLoading: true, error: null);
     try {
-      state = {...state, 'isLoading': true};
-
-      final token = await StorageService.getAccessToken();
-      final response = await http.delete(
-        Uri.parse(ServerApi.getCart),
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer $token",
-        },
+      await _client.delete(ApiEndpoints.cart);
+      state = state.copyWith(isLoading: false, cartData: {});
+    } on DioException catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        error: AppException.fromDioError(e).message,
       );
-
-      if (response.statusCode == 200) {
-        state = {
-          ...state,
-          'isLoading': false,
-          'success': true,
-          'cartData': {},
-          'message': 'Cart cleared',
-        };
-      } else {
-        state = {
-          ...state,
-          'isLoading': false,
-          'message': 'Failed to clear cart',
-        };
-      }
     } catch (e) {
-      state = {...state, 'isLoading': false, 'message': e.toString()};
+      state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
 
-  Future<void> cartCoupon() async {
-    try {
-      state = {...state, 'isLoading': true};
+  // ── Fetch available coupons ───────────────────────────────────────────────
 
-      final token = await StorageService.getAccessToken();
-      final response = await http.get(
-        Uri.parse(ServerApi.cartCoupon),
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer $token",
-        },
+  Future<void> fetchCoupons() async {
+    state = state.copyWith(isLoading: true, error: null);
+    try {
+      final res = await _client.get(ApiEndpoints.cartCoupons);
+      final data = (res.data as Map<String, dynamic>?)?['data']
+          as Map<String, dynamic>? ?? {};
+      state = state.copyWith(
+        isLoading: false,
+        bestCoupons: (data['bestCoupons'] as List<dynamic>?) ?? const [],
+        moreCoupons: (data['moreCoupons'] as List<dynamic>?) ?? const [],
       );
-      print("Coupons ${response}");
-      if (response.statusCode == 200) {
-         final body = json.decode(response.body);
-         print("Coupons ${body}");
-        state = {
-          ...state,
-          'isLoading': false,
-          'success': true,
-          'message': 'Cart cleared',
-          'bestCoupons':body['data']['bestCoupons'],
-          'moreCoupons':body['data']['moreCoupons']
-        };
-      } else {
-        state = {
-          ...state,
-          'isLoading': false,
-          'message': 'Failed to fetch cart Coupon',
-        };
-      }
+    } on DioException catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        error: AppException.fromDioError(e).message,
+      );
     } catch (e) {
-      state = {...state, 'isLoading': false, 'message': e.toString()};
+      state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
-  Future<void> ApplyCartCoupon(String couponCode) async {
-    try {
-      state = {...state, 'isLoading': true, 'message': ''};
 
-      final token = await StorageService.getAccessToken();
-      final url = couponCode.isEmpty 
-          ? Uri.parse("${ServerApi.ApplyCartCoupon}/remove")
-          : Uri.parse("${ServerApi.ApplyCartCoupon}/$couponCode");
-      
-      final response = await http.post(
-        url,
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer $token",
+  // ── Apply / remove coupon ─────────────────────────────────────────────────
+
+  Future<void> applyCoupon(String couponCode) async {
+    state = state.copyWith(isLoading: true, error: null);
+    try {
+      final url = couponCode.isEmpty
+          ? ApiEndpoints.removeCartCoupon
+          : ApiEndpoints.applyCartCoupon(couponCode);
+
+      final res = await _client.post(url);
+      final data = (res.data as Map<String, dynamic>?)?['data']
+          as Map<String, dynamic>? ?? {};
+
+      state = state.copyWith(
+        isLoading: false,
+        cartData: {
+          ...data,
+          if (couponCode.isNotEmpty) 'cartCoupon': couponCode,
         },
       );
-      
-      print("Apply coupon response: ${response.statusCode} - ${response.body}");
-      
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final body = json.decode(response.body);
-        final cartData = (body['data'] as Map<String, dynamic>?) ?? {};
-        
-        state = {
-          ...state,
-          'isLoading': false,
-          'success': body['success'] ?? false,
-          'message': body['message'] ?? '',
-          'cartData': {
-            ...cartData,
-            'cartCoupon': couponCode.isEmpty ? '' : couponCode,
-          },
-        };
-      } else {
-        state = {
-          ...state,
-          'isLoading': false,
-          'success': false,
-          'message': 'Failed to apply coupon',
-        };
-      }
+    } on DioException catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        error: AppException.fromDioError(e).message,
+      );
     } catch (e) {
-      print("Apply coupon error: $e");
-      state = {
-        ...state,
-        'isLoading': false,
-        'success': false,
-        'message': e.toString(),
-      };
+      state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
 }
 
-/// Riverpod provider
-final cartProvider = StateNotifierProvider<CartNotifier, Map<String, dynamic>>(
-    (ref) => CartNotifier());
+// ── Provider ──────────────────────────────────────────────────────────────────
+
+final cartProvider =
+    StateNotifierProvider<CartNotifier, CartState>((ref) => CartNotifier());

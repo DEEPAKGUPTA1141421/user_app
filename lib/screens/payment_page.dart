@@ -60,11 +60,10 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
     setState(() => _isProcessing = true);
 
     final notifier = ref.read(checkoutProvider.notifier);
-    final ud =
-        ref.read(riderPod)['user_detail'] as Map<String, dynamic>? ?? {};
+    final user = ref.read(riderPod).user;
 
     final userId =
-        (ud['id'] ?? ud['userId'] ?? '').toString(); // ✅ SAFE
+        (user['id'] ?? user['userId'] ?? '').toString();
 
     final created = await notifier.createPayment(
       userId: userId,

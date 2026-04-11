@@ -64,8 +64,8 @@ class _OrderSuccessScreenState extends ConsumerState<OrderSuccessScreen>
   Widget build(BuildContext context) {
     final checkoutState = ref.watch(checkoutProvider);
     final riderState = ref.watch(riderPod);
-    final ud = riderState['user_detail'] as Map<String, dynamic>? ?? {};
-    final addresses = (ud['addresses'] as List<dynamic>?) ?? [];
+    final ud = riderState.user;
+    final addresses = riderState.addresses;
     final address = checkoutState.selectedAddress ??
         (addresses.isNotEmpty
             ? addresses.firstWhere(

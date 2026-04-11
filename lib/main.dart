@@ -55,20 +55,19 @@ class MyApp extends StatelessWidget {
 
       // Static routes
       routes: {
-        "/home": (context) => const MainLayout(),
-        "/login": (context) => const LoginScreen(),
-        '/order-summary': (context) => OrderSummaryPage(),
-        '/payment': (context) => PaymentPage(),
-        '/account/orders': (context) => MyOrdersPage(),
-        '/account/wishlist': (context) => WishlistScreen(),
-        '/account/support': (context) => CustomerSupportPage(),  
-        '/account/addresses': (context) => const AddressesScreen(),
-        '/account/cards': (context) => const SavedCardsUpiScreen(),
-        '/account/notifications': (context) => const NotificationSettingsScreen(),
-        '/account/profile': (context) => const EditProfilePage(),
-        '/order-success':  (context) => const OrderSuccessScreen(),
-         '/order-tracking': (context) => const OrderTrackingScreen(),
-         '/payment':        (context) => const PaymentPage(), 
+        '/home':                   (context) => const MainLayout(),
+        '/login':                  (context) => const LoginScreen(),
+        '/order-summary':          (context) => const OrderSummaryPage(),
+        '/payment':                (context) => const PaymentPage(),
+        '/order-success':          (context) => const OrderSuccessScreen(),
+        '/order-tracking':         (context) => const OrderTrackingScreen(),
+        '/account/orders':         (context) => const MyOrdersPage(),
+        '/account/wishlist':       (context) => const WishlistScreen(),
+        '/account/support':        (context) => const CustomerSupportPage(),
+        '/account/addresses':      (context) => const AddressesScreen(),
+        '/account/cards':          (context) => const SavedCardsUpiScreen(),
+        '/account/notifications':  (context) => const NotificationSettingsScreen(),
+        '/account/profile':        (context) => const EditProfilePage(),
       },
 
       // Dynamic routes
@@ -88,29 +87,26 @@ class MyApp extends StatelessWidget {
           // Dynamic product detail route: /productDetail/<id>
           if (uri.pathSegments.length == 2 &&
               uri.pathSegments[0] == 'productDetail') {
-            final productId = uri.pathSegments[1]; // from URL path
-            final args = settings.arguments as Map<String, dynamic>? ?? {};
-
+            final productId = uri.pathSegments[1];
             return MaterialPageRoute(
-              builder: (context) => ProductDetailsPage(
-                productId: productId,
-                // Optionally, pass args to the constructor if you modify it:
-                // itemType: args['itemType'] ?? "Product",
-                // title: args['title'] ?? "Unnamed Product",
-                // imageUrl: args['imageUrl'] ?? "https://via.placeholder.com/150",
-                // itemId: args['itemId'] ?? productId,
-              ),
-              settings: settings, // Keep arguments available via ModalRoute
+              builder: (context) => ProductDetailsPage(productId: productId),
+              settings: settings,
             );
           }
+
           if (uri.pathSegments[0] == 'search') {
-  final q = settings.arguments as String? ?? '';
-  return MaterialPageRoute(builder: (_) => ProductSearchResultsPage(query: q));
-}
+            final q = settings.arguments as String? ?? '';
+            return MaterialPageRoute(
+              builder: (_) => ProductSearchResultsPage(query: q),
+            );
+          }
         }
 
         // Unknown route fallback
-        print("⚠️ Unknown route: ${settings.name}");
+        assert(() {
+          debugPrint('⚠️ Unknown route: ${settings.name}');
+          return true;
+        }());
         return MaterialPageRoute(
           builder: (context) => const UnknownPage(),
         );

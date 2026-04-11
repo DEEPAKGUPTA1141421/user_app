@@ -34,8 +34,8 @@ class _OrderSummaryPageState
   @override
   Widget build(BuildContext context) {
     final cartState = ref.watch(cartProvider);
-    final cartData = cartState['cartData'] ?? {};
-    final items = (cartData['items'] ?? []) as List;
+    final cartData = cartState.cartData;
+    final items = cartState.items;
 
     final totalAmount =
         (cartData['totalAmount'] as num?)?.toDouble() ?? 0.0;

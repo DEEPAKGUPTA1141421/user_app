@@ -1,16 +1,3 @@
-import 'package:dio/dio.dart';
-import './AuthInterceptor.dart';
-
-class ApiClient {
-  static final Dio dio = Dio(
-    BaseOptions(
-      baseUrl: "YOUR_BASE_URL",
-      connectTimeout: const Duration(seconds: 10),
-      receiveTimeout: const Duration(seconds: 10),
-    ),
-  );
-
-  static void init() {
-    dio.interceptors.add(AuthInterceptor(dio));
-  }
-}
+// Forwarding shim — all real logic lives in core/api/api_client.dart.
+// Keep this file so existing imports continue to compile without changes.
+export '../core/api/api_client.dart';

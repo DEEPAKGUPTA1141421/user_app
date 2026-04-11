@@ -429,10 +429,10 @@ class _CategoryPageState extends ConsumerState<CategoryPage> {
     final state = ref.watch(categorySectionsProvider);
     final bannerState = ref.watch(bannerProvider);
 
-    final sectionsLoading = state['sectionsLoading'] as bool? ?? false;
-    final rawSections = state['sectionsData'] as List<dynamic>? ?? [];
-    final bannerIsLoading = bannerState['isLoading'] as bool? ?? false;
-    final banners = bannerState['banners'] as List<dynamic>? ?? [];
+    final sectionsLoading = state.sectionsLoading;
+    final rawSections = state.sections;
+    final bannerIsLoading = bannerState.isLoading;
+    final banners = bannerState.banners;
 
     // Parse + sort sections via the Section model
     final List<Section> sections = rawSections

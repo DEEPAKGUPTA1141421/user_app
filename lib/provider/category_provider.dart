@@ -1,67 +1,70 @@
-import 'dart:convert';
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:http/http.dart' as http;
-import '../constant/ServerApi.dart';
-import '../utils/StorageService.dart';
+import '../core/api/api_client.dart';
+import '../core/api/api_endpoints.dart';
+import '../core/errors/app_exception.dart';
 
-class CategoryNotifier extends StateNotifier<Map<String, dynamic>> {
-  CategoryNotifier()
-      : super({
-          'isLoading': false,
-          'success': false,
-          'message': '',
-          'categoryData': [],
-        }) {
+// ── Typed State ───────────────────────────────────────────────────────────────
+
+class CategoryState {
+  final bool isLoading;
+  final String? error;
+  final List<dynamic> categoryData;
+
+  const CategoryState({
+    this.isLoading = false,
+    this.error,
+    this.categoryData = const [],
+  });
+
+  CategoryState copyWith({
+    bool? isLoading,
+    String? error,
+    List<dynamic>? categoryData,
+  }) {
+    return CategoryState(
+      isLoading: isLoading ?? this.isLoading,
+      error: error,
+      categoryData: categoryData ?? this.categoryData,
+    );
+  }
+}
+
+// ── Notifier ──────────────────────────────────────────────────────────────────
+
+class CategoryNotifier extends StateNotifier<CategoryState> {
+  CategoryNotifier() : super(const CategoryState()) {
     fetchCategories();
   }
 
-  Future<void> fetchCategories() async {
-    try {
-      state = {...state, 'isLoading': true, 'message': ''};
+  Dio get _client => ApiClient.instance.productClient;
 
-      final token = await StorageService.getAccessToken();
-      final response = await http.get(
-        Uri.parse('${ServerApi.GetCategory}?includeChildItem=false&level=SUPER_CATEGORY'),
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer $token",
+  Future<void> fetchCategories() async {
+    state = state.copyWith(isLoading: true, error: null);
+    try {
+      final res = await _client.get(
+        ApiEndpoints.categoryByLevel,
+        queryParameters: {
+          'includeChildItem': 'false',
+          'level': 'SUPER_CATEGORY',
         },
       );
-
-      print("response from backend for category ${response.statusCode}");
-      if (response.statusCode == 200) {
-        final body = json.decode(response.body);
-        print("response from backend for category ${body}");
-        final List<Map<String, dynamic>> categories =
-            List<Map<String, dynamic>>.from(body['data'] ?? []);
-
-        state = {
-          ...state,
-          'isLoading': false,
-          'success': true,
-          'message': body['message'] ?? '',
-          'categoryData': categories,
-        };
-      } else {
-        state = {
-          ...state,
-          'isLoading': false,
-          'success': false,
-          'message': 'Failed to load categories',
-        };
-      }
+      final body = res.data as Map<String, dynamic>;
+      final categories = (body['data'] as List<dynamic>?) ?? const [];
+      state = state.copyWith(isLoading: false, categoryData: categories);
+    } on DioException catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        error: AppException.fromDioError(e).message,
+      );
     } catch (e) {
-      state = {
-        ...state,
-        'isLoading': false,
-        'success': false,
-        'message': e.toString(),
-      };
+      state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
 }
 
-// Riverpod provider
+// ── Provider ──────────────────────────────────────────────────────────────────
+
 final categoryProvider =
-    StateNotifierProvider<CategoryNotifier, Map<String, dynamic>>(
+    StateNotifierProvider<CategoryNotifier, CategoryState>(
         (ref) => CategoryNotifier());

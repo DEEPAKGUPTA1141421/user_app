@@ -1,197 +1,167 @@
-import 'dart:convert';
-import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:http/http.dart' as http;
-import '../constant/ServerApi.dart';
-import '../utils/StorageService.dart';
+import '../core/api/api_client.dart';
+import '../core/api/api_endpoints.dart';
+import '../core/errors/app_exception.dart';
 
-class CategorySectionsNotifier extends StateNotifier<Map<String, dynamic>> {
-  CategorySectionsNotifier()
-      : super({
-          // ── Separate loading flags so each fetch doesn't stomp others ──
-          'categoriesLoading': false,
-          'sectionsLoading': false,
-          'brandsLoading': false,
-          // Keep a single isLoading for legacy watchers (true if ANY loading)
-          'isLoading': false,
-          'success': false,
-          'message': '',
-          'categoryData': [],
-          'sectionsData': [],
-          'brands': [],
-        }) {
-    // ✅ Only fetch top-level categories once on startup — NOT sections/brands.
-    //    Sections and brands are fetched on demand by CategoryPage.
-    fetchCategories(false, 'SUPER_CATEGORY');
+// ── Typed State ───────────────────────────────────────────────────────────────
+
+class CategorySectionsState {
+  final bool categoriesLoading;
+  final bool sectionsLoading;
+  final bool brandsLoading;
+  final String? error;
+  final List<Map<String, dynamic>> categories;
+  final List<Map<String, dynamic>> sections;
+  final List<Map<String, dynamic>> brands;
+
+  const CategorySectionsState({
+    this.categoriesLoading = false,
+    this.sectionsLoading   = false,
+    this.brandsLoading     = false,
+    this.error,
+    this.categories = const [],
+    this.sections   = const [],
+    this.brands     = const [],
+  });
+
+  /// True if any sub-fetch is in flight.
+  bool get isLoading => categoriesLoading || sectionsLoading || brandsLoading;
+
+  CategorySectionsState copyWith({
+    bool? categoriesLoading,
+    bool? sectionsLoading,
+    bool? brandsLoading,
+    String? error,
+    List<Map<String, dynamic>>? categories,
+    List<Map<String, dynamic>>? sections,
+    List<Map<String, dynamic>>? brands,
+  }) {
+    return CategorySectionsState(
+      categoriesLoading: categoriesLoading ?? this.categoriesLoading,
+      sectionsLoading:   sectionsLoading   ?? this.sectionsLoading,
+      brandsLoading:     brandsLoading     ?? this.brandsLoading,
+      error: error,
+      categories: categories ?? this.categories,
+      sections:   sections   ?? this.sections,
+      brands:     brands     ?? this.brands,
+    );
+  }
+}
+
+// ── Notifier ──────────────────────────────────────────────────────────────────
+
+class CategorySectionsNotifier extends StateNotifier<CategorySectionsState> {
+  CategorySectionsNotifier() : super(const CategorySectionsState()) {
+    // Fetch top-level categories once at startup
+    fetchCategories(includeChildItem: false, level: 'SUPER_CATEGORY');
   }
 
-  // ── helpers ───────────────────────────────────────────────────────────────
+  Dio get _client => ApiClient.instance.productClient;
 
-  void _setLoading(String key, bool val) {
-    final categoriesLoading = key == 'categoriesLoading' ? val : (state['categoriesLoading'] ?? false);
-    final sectionsLoading   = key == 'sectionsLoading'   ? val : (state['sectionsLoading']   ?? false);
-    final brandsLoading     = key == 'brandsLoading'     ? val : (state['brandsLoading']     ?? false);
-    state = {
-      ...state,
-      key: val,
-      'isLoading': categoriesLoading || sectionsLoading || brandsLoading,
-    };
-  }
+  // ── Fetch categories ──────────────────────────────────────────────────────
 
-  // ── Fetch categories (top-level sidebar list) ─────────────────────────────
-
-  Future<void> fetchCategories(bool includeChildItem, String level) async {
+  Future<void> fetchCategories({
+    required bool includeChildItem,
+    required String level,
+  }) async {
+    state = state.copyWith(categoriesLoading: true, error: null);
     try {
-      _setLoading('categoriesLoading', true);
-      final token = await StorageService.getAccessToken();
-      final uri = Uri.parse(ServerApi.GetCategoryByLevel).replace(
+      final res = await _client.get(
+        ApiEndpoints.categoryByLevel,
         queryParameters: {
           'includeChildItem': includeChildItem.toString(),
           'level': level,
         },
       );
-      final res = await http.get(uri, headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      });
-
-      final body = json.decode(res.body);
-      if (res.statusCode == 200 && body['success'] == true) {
-        final categories = List<Map<String, dynamic>>.from(body['data'] ?? []);
-        state = {
-          ...state,
-          'categoriesLoading': false,
-          'isLoading': (state['sectionsLoading'] ?? false) || (state['brandsLoading'] ?? false),
-          'categoryData': categories,
-        };
-      } else {
-        _setLoading('categoriesLoading', false);
-      }
+      final body = res.data as Map<String, dynamic>;
+      final raw = (body['data'] as List<dynamic>?) ?? const [];
+      state = state.copyWith(
+        categoriesLoading: false,
+        categories: raw.cast<Map<String, dynamic>>(),
+      );
+    } on DioException catch (e) {
+      state = state.copyWith(
+        categoriesLoading: false,
+        error: AppException.fromDioError(e).message,
+      );
     } catch (e) {
-      debugPrint('fetchCategories error: $e');
-      _setLoading('categoriesLoading', false);
+      state = state.copyWith(categoriesLoading: false, error: e.toString());
     }
   }
 
   // ── Fetch sections for a category ─────────────────────────────────────────
-  // ✅ Accepts optional categoryId — hits the category-specific endpoint when
-  //    provided, otherwise falls back to the default "For You" endpoint.
 
   Future<void> fetchSectionsOfCategory({String? categoryId}) async {
+    // Clear sections immediately so UI shows loader
+    state = state.copyWith(sectionsLoading: true, sections: const [], error: null);
     try {
-      // Clear old sections immediately so the UI shows a loader
-      state = {
-        ...state,
-        'sectionsLoading': true,
-        'isLoading': true,
-        'sectionsData': [],
-      };
+      final url = (categoryId != null && categoryId.isNotEmpty)
+          ? ApiEndpoints.sectionsForCategory(categoryId)
+          : ApiEndpoints.sectionsForCategory('For You');
 
-      final token = await StorageService.getAccessToken();
-
-      final String url = (categoryId != null && categoryId.isNotEmpty)
-          ? '${ServerApi.productClientService}/api/v1/sections/$categoryId'
-          : ServerApi.GetSectionOfCategory; // /api/v1/sections/For You
-
-      debugPrint('📡 fetchSectionsOfCategory → $url');
-
-      final res = await http.get(Uri.parse(url), headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      });
-
-      final body = json.decode(res.body);
-      debugPrint('fetchSections status=${res.statusCode} success=${body['success']}');
-
-      if (res.statusCode == 200 && body['success'] == true) {
-        final sections = List<Map<String, dynamic>>.from(body['data'] ?? []);
-        state = {
-          ...state,
-          'sectionsLoading': false,
-          'isLoading': (state['categoriesLoading'] ?? false) || (state['brandsLoading'] ?? false),
-          'success': true,
-          'sectionsData': sections,
-        };
-        debugPrint('✅ sections fetched: ${sections.length}');
-      } else {
-        state = {
-          ...state,
-          'sectionsLoading': false,
-          'isLoading': (state['categoriesLoading'] ?? false) || (state['brandsLoading'] ?? false),
-          'success': false,
-          'sectionsData': [],
-          'message': body['message'] ?? 'Failed to load sections',
-        };
-      }
+      final res = await _client.get(url);
+      final body = res.data as Map<String, dynamic>;
+      final raw = (body['data'] as List<dynamic>?) ?? const [];
+      state = state.copyWith(
+        sectionsLoading: false,
+        sections: raw.cast<Map<String, dynamic>>(),
+      );
+    } on DioException catch (e) {
+      state = state.copyWith(
+        sectionsLoading: false,
+        sections: const [],
+        error: AppException.fromDioError(e).message,
+      );
     } catch (e) {
-      debugPrint('fetchSections error: $e');
-      state = {
-        ...state,
-        'sectionsLoading': false,
-        'isLoading': (state['categoriesLoading'] ?? false) || (state['brandsLoading'] ?? false),
-        'success': false,
-        'sectionsData': [],
-        'message': e.toString(),
-      };
+      state = state.copyWith(
+        sectionsLoading: false,
+        sections: const [],
+        error: e.toString(),
+      );
     }
   }
 
   // ── Fetch brands for a category ───────────────────────────────────────────
 
   Future<void> fetchBrands(String categoryId) async {
+    state = state.copyWith(brandsLoading: true, brands: const [], error: null);
     try {
-      debugPrint('📡 fetchBrands → categoryId=$categoryId');
-      // Clear old brands immediately
-      state = {
-        ...state,
-        'brandsLoading': true,
-        'isLoading': true,
-        'brands': [],
-      };
-
-      final token = await StorageService.getAccessToken();
-      final res = await http.get(
-        Uri.parse('${ServerApi.getBrands}/$categoryId'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
+      final res = await _client.get(
+        ApiEndpoints.brandsForCategory(categoryId),
       );
+      final body = res.data;
+      List<Map<String, dynamic>> brands = const [];
 
-      final body = json.decode(res.body);
-
-      List<Map<String, dynamic>> brands = [];
       if (body is List) {
-        brands = List<Map<String, dynamic>>.from(body);
+        brands = body.cast<Map<String, dynamic>>();
       } else if (body is Map<String, dynamic>) {
-        if (body['data'] is List) {
-          brands = List<Map<String, dynamic>>.from(body['data']);
-        } else if (body['success'] == true) {
-          brands = [body];
+        final data = body['data'];
+        if (data is List) {
+          brands = data.cast<Map<String, dynamic>>();
         }
       }
 
-      state = {
-        ...state,
-        'brandsLoading': false,
-        'isLoading': (state['categoriesLoading'] ?? false) || (state['sectionsLoading'] ?? false),
-        'brands': brands,
-      };
-      debugPrint('✅ brands fetched: ${brands.length}');
+      state = state.copyWith(brandsLoading: false, brands: brands);
+    } on DioException catch (e) {
+      state = state.copyWith(
+        brandsLoading: false,
+        brands: const [],
+        error: AppException.fromDioError(e).message,
+      );
     } catch (e) {
-      debugPrint('fetchBrands error: $e');
-      state = {
-        ...state,
-        'brandsLoading': false,
-        'isLoading': (state['categoriesLoading'] ?? false) || (state['sectionsLoading'] ?? false),
-        'brands': [],
-        'message': e.toString(),
-      };
+      state = state.copyWith(
+        brandsLoading: false,
+        brands: const [],
+        error: e.toString(),
+      );
     }
   }
 }
 
-final categorySectionsProvider =
-    StateNotifierProvider<CategorySectionsNotifier, Map<String, dynamic>>(
+// ── Provider ──────────────────────────────────────────────────────────────────
+
+final categorySectionsProvider = StateNotifierProvider<
+    CategorySectionsNotifier, CategorySectionsState>(
   (ref) => CategorySectionsNotifier(),
 );

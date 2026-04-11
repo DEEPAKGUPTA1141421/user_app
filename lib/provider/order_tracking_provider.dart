@@ -1,8 +1,7 @@
-import 'dart:convert';
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:http/http.dart' as http;
-import '../utils/StorageService.dart';
-import '../constant/ServerApi.dart';
+import '../core/api/api_client.dart';
+import '../core/api/api_endpoints.dart';
 
 class TrackingStep {
   final String title;
@@ -64,49 +63,28 @@ class OrderTrackingState {
 class OrderTrackingNotifier extends StateNotifier<OrderTrackingState> {
   OrderTrackingNotifier() : super(const OrderTrackingState());
 
-  Future<Map<String, String>> _headers() async {
-    final token = await StorageService.getAccessToken();
-    return {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer $token',
-    };
-  }
+  Dio get _client => ApiClient.instance.orderClient;
 
   // ── Fetch booking + payment status ─────────────────────────────────────────
   //  GET /api/v1/booking/{bookingId}/tracking
   Future<void> loadTracking(String bookingId) async {
     state = state.copyWith(isLoading: true, error: null, bookingId: bookingId);
     try {
-      final headers = await _headers();
-      final res = await http.get(
-        Uri.parse('${ServerApi.OrderPaymentNotificationService}/api/v1/booking/$bookingId/tracking'),
-        headers: headers,
+      final res = await _client.get(ApiEndpoints.orderTracking(bookingId));
+      final body = res.data as Map<String, dynamic>;
+      final data = body['data'] as Map<String, dynamic>? ?? {};
+      final bookingStatus = data['status'] as String? ?? 'Initiated';
+      final paymentStatus = data['paymentStatus'] as String? ?? 'PENDING';
+
+      state = state.copyWith(
+        isLoading: false,
+        bookingDetails: data,
+        status: bookingStatus,
+        paymentStatus: paymentStatus,
+        steps: _buildSteps(bookingStatus, paymentStatus),
       );
-
-      if (res.statusCode == 200) {
-        final body = json.decode(res.body) as Map<String, dynamic>;
-        final data = body['data'] as Map<String, dynamic>? ?? {};
-        final bookingStatus = data['status'] as String? ?? 'Initiated';
-        final paymentStatus = data['paymentStatus'] as String? ?? 'PENDING';
-
-        state = state.copyWith(
-          isLoading: false,
-          bookingDetails: data,
-          status: bookingStatus,
-          paymentStatus: paymentStatus,
-          steps: _buildSteps(bookingStatus, paymentStatus),
-        );
-      } else {
-        // Fallback: if tracking endpoint doesn't exist yet, use local state
-        state = state.copyWith(
-          isLoading: false,
-          status: 'CONFIRMED',
-          paymentStatus: 'SUCCESS',
-          steps: _buildSteps('CONFIRMED', 'SUCCESS'),
-        );
-      }
     } catch (_) {
-      // Offline / endpoint not built yet — show confirmed state
+      // Endpoint not yet live or offline — fall back to CONFIRMED state
       state = state.copyWith(
         isLoading: false,
         status: 'CONFIRMED',

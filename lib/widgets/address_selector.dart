@@ -57,8 +57,7 @@ class _DeliveryAddressSelectorState
   @override
   Widget build(BuildContext context) {
     final riderState = ref.watch(riderPod);
-    final userDetail = riderState['user_detail'] ?? {};
-    final addressesData = (userDetail['addresses'] ?? []) as List;
+    final addressesData = riderState.addresses;
 
     if (addresses.isEmpty && addressesData.isNotEmpty) {
       addresses = addressesData

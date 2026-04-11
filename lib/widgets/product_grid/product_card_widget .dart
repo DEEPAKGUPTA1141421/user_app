@@ -22,7 +22,7 @@ final Color brandColor = const Color(0xFFFF5200); // Your brand color
 
     // Access cart state from Riverpod
     final cartState = ref.watch(cartProvider);
-    final cartItems = cartState['cartData']?['items'] ?? [];
+    final cartItems = cartState.items;
     final isInCart = cartItems.any((item) => item['productId'] == product.id);
 
     return GestureDetector(

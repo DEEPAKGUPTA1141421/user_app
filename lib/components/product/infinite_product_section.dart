@@ -48,9 +48,9 @@ class _ProductSectionState extends ConsumerState<InfiniteProductSection> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(InfiniteproductProvider);
-    final products = state['products'];
-    final isLoading = state['isLoading'];
-    final hasMore = state['hasMore'];
+    final products = state['products'] as List? ?? [];
+    final isLoading = state['isLoading'] as bool? ?? false;
+    final hasMore = state['hasMore'] as bool? ?? false;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

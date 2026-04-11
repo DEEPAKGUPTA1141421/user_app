@@ -1,47 +1,34 @@
-import 'package:flutter/material.dart';
+// Forwarding shim — all endpoints now live in core/api/api_endpoints.dart.
+// Keep this file so any widget/screen that still imports it compiles without changes.
+import '../core/api/api_endpoints.dart';
 
+@Deprecated('Import ApiEndpoints from core/api/api_endpoints.dart instead.')
 class ServerApi {
-  // Base URL for Product Client Service
-  static const String productClientService = "http://192.168.1.105:8081";
-  static const String OrderPaymentNotificationService = "http://192.168.1.105:8082";
-  // Example endpoints (you can add more here)
-  static const String login = "$productClientService/api/v1/auth/login";
-  static const String verifyOtp = "$productClientService/api/v1/auth/verify";
-  static const String GetUserDetails =
-      "$productClientService/api/v1/user";
-  static const String GetCategory =
-      '$productClientService/api/v1/product/category';
-  static const String GetCategoryByLevel =
-      '$productClientService/api/v1/product/categorylevelwise';
-  static const String GetSectionOfCategory =
-      '$productClientService/api/v1/sections/For You';
-      
-  static const String getProducts = "$productClientService/products";
-  static const String getProductDetail = "$productClientService/api/v1/product";
-  static const String searchProduct =
-      "$productClientService/api/v1/product/search";
-  static const String saveSearch = "$productClientService/api/v1/user/save";
-  static const String recentSearchOfUser =
-      "$productClientService/api/v1/user/last";
-  static const String TrendingSearch =
-      "$productClientService/api/v1/product/trending";
-  static const String getBrands =
-      "$productClientService/api/v1/brands/category";
-  static const String getCart = "$productClientService/api/v1/cart/get-cart";
-  static const String addItemToCart = "$productClientService/api/v1/cart/items";
-  static const String updateItemQtyToCart =
-      "$productClientService/api/v1/cart/items";
-  static const String removeItemFromCart =
-      "$productClientService/api/v1/cart/items";
-  static const String addAddress =
-      "$productClientService/api/v1/user/add-address";
-  static const String makeaddressdefault =
-      "$productClientService/api/v1/user/set-default";
-  static const String cartCoupon =
-      "$productClientService/api/v1/cart/coupons";
-  static const String ApplyCartCoupon =
-      "$productClientService/api/v1/cart/coupons";
-  static const String createPayment=     "$OrderPaymentNotificationService/api/v1/payment"; 
-  static const String checkoutBooking = "$OrderPaymentNotificationService/api/v1/booking/checkout";
-  static const String validatePayment = "$OrderPaymentNotificationService/api/v1/payment/validate-payment";
+  ServerApi._();
+
+  static const String productClientService = ApiEndpoints.productServiceBase;
+  static const String OrderPaymentNotificationService = ApiEndpoints.orderServiceBase;
+
+  static const String login       = ApiEndpoints.login;
+  static const String verifyOtp   = ApiEndpoints.verifyOtp;
+  static const String GetUserDetails   = ApiEndpoints.userDetails;
+  static const String GetCategoryByLevel = ApiEndpoints.categoryByLevel;
+  static String GetSectionOfCategory = ApiEndpoints.sectionsForCategory('For You');
+  static const String getProductDetail = ApiEndpoints.productDetail;
+  static const String searchProduct    = ApiEndpoints.searchProducts;
+  static const String saveSearch       = ApiEndpoints.saveSearchItem;
+  static const String recentSearchOfUser = ApiEndpoints.recentSearches;
+  static const String TrendingSearch   = ApiEndpoints.trendingSearch;
+  static const String getBrands        = '/api/v1/brands/category';
+  static const String getCart          = ApiEndpoints.cart;
+  static const String addItemToCart    = ApiEndpoints.cartItems;
+  static const String updateItemQtyToCart = ApiEndpoints.cartItems;
+  static const String removeItemFromCart  = ApiEndpoints.cartItems;
+  static const String addAddress       = ApiEndpoints.addAddress;
+  static const String makeaddressdefault = ApiEndpoints.setDefaultAddr;
+  static const String cartCoupon       = ApiEndpoints.cartCoupons;
+  static const String ApplyCartCoupon  = ApiEndpoints.cartCoupons;
+  static const String createPayment    = ApiEndpoints.createPayment;
+  static const String checkoutBooking  = ApiEndpoints.checkoutBooking;
+  static const String validatePayment  = ApiEndpoints.validatePayment;
 }

@@ -33,13 +33,12 @@ class _DefaultSectionsState extends ConsumerState<DefaultSections> {
     // 🔁 Fetch both recent + trending searches when the widget is mounted
     Future.microtask(() async {
       debugPrint("🔁 Fetching recent + trending searches...");
-      final recent = await ref.read(productPod.notifier).RecentSearchOfUser();
-      final trending = await ref.read(productPod.notifier).TrendingSearch();
+      final recent = await ref.read(productPod.notifier).getRecentSearches();
+      final trending = await ref.read(productPod.notifier).getTrendingSearches();
 
       setState(() {
-        recentSearches = List<Map<String, dynamic>>.from(recent['data'] ?? []);
-        trendingSearches =
-            List<Map<String, dynamic>>.from(trending['data'] ?? []);
+        recentSearches = List<Map<String, dynamic>>.from(recent);
+        trendingSearches = List<Map<String, dynamic>>.from(trending);
       });
 
       debugPrint(
@@ -50,7 +49,7 @@ class _DefaultSectionsState extends ConsumerState<DefaultSections> {
   @override
   Widget build(BuildContext context) {
     final productState = ref.watch(productPod);
-    final isLoading = productState['isLoading'] ?? false;
+    final isLoading = productState.isLoading;
 
     if (isLoading) {
       debugPrint("🟡 Showing shimmer skeleton...");

@@ -1,218 +1,147 @@
-import 'package:flutter/cupertino.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
-import '../constant/ServerApi.dart';
-import '../utils/StorageService.dart';
+import '../core/api/api_client.dart';
+import '../core/api/api_endpoints.dart';
+import '../core/errors/app_exception.dart';
 
-class ProductNotifier extends StateNotifier<Map<String, dynamic>> {
-  ProductNotifier()
-      : super({
-          'isLoading': false,
-          'success': false,
-          'message': '',
-          'products': [],
-          'product_detail': {},
-          'brands': [],
-          'Infinite_Scroll_Products': [],
-          'products_Grid': [],
-        });
+// ── Typed State ───────────────────────────────────────────────────────────────
 
-  bool get isLoading => state['isLoading'] ?? false;
+class ProductState {
+  final bool isLoading;
+  final String? error;
+  final List<dynamic> products;
+  final List<dynamic> brands;
+  final Map<String, dynamic> productDetail;
 
-  /// ✅ Fetch product detail
-  Future<Map<String, dynamic>> fetchProductDetail(String productId) async {
-    state = {...state, 'isLoading': true};
+  const ProductState({
+    this.isLoading = false,
+    this.error,
+    this.products = const [],
+    this.brands   = const [],
+    this.productDetail = const {},
+  });
 
-    final token = await StorageService.getAccessToken();
-
-    final res = await http.get(
-      Uri.parse("${ServerApi.getProductDetail}/$productId"),
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer $token",
-      },
+  ProductState copyWith({
+    bool? isLoading,
+    String? error,
+    List<dynamic>? products,
+    List<dynamic>? brands,
+    Map<String, dynamic>? productDetail,
+  }) {
+    return ProductState(
+      isLoading: isLoading ?? this.isLoading,
+      error: error,
+      products: products ?? this.products,
+      brands: brands ?? this.brands,
+      productDetail: productDetail ?? this.productDetail,
     );
-
-    final Map<String, dynamic> jsonBody = jsonDecode(res.body);
-
-    state = {
-      ...state,
-      'isLoading': false,
-      'success': jsonBody['success'] ?? false,
-      'message': jsonBody['message'] ?? '',
-      'product_detail': jsonBody['data'] ?? {},
-    };
-
-    return jsonBody;
-  }
-
-  /// ✅ Fetch all products
-  Future<Map<String, dynamic>> fetchProducts() async {
-    state = {...state, 'isLoading': true};
-
-    final res = await http.get(
-      Uri.parse(ServerApi.getProducts),
-      headers: {"Content-Type": "application/json"},
-    );
-
-    final Map<String, dynamic> jsonBody = jsonDecode(res.body);
-
-    state = {
-      ...state,
-      'isLoading': false,
-      'success': jsonBody['success'] ?? false,
-      'message': jsonBody['message'] ?? '',
-      'products': jsonBody['data'] ?? [],
-    };
-
-    return jsonBody;
-  }
-  // fetch
-Future<Map<String, dynamic>> fetchGridProducts() async {
-    state = {...state, 'isLoading': true};
-
-    final res = await http.get(
-      Uri.parse(ServerApi.getProducts),
-      headers: {"Content-Type": "application/json"},
-    );
-
-    final Map<String, dynamic> jsonBody = jsonDecode(res.body);
-
-    state = {
-      ...state,
-      'isLoading': false,
-      'success': jsonBody['success'] ?? false,
-      'message': jsonBody['message'] ?? '',
-      'products': jsonBody['data'] ?? [],
-    };
-
-    return jsonBody;
-  }
-  /// ✅ Search product by keyword
-  Future<Map<String, dynamic>> searchProduct(String query) async {
-    state = {...state, 'isLoading': true};
-
-    final res = await http.get(
-      Uri.parse("${ServerApi.searchProduct}?keyword=$query"),
-      headers: {"Content-Type": "application/json"},
-    );
-
-    final Map<String, dynamic> jsonBody = jsonDecode(res.body);
-
-    // ✅ Extract correctly from nested "data"
-    final data = jsonBody['data'] ?? {};
-    final products = data['products'] ?? [];
-    final brands = data['brands'] ?? [];
-
-    state = {
-      ...state,
-      'isLoading': false,
-      'success': jsonBody['success'] ?? false,
-      'message': jsonBody['message'] ?? '',
-      'products': products,
-      'brands': brands,
-    };
-
-    print("✅ Data from search: ${jsonBody}");
-    print(
-        "✅ Brands count: ${brands.length}, Products count: ${products.length}");
-
-    return jsonBody;
-  }
-
-  Future<Map<String, dynamic>> saveSearch(
-      String itemId, String itemType, String title, String imageUrl,
-      {String? meta}) async {
-    state = {...state, 'isLoading': true};
-
-    final token = await StorageService.getAccessToken();
-
-    // Build the request body
-    final body = jsonEncode({
-      "itemId": itemId,
-      "itemType": itemType, // make sure it matches backend enum values
-      "title": title,
-      "imageUrl": imageUrl,
-      "meta": meta ?? "",
-    });
-
-    final res = await http.post(
-      Uri.parse(ServerApi.saveSearch),
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer $token",
-      },
-      body: body, // ✅ pass JSON body
-    );
-
-    final Map<String, dynamic> jsonBody = jsonDecode(res.body);
-
-    state = {
-      ...state,
-      'isLoading': false,
-      'success': jsonBody['success'] ?? false,
-      'message': jsonBody['message'] ?? '',
-    };
-
-    debugPrint("result of save search ${jsonBody}");
-    return jsonBody;
-  }
-
-  Future<Map<String, dynamic>> RecentSearchOfUser() async {
-    state = {...state, 'isLoading': true};
-
-    final token = await StorageService.getAccessToken();
-
-    final res = await http.get(
-      Uri.parse(ServerApi.recentSearchOfUser),
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer $token",
-      },
-    );
-
-    final Map<String, dynamic> jsonBody = jsonDecode(res.body);
-
-    state = {
-      ...state,
-      'isLoading': false,
-      'success': jsonBody['success'] ?? false,
-      'message': jsonBody['message'] ?? '',
-    };
-
-    print("result of Recent search ${jsonBody}");
-    return jsonBody;
-  }
-
-  Future<Map<String, dynamic>> TrendingSearch() async {
-    state = {...state, 'isLoading': true};
-
-    final token = await StorageService.getAccessToken();
-
-    final res = await http.get(
-      Uri.parse(ServerApi.TrendingSearch),
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer $token",
-      },
-    );
-
-    final Map<String, dynamic> jsonBody = jsonDecode(res.body);
-
-    state = {
-      ...state,
-      'isLoading': false,
-      'success': jsonBody['success'] ?? false,
-      'message': jsonBody['message'] ?? '',
-    };
-
-    print("result of TrendingSearch ${jsonBody}");
-    return jsonBody;
   }
 }
 
-/// ✅ Global provider
-final productPod = StateNotifierProvider<ProductNotifier, Map<String, dynamic>>(
+// ── Notifier ──────────────────────────────────────────────────────────────────
+
+class ProductNotifier extends StateNotifier<ProductState> {
+  ProductNotifier() : super(const ProductState());
+
+  Dio get _client => ApiClient.instance.productClient;
+
+  // ── Product detail ───────────────────────────────────────────────────────
+
+  Future<void> fetchProductDetail(String productId) async {
+    state = state.copyWith(isLoading: true, error: null);
+    try {
+      final res = await _client.get('${ApiEndpoints.productDetail}/$productId');
+      final data = (res.data as Map<String, dynamic>?)?['data']
+          as Map<String, dynamic>? ?? {};
+      state = state.copyWith(isLoading: false, productDetail: data);
+    } on DioException catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        error: AppException.fromDioError(e).message,
+      );
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: e.toString());
+    }
+  }
+
+  // ── Search ────────────────────────────────────────────────────────────────
+
+  Future<void> searchProduct(String query) async {
+    state = state.copyWith(isLoading: true, error: null);
+    try {
+      final res = await _client.get(
+        ApiEndpoints.searchProducts,
+        queryParameters: {'keyword': query},
+      );
+      final body = res.data as Map<String, dynamic>;
+      final data = body['data'] as Map<String, dynamic>? ?? {};
+      state = state.copyWith(
+        isLoading: false,
+        products: (data['products'] as List<dynamic>?) ?? const [],
+        brands:   (data['brands']   as List<dynamic>?) ?? const [],
+      );
+    } on DioException catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        error: AppException.fromDioError(e).message,
+      );
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: e.toString());
+    }
+  }
+
+  // ── Save search history ───────────────────────────────────────────────────
+
+  Future<void> saveSearch({
+    required String itemId,
+    required String itemType,
+    required String title,
+    required String imageUrl,
+    String? meta,
+  }) async {
+    try {
+      await _client.post(
+        ApiEndpoints.saveSearchItem,
+        data: {
+          'itemId': itemId,
+          'itemType': itemType,
+          'title': title,
+          'imageUrl': imageUrl,
+          'meta': meta ?? '',
+        },
+      );
+    } catch (_) {
+      // Non-critical — silent failure is acceptable
+    }
+  }
+
+  // ── Recent searches ───────────────────────────────────────────────────────
+
+  Future<List<dynamic>> getRecentSearches() async {
+    try {
+      final res = await _client.get(ApiEndpoints.recentSearches);
+      final body = res.data as Map<String, dynamic>;
+      return (body['data'] as List<dynamic>?) ?? const [];
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  // ── Trending searches ─────────────────────────────────────────────────────
+
+  Future<List<dynamic>> getTrendingSearches() async {
+    try {
+      final res = await _client.get(ApiEndpoints.trendingSearch);
+      final body = res.data as Map<String, dynamic>;
+      return (body['data'] as List<dynamic>?) ?? const [];
+    } catch (_) {
+      return const [];
+    }
+  }
+}
+
+// ── Provider ──────────────────────────────────────────────────────────────────
+
+final productPod = StateNotifierProvider<ProductNotifier, ProductState>(
   (ref) => ProductNotifier(),
 );

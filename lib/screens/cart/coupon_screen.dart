@@ -20,20 +20,20 @@ class _CouponScreenState extends ConsumerState<CouponScreen> {
   void initState() {
     super.initState();
     // Fetch coupons when page opens to show available options
-    Future.microtask(() => ref.read(cartProvider.notifier).cartCoupon());
+    Future.microtask(() => ref.read(cartProvider.notifier).fetchCoupons());
   }
 
   Future<void> _onRefresh() async {
-    await ref.read(cartProvider.notifier).cartCoupon();
+    await ref.read(cartProvider.notifier).fetchCoupons();
   }
 
   void _handleApplyCoupon(String code) async {
     if (code.isEmpty) {
-      await ref.read(cartProvider.notifier).ApplyCartCoupon("");
+      await ref.read(cartProvider.notifier).applyCoupon("");
       if (mounted) {
         final cartState = ref.read(cartProvider);
-        final success = cartState['success'] as bool? ?? false;
-        final message = cartState['message'] as String? ?? 'Coupon removed from your cart!';
+        final success = cartState.error == null;
+        final message = cartState.error ?? 'Coupon removed from your cart!';
         
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -47,13 +47,13 @@ class _CouponScreenState extends ConsumerState<CouponScreen> {
     }
 
     // Fetch coupons from backend and apply
-    await ref.read(cartProvider.notifier).cartCoupon();
-    await ref.read(cartProvider.notifier).ApplyCartCoupon(code);
+    await ref.read(cartProvider.notifier).fetchCoupons();
+    await ref.read(cartProvider.notifier).applyCoupon(code);
     
     if (mounted) {
       final cartState = ref.read(cartProvider);
-      final success = cartState['success'] as bool? ?? false;
-      final message = cartState['message'] as String? ?? 'Coupon $code has been applied!';
+      final success = cartState.error == null;
+      final message = cartState.error ?? 'Coupon $code has been applied!';
       
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -68,11 +68,10 @@ class _CouponScreenState extends ConsumerState<CouponScreen> {
   @override
   Widget build(BuildContext context) {
     final cartState = ref.watch(cartProvider);
-    final isLoading = cartState['isLoading'] as bool? ?? false;
-    final bestCoupons = (cartState['bestCoupons'] ?? []) as List<dynamic>;
-    final moreCoupons = (cartState['moreCoupons'] ?? []) as List<dynamic>;
-    final cartData = (cartState['cartData'] as Map<String, dynamic>?) ?? {};
-    final currentappliedCouponOnCart = (cartData['cartCoupon'] as String?) ?? '';
+    final isLoading = cartState.isLoading;
+    final bestCoupons = cartState.bestCoupons;
+    final moreCoupons = cartState.moreCoupons;
+    final currentappliedCouponOnCart = cartState.appliedCoupon ?? '';
     
     final appliedCoupon = bestCoupons.isEmpty && moreCoupons.isEmpty
         ? <String, dynamic>{}

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'verify_otp_screen.dart';
-import '../../constant/ServerApi.dart';
 import '../../provider/rider_provider.dart';
 import '../../utils/app_colors.dart';
 
@@ -63,7 +62,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isLoading = ref.watch(riderPod)['isLoading'] ?? false;
+    final isLoading = ref.watch(riderPod).isLoading;
 
     return Scaffold(
       backgroundColor: AppColors.bg,

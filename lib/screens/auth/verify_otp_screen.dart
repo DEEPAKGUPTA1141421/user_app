@@ -172,7 +172,7 @@ class _VerifyOtpScreenState extends ConsumerState<VerifyOtpScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isLoading = ref.watch(riderPod)['isLoading'] ?? false;
+    final isLoading = ref.watch(riderPod).isLoading;
     final isOtpComplete = _otpValue.length == 6;
 
     return Scaffold(

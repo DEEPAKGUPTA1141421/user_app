@@ -1,13 +1,11 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:http/http.dart' as http;
+import '../core/api/api_client.dart';
+import '../core/api/api_endpoints.dart';
 import '../provider/product_provider.dart';
 import '../utils/app_colors.dart';
-import '../utils/StorageService.dart';
-import '../constant/ServerApi.dart';
 import '../widgets/product_search_results_page.dart';
 
 // ─── Suggestion Model ─────────────────────────────────────────────────────────
@@ -147,37 +145,25 @@ class _RealSearchPageState extends ConsumerState<RealSearchPage>
   // ── Fetch suggestions from API ────────────────────────────────────────────
   Future<void> _fetchSuggestions(String query) async {
     if (query.length < 2) {
-      setState(() {
-        _suggestions = [];
-        _isLoadingSuggestions = false;
-      });
+      setState(() => _suggestions = []);
       return;
     }
 
     setState(() => _isLoadingSuggestions = true);
 
     try {
-      final token = await StorageService.getAccessToken();
-      final uri = Uri.parse(
-          '${ServerApi.productClientService}/api/v1/product/search')
-          .replace(queryParameters: {'keyword': query});
-
-      final res = await http.get(uri, headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      });
-
-      if (res.statusCode == 200) {
-        final body = json.decode(res.body);
-        if (body['success'] == true) {
-          final data = body['data'] as List? ?? [];
-          setState(() {
-            _suggestions = data
-                .map((e) => SearchSuggestion.fromJson(
-                    Map<String, dynamic>.from(e)))
-                .toList();
-          });
-        }
+      final res = await ApiClient.instance.productClient.get(
+        ApiEndpoints.searchProducts,
+        queryParameters: {'keyword': query},
+      );
+      final body = res.data as Map<String, dynamic>;
+      if (body['success'] == true) {
+        final data = body['data'] as List? ?? [];
+        setState(() {
+          _suggestions = data
+              .map((e) => SearchSuggestion.fromJson(Map<String, dynamic>.from(e)))
+              .toList();
+        });
       }
     } catch (_) {
       // Silently fail — suggestions are non-critical
@@ -200,32 +186,21 @@ class _RealSearchPageState extends ConsumerState<RealSearchPage>
     _focusNode.unfocus();
 
     try {
-      final token = await StorageService.getAccessToken();
-      final uri = Uri.parse(
-          '${ServerApi.searchProduct}?keyword=${Uri.encodeComponent(query)}');
+      final res = await ApiClient.instance.productClient.get(
+        ApiEndpoints.searchProducts,
+        queryParameters: {'keyword': query},
+      );
+      final body = res.data as Map<String, dynamic>;
+      final data = body['data'] as Map<String, dynamic>? ?? {};
+      final products = (data['products'] ?? []) as List;
+      final brands = (data['brands'] ?? []) as List;
 
-      final res = await http.get(uri, headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      });
+      final List<SearchResultItem> items = [
+        ...brands.map((b) => SearchResultItem.fromBrand(Map<String, dynamic>.from(b))),
+        ...products.map((p) => SearchResultItem.fromProduct(Map<String, dynamic>.from(p))),
+      ];
 
-      if (res.statusCode == 200) {
-        final body = json.decode(res.body);
-        final data = body['data'] ?? {};
-        final products = (data['products'] ?? []) as List;
-        final brands = (data['brands'] ?? []) as List;
-
-        final List<SearchResultItem> items = [
-          ...brands.map((b) => SearchResultItem.fromBrand(
-              Map<String, dynamic>.from(b))),
-          ...products.map((p) => SearchResultItem.fromProduct(
-              Map<String, dynamic>.from(p))),
-        ];
-
-        setState(() => _results = items);
-      } else {
-        setState(() => _errorMessage = 'Search failed. Please try again.');
-      }
+      setState(() => _results = items);
     } catch (e) {
       setState(() => _errorMessage = 'Connection error. Please try again.');
     } finally {

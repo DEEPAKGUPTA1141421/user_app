@@ -1,12 +1,11 @@
 import 'dart:io';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
+import '../../core/api/api_client.dart';
+import '../../core/api/api_endpoints.dart';
 import '../../provider/rider_provider.dart';
-import '../../utils/StorageService.dart';
-import '../../constant/ServerApi.dart';
 import '../../utils/app_colors.dart';
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -54,21 +53,21 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage>
   }
 
   void _loadFromState() {
-  final ud = ref.read(riderPod)['user_detail'] ?? {};
+    final ud = ref.read(riderPod).user;
 
-  _firstNameCtrl.text = ud['firstName'] ?? '';
-  _lastNameCtrl.text  = ud['lastName'] ?? '';
-  _emailCtrl.text     = ud['email'] ?? '';
-  _gender             = ud['gender'];
+    _firstNameCtrl.text = ud['firstName'] as String? ?? '';
+    _lastNameCtrl.text  = ud['lastName']  as String? ?? '';
+    _emailCtrl.text     = ud['email']     as String? ?? '';
+    _gender             = ud['gender']    as String?;
 
-  if (ud['dateOfBirth'] != null) {
-    try {
-      _dob = DateTime.parse(ud['dateOfBirth']);
-    } catch (_) {}
+    if (ud['dateOfBirth'] != null) {
+      try {
+        _dob = DateTime.parse(ud['dateOfBirth'] as String);
+      } catch (_) {}
+    }
+
+    setState(() {});
   }
-
-  setState(() {});
-}
 
   @override
   void dispose() {
@@ -115,21 +114,16 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage>
       _avatarLoading = true;
     });
 
-    final token = await StorageService.getAccessToken();
-    final req   = http.MultipartRequest(
-        'PATCH',
-        Uri.parse('${ServerApi.productClientService}/api/v1/user/profile/avatar'));
-    req.headers['Authorization'] = 'Bearer $token';
-    req.files.add(await http.MultipartFile.fromPath('file', picked.path));
-
     try {
-      final res = await req.send();
-      if (res.statusCode == 200) {
-        _toast('Avatar updated!', success: true);
-        await ref.read(riderPod.notifier).getUserDetail();
-      } else {
-        _toast('Upload failed', success: false);
-      }
+      final formData = FormData.fromMap({
+        'file': await MultipartFile.fromFile(picked.path),
+      });
+      await ApiClient.instance.productClient.patch(
+        '/api/v1/user/profile/avatar',
+        data: formData,
+      );
+      _toast('Avatar updated!', success: true);
+      await ref.read(riderPod.notifier).getUserDetail();
     } catch (_) {
       _toast('Upload failed', success: false);
     } finally {
@@ -144,8 +138,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage>
       return;
     }
     setState(() => _saving = true);
-    final token = await StorageService.getAccessToken();
-    final body  = <String, dynamic>{
+    final body = <String, dynamic>{
       'firstName': _firstNameCtrl.text.trim(),
       'lastName':  _lastNameCtrl.text.trim(),
     };
@@ -153,22 +146,14 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage>
     if (_dob    != null) body['dateOfBirth'] = _dob!.toIso8601String();
 
     try {
-      final res = await http.put(
-        Uri.parse('${ServerApi.productClientService}/api/v1/user/profile'),
-        headers: {
-          'Content-Type':  'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: jsonEncode(body),
+      await ApiClient.instance.productClient.put(
+        '/api/v1/user/profile',
+        data: body,
       );
-      if (res.statusCode == 200) {
-        _toast('Profile saved!', success: true);
-        await ref.read(riderPod.notifier).getUserDetail();
-      } else {
-        _toast('Update failed', success: false);
-      }
+      _toast('Profile saved!', success: true);
+      await ref.read(riderPod.notifier).getUserDetail();
     } catch (_) {
-      _toast('Something went wrong', success: false);
+      _toast('Update failed', success: false);
     } finally {
       setState(() => _saving = false);
     }
@@ -182,22 +167,17 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage>
       return;
     }
     setState(() => _emailLoading = true);
-    final token = await StorageService.getAccessToken();
     try {
-      final res = await http.post(
-        Uri.parse('${ServerApi.productClientService}/api/v1/user/verify-email/request'),
-        headers: {
-          'Content-Type':  'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: jsonEncode({'email': email}),
+      final res = await ApiClient.instance.productClient.post(
+        '/api/v1/user/verify-email/request',
+        data: {'email': email},
       );
-      final b = jsonDecode(res.body);
+      final b = res.data as Map<String, dynamic>;
       if (b['success'] == true) {
         setState(() => _otpSent = true);
         _toast('OTP sent to $email', success: true);
       } else {
-        _toast(b['message'] ?? 'Failed', success: false);
+        _toast(b['message'] as String? ?? 'Failed', success: false);
       }
     } catch (_) {
       _toast('Something went wrong', success: false);
@@ -212,23 +192,18 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage>
       return;
     }
     setState(() => _emailLoading = true);
-    final token = await StorageService.getAccessToken();
     try {
-      final res = await http.post(
-        Uri.parse('${ServerApi.productClientService}/api/v1/user/verify-email/confirm'),
-        headers: {
-          'Content-Type':  'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: jsonEncode({'otp': _otpCtrl.text}),
+      final res = await ApiClient.instance.productClient.post(
+        '/api/v1/user/verify-email/confirm',
+        data: {'otp': _otpCtrl.text},
       );
-      final b = jsonDecode(res.body);
+      final b = res.data as Map<String, dynamic>;
       if (b['success'] == true) {
         setState(() { _otpSent = false; _otpCtrl.clear(); });
         _toast('Email updated!', success: true);
         await ref.read(riderPod.notifier).getUserDetail();
       } else {
-        _toast(b['message'] ?? 'Invalid OTP', success: false);
+        _toast(b['message'] as String? ?? 'Invalid OTP', success: false);
       }
     } catch (_) {
       _toast('Something went wrong', success: false);
@@ -272,12 +247,11 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage>
   @override
   Widget build(BuildContext context) {
     final state         = ref.watch(riderPod);
-    final ud            = state['user_detail'] ?? {};
-    final isLoading     = state['isLoading'] as bool? ?? false;
-    final name =  '${ud['firstName'] ?? ''} ${ud['lastName'] ?? ''}'.trim();
-    final phone         = ud['phone']     ?? '';
-    final avatarUrl     = ud['avatarUrl'] as String?;
-    final emailVerified = ud['emailVerified'] as bool? ?? false;
+    final isLoading     = state.isLoading;
+    final name          = state.fullName;
+    final phone         = state.phone;
+    final avatarUrl     = state.avatarUrl;
+    final emailVerified = state.user['emailVerified'] as bool? ?? false;
 
     return Scaffold(
       backgroundColor: AppColors.bg,

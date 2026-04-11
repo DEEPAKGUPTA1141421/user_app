@@ -30,16 +30,11 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final state = ref.watch(riderPod);
-    final ud = state['user_detail'] ?? {};
-    final isLoading = state['isLoading'] ?? false;
-
-    final firstName = ud['firstName'] ?? '';
-    final lastName = ud['lastName'] ?? '';
-    final name = "$firstName $lastName".trim();
-
-    final phone = ud['phone'] ?? '';
-    final avatarUrl = ud['avatarUrl'];
+    final state     = ref.watch(riderPod);
+    final isLoading = state.isLoading;
+    final name      = state.fullName;
+    final phone     = state.phone;
+    final avatarUrl = state.avatarUrl;
 
     return Scaffold(
       backgroundColor: AppColors.bg,

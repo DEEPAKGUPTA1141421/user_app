@@ -29,7 +29,7 @@ class _ProductDetailsPageState extends ConsumerState<ProductDetailsPage> {
   @override
   void initState() {
     super.initState();
-    print("Fetching product details for id: ${widget.productId}");
+    debugPrint("Fetching product details for id: ${widget.productId}");
     Future.microtask(() {
       ref.read(productPod.notifier).fetchProductDetail(widget.productId);
     });
@@ -48,7 +48,7 @@ class _ProductDetailsPageState extends ConsumerState<ProductDetailsPage> {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           ref
               .read(productPod.notifier)
-              .saveSearch(itemId, itemType, title, imageUrl);
+              .saveSearch(itemId: itemId, itemType: itemType, title: title, imageUrl: imageUrl);
         });
       }
       _argsLoaded = true;
@@ -58,11 +58,11 @@ class _ProductDetailsPageState extends ConsumerState<ProductDetailsPage> {
   @override
   Widget build(BuildContext context) {
     final productState = ref.watch(productPod);
-    final bool isLoading = productState['isLoading'] ?? false;
-    final productDetail = productState['product_detail'];
+    final bool isLoading = productState.isLoading;
+    final productDetail = productState.productDetail;
     const brandColor = Color(0xFFFF5200);
-    final cartState = ref.watch(cartProvider); // Access cart data
-    final cartItems = cartState['cartData']['items'] ?? [];
+    final cartState = ref.watch(cartProvider);
+    final cartItems = cartState.items;
 // ✅ Extract product images where is_image_attribute == true
     final imageAttributes =
         (productDetail['product_attributes'] as List?)?.where((attr) {
@@ -126,7 +126,7 @@ class _ProductDetailsPageState extends ConsumerState<ProductDetailsPage> {
       ),
       body: isLoading
           ? _buildShimmer()
-          : productDetail == null
+          : productDetail.isEmpty
               ? const Center(child: Text("No product found"))
               : SingleChildScrollView(
                   child: Column(

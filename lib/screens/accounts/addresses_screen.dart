@@ -59,9 +59,9 @@ class _AddressesScreenState extends ConsumerState<AddressesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final state = ref.watch(riderPod);
-    final isLoading = state['isLoading'] as bool? ?? false;
-    final addresses = (state['user_detail']?['addresses'] ?? []) as List<dynamic>;
+    final state     = ref.watch(riderPod);
+    final isLoading = state.isLoading;
+    final addresses = state.addresses;
 
     return Scaffold(
       backgroundColor: _bg,

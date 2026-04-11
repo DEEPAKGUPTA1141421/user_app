@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../core/widgets/cached_product_image.dart';
 import '../provider/cart_provider.dart';
 import '../utils/app_colors.dart';
 
@@ -26,9 +27,9 @@ class _CartScreenState extends ConsumerState<CartScreen> {
   @override
   Widget build(BuildContext context) {
     final cartState = ref.watch(cartProvider);
-    final isLoading = cartState['isLoading'] as bool? ?? false;
-    final cartData = cartState['cartData'] as Map<String, dynamic>? ?? {};
-    final items = (cartData['items'] as List<dynamic>?) ?? [];
+    final isLoading = cartState.isLoading;
+    final cartData  = cartState.cartData;
+    final items     = cartState.items;
 
     return Scaffold(
       backgroundColor: AppColors.bg,
@@ -221,18 +222,11 @@ class _CartScreenState extends ConsumerState<CartScreen> {
         children: [
           Row(
             children: [
-              // ✅ FIX: null-safe image widget
-              ClipRRect(
+              CachedProductImage(
+                imageUrl: imageUrl,
+                width: 70,
+                height: 70,
                 borderRadius: BorderRadius.circular(10),
-                child: imageUrl != null && imageUrl.isNotEmpty
-                    ? Image.network(
-                        imageUrl,
-                        width: 70,
-                        height: 70,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => _imagePlaceholder(),
-                      )
-                    : _imagePlaceholder(),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -305,18 +299,6 @@ class _CartScreenState extends ConsumerState<CartScreen> {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _imagePlaceholder() {
-    return Container(
-      width: 70,
-      height: 70,
-      decoration: BoxDecoration(
-        color: AppColors.surface2,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: const Icon(Icons.shopping_bag_outlined, color: AppColors.greyDark, size: 28),
     );
   }
 

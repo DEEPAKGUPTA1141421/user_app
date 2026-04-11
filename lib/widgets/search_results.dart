@@ -16,10 +16,10 @@ class SearchResults extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final productState = ref.watch(productPod);
-    final isLoading = productState['isLoading'] ?? false;
-    final products = productState['products'] ?? [];
-    final brands = productState['brands'] ?? [];
-    final message = productState['message'] ?? '';
+    final isLoading = productState.isLoading;
+    final products = productState.products;
+    final brands = productState.brands;
+    final message = productState.error ?? '';
 
     if (isLoading) {
       return const Center(

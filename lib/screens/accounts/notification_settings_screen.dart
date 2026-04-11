@@ -95,8 +95,8 @@ class _NotificationSettingsScreenState
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(notificationPrefsProvider);
-    final isLoading = state['isLoading'] as bool? ?? false;
-    final prefs = state['preferences'] as Map<String, dynamic>? ?? {};
+    final isLoading = state.isLoading;
+    final prefs = state.preferences;
 
     return Scaffold(
       backgroundColor: _bg,

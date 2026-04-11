@@ -90,10 +90,10 @@ class _WishlistScreenState extends ConsumerState<WishlistScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final state = ref.watch(wishlistProvider);
-    final isLoading = state['isLoading'] as bool? ?? false;
-    final items = (state['items'] ?? []) as List<dynamic>;
-    final priceDrops = (state['priceDrops'] ?? []) as List<dynamic>;
+    final state      = ref.watch(wishlistProvider);
+    final isLoading  = state.isLoading;
+    final items      = state.items;
+    final priceDrops = state.priceDrops;
 
     return Scaffold(
       backgroundColor: Colors.grey[100],

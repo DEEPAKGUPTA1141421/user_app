@@ -17,8 +17,8 @@ class CategorySidebar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(categorySectionsProvider);
-    final isLoading = state['isLoading'] ?? false;
-    final categories = state['categoryData'] as List<dynamic>? ?? [];
+    final isLoading = state.isLoading;
+    final categories = state.categories;
 
     return Container(
       width: 80,

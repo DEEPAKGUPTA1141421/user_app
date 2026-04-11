@@ -1,105 +1,90 @@
-import 'dart:convert';
+import 'package:dio/dio.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:http/http.dart' as http;
+import '../core/api/api_client.dart';
+import '../core/api/api_endpoints.dart';
+import '../core/errors/app_exception.dart';
 
-class BannerNotifier extends StateNotifier<Map<String, dynamic>> {
-  BannerNotifier()
-      : super({
-          'isLoading': false,
-          'success': false,
-          'message': '',
-          'banners': [],
-          'currentCategoryId': null,
-        });
+// ── Typed State ───────────────────────────────────────────────────────────────
+
+class BannerState {
+  final bool isLoading;
+  final String? error;
+  final List<dynamic> banners;
+  final String? currentCategoryId;
+
+  const BannerState({
+    this.isLoading = false,
+    this.error,
+    this.banners = const [],
+    this.currentCategoryId,
+  });
+
+  bool get isEmpty => banners.isEmpty;
+
+  BannerState copyWith({
+    bool? isLoading,
+    String? error,
+    List<dynamic>? banners,
+    String? currentCategoryId,
+  }) {
+    return BannerState(
+      isLoading: isLoading ?? this.isLoading,
+      error: error,
+      banners: banners ?? this.banners,
+      currentCategoryId: currentCategoryId ?? this.currentCategoryId,
+    );
+  }
+}
+
+// ── Notifier ──────────────────────────────────────────────────────────────────
+
+class BannerNotifier extends StateNotifier<BannerState> {
+  BannerNotifier() : super(const BannerState());
+
+  Dio get _client => ApiClient.instance.productClient;
 
   Future<void> fetchBannersByCategory(String categoryId) async {
-    try {
-      // Skip if same category already loaded
-      if (state['currentCategoryId'] == categoryId &&
-          (state['banners'] as List).isNotEmpty) {
-        return;
-      }
-
-      state = {
-        ...state,
-        'isLoading': true,
-        'message': '',
-        'banners': [],
-        'currentCategoryId': categoryId,
-      };
-
-      final uri = Uri.parse('http://localhost:8081/api/v1/banners').replace(
-        queryParameters: {'categoryId': categoryId},
-      );
-
-      final res = await http.get(
-          uri, headers: {'Content-Type': 'application/json'});
-
-      if (res.statusCode == 200) {
-        final body = json.decode(res.body);
-        if (body['success'] == true) {
-          state = {
-            ...state,
-            'isLoading': false,
-            'success': true,
-            'message': body['message'] ?? '',
-            'banners': body['data'] as List? ?? [],
-          };
-        } else {
-          state = {
-            ...state,
-            'isLoading': false,
-            'success': false,
-            'message': body['message'] ?? 'Failed to fetch banners',
-            'banners': [],
-          };
-        }
-      } else {
-        state = {
-          ...state,
-          'isLoading': false,
-          'success': false,
-          'message': 'Error: ${res.statusCode}',
-          'banners': [],
-        };
-      }
-    } catch (e) {
-      state = {
-        ...state,
-        'isLoading': false,
-        'success': false,
-        'message': 'Exception: ${e.toString()}',
-        'banners': [],
-      };
-    }
-  }
-
-  /// Clears banner state safely.
-  ///
-  /// If called during a build frame (which happens when category tabs are
-  /// tapped and didUpdateWidget fires), we defer the mutation to the next
-  /// post-frame so Riverpod never sees "provider modified while building".
-  void clearBanners() {
-    // Already clear — nothing to do.
-    if ((state['banners'] as List).isEmpty &&
-        state['currentCategoryId'] == null) {
+    // Skip if same category is already loaded
+    if (state.currentCategoryId == categoryId && state.banners.isNotEmpty) {
       return;
     }
 
+    state = BannerState(isLoading: true, currentCategoryId: categoryId);
+
+    try {
+      final res = await _client.get(
+        ApiEndpoints.banners,
+        queryParameters: {'categoryId': categoryId},
+      );
+      final body = res.data as Map<String, dynamic>;
+      state = state.copyWith(
+        isLoading: false,
+        banners: (body['data'] as List<dynamic>?) ?? const [],
+      );
+    } on DioException catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        banners: const [],
+        error: AppException.fromDioError(e).message,
+      );
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        banners: const [],
+        error: e.toString(),
+      );
+    }
+  }
+
+  /// Safely clear banner state, deferring if called mid-frame.
+  void clearBanners() {
+    if (state.banners.isEmpty && state.currentCategoryId == null) return;
+
     void doReset() {
-      // Check mounted-equivalent: StateNotifier disposes itself; if already
-      // disposed the assignment is a no-op, so this is safe.
-      state = {
-        ...state,
-        'isLoading': false,
-        'banners': [],
-        'currentCategoryId': null,
-      };
+      state = const BannerState();
     }
 
-    // If we are currently in the middle of a frame, defer to post-frame.
-    // SchedulerBinding.instance.schedulerPhase covers build, layout & paint.
     final phase = SchedulerBinding.instance.schedulerPhase;
     if (phase == SchedulerPhase.persistentCallbacks ||
         phase == SchedulerPhase.transientCallbacks) {
@@ -110,7 +95,7 @@ class BannerNotifier extends StateNotifier<Map<String, dynamic>> {
   }
 }
 
+// ── Provider ──────────────────────────────────────────────────────────────────
+
 final bannerProvider =
-    StateNotifierProvider<BannerNotifier, Map<String, dynamic>>(
-  (ref) => BannerNotifier(),
-);
+    StateNotifierProvider<BannerNotifier, BannerState>((ref) => BannerNotifier());

@@ -84,8 +84,8 @@ class _SavedCardsUpiScreenState extends ConsumerState<SavedCardsUpiScreen>
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(savedPaymentMethodsProvider);
-    final isLoading = state['isLoading'] as bool? ?? false;
-    final methods = (state['methods'] ?? []) as List<dynamic>;
+    final isLoading = state.isLoading;
+    final methods = state.methods;
 
     final cards = methods
         .where((m) => m['methodType'] == 'CARD')

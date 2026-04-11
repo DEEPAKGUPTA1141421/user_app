@@ -20,7 +20,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
     Future.microtask(() async {
       await ref
           .read(categorySectionsProvider.notifier)
-          .fetchCategories(true, "SUPER_CATEGORY");
+          .fetchCategories(includeChildItem: true, level: "SUPER_CATEGORY");
       await ref
           .read(categorySectionsProvider.notifier)
           .fetchBrands('5d70fc95-8a6b-4d04-95e9-9620269ab15e');
@@ -35,7 +35,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
   Future<void> _refresh() async {
     await ref
         .read(categorySectionsProvider.notifier)
-        .fetchCategories(true, "SUPER_CATEGORY");
+        .fetchCategories(includeChildItem: true, level: "SUPER_CATEGORY");
     await ref
         .read(categorySectionsProvider.notifier)
         .fetchBrands(activeCategory);
@@ -44,9 +44,9 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(categorySectionsProvider);
-    final bool isLoading = state['isLoading'] ?? false;
-    final List<dynamic> brandData = state['brands'] ?? [];
-    final List<dynamic> categories = state['categoryData'] ?? [];
+    final bool isLoading = state.isLoading;
+    final List<dynamic> brandData = state.brands;
+    final List<dynamic> categories = state.categories;
 
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth >= 600;

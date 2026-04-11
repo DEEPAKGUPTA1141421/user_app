@@ -1,63 +1,68 @@
-import 'dart:convert';
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:http/http.dart' as http;
-import '../constant/ServerApi.dart';
-import '../utils/StorageService.dart';
+import '../core/api/api_client.dart';
+import '../core/api/api_endpoints.dart';
+import '../core/errors/app_exception.dart';
+
+// ── Typed State ───────────────────────────────────────────────────────────────
+
+class SavedPaymentMethodsState {
+  final bool isLoading;
+  final String? error;
+  final List<dynamic> methods;
+
+  const SavedPaymentMethodsState({
+    this.isLoading = false,
+    this.error,
+    this.methods = const [],
+  });
+
+  bool get isEmpty => methods.isEmpty;
+
+  SavedPaymentMethodsState copyWith({
+    bool? isLoading,
+    String? error,
+    List<dynamic>? methods,
+  }) {
+    return SavedPaymentMethodsState(
+      isLoading: isLoading ?? this.isLoading,
+      error: error,
+      methods: methods ?? this.methods,
+    );
+  }
+}
+
+// ── Notifier ──────────────────────────────────────────────────────────────────
 
 class SavedPaymentMethodsNotifier
-    extends StateNotifier<Map<String, dynamic>> {
-  SavedPaymentMethodsNotifier()
-      : super({
-          'isLoading': false,
-          'success': false,
-          'message': '',
-          'methods': [],
-        });
+    extends StateNotifier<SavedPaymentMethodsState> {
+  SavedPaymentMethodsNotifier() : super(const SavedPaymentMethodsState());
 
-  Future<Map<String, String>> _headers() async {
-    final token = await StorageService.getAccessToken();
-    return {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer $token',
-    };
-  }
+  Dio get _client => ApiClient.instance.orderClient;
 
-  /// GET /api/v1/users/payment-methods
+  // ── Fetch all saved methods ────────────────────────────────────────────────
+
   Future<void> fetchAll() async {
+    state = state.copyWith(isLoading: true, error: null);
     try {
-      state = {...state, 'isLoading': true, 'message': ''};
-      final headers = await _headers();
-      final res = await http.get(
-        Uri.parse('${ServerApi.OrderPaymentNotificationService}/api/v1/users/payment-methods'),
-        headers: headers,
+      final res = await _client.get(ApiEndpoints.paymentMethods);
+      final body = res.data as Map<String, dynamic>;
+      state = state.copyWith(
+        isLoading: false,
+        methods: (body['data'] as List<dynamic>?) ?? const [],
       );
-      if (res.statusCode == 200) {
-        final body = json.decode(res.body);
-        state = {
-          ...state,
-          'isLoading': false,
-          'success': body['success'] ?? false,
-          'methods': body['data'] ?? [],
-        };
-      } else {
-        state = {
-          ...state,
-          'isLoading': false,
-          'success': false,
-          'message': 'Failed to load payment methods',
-        };
-      }
+    } on DioException catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        error: AppException.fromDioError(e).message,
+      );
     } catch (e) {
-      state = {
-        ...state,
-        'isLoading': false,
-        'success': false,
-        'message': e.toString(),
-      };
+      state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
 
-  /// POST /api/v1/users/payment-methods/card
+  // ── Save card ─────────────────────────────────────────────────────────────
+
   Future<Map<String, dynamic>> saveCard({
     required String gatewayToken,
     required String cardLast4,
@@ -69,14 +74,11 @@ class SavedPaymentMethodsNotifier
     String? nickname,
     bool makeDefault = false,
   }) async {
+    state = state.copyWith(isLoading: true, error: null);
     try {
-      state = {...state, 'isLoading': true};
-      final headers = await _headers();
-      final res = await http.post(
-        Uri.parse(
-            '${ServerApi.OrderPaymentNotificationService}/api/v1/users/payment-methods/card'),
-        headers: headers,
-        body: json.encode({
+      final res = await _client.post(
+        ApiEndpoints.saveCard,
+        data: {
           'gatewayToken': gatewayToken,
           'cardLast4': cardLast4,
           'cardBrand': cardBrand,
@@ -86,81 +88,81 @@ class SavedPaymentMethodsNotifier
           'gateway': gateway,
           if (nickname != null && nickname.isNotEmpty) 'nickname': nickname,
           'makeDefault': makeDefault,
-        }),
+        },
       );
-      final body = json.decode(res.body);
-      state = {...state, 'isLoading': false};
-      if (res.statusCode == 201 || res.statusCode == 200) {
-        await fetchAll();
-      }
-      return body;
+      state = state.copyWith(isLoading: false);
+      await fetchAll();
+      return res.data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      final msg = AppException.fromDioError(e).message;
+      state = state.copyWith(isLoading: false, error: msg);
+      return {'success': false, 'message': msg};
     } catch (e) {
-      state = {...state, 'isLoading': false};
+      state = state.copyWith(isLoading: false, error: e.toString());
       return {'success': false, 'message': e.toString()};
     }
   }
 
-  /// POST /api/v1/users/payment-methods/upi
+  // ── Save UPI ──────────────────────────────────────────────────────────────
+
   Future<Map<String, dynamic>> saveUpi({
     required String upiId,
     String? upiDisplayName,
     String? nickname,
     bool makeDefault = false,
   }) async {
+    state = state.copyWith(isLoading: true, error: null);
     try {
-      state = {...state, 'isLoading': true};
-      final headers = await _headers();
-      final res = await http.post(
-        Uri.parse(
-            '${ServerApi.OrderPaymentNotificationService}/api/v1/users/payment-methods/upi'),
-        headers: headers,
-        body: json.encode({
+      final res = await _client.post(
+        ApiEndpoints.saveUpi,
+        data: {
           'upiId': upiId,
           if (upiDisplayName != null && upiDisplayName.isNotEmpty)
             'upiDisplayName': upiDisplayName,
           if (nickname != null && nickname.isNotEmpty) 'nickname': nickname,
           'makeDefault': makeDefault,
-        }),
+        },
       );
-      final body = json.decode(res.body);
-      state = {...state, 'isLoading': false};
-      if (res.statusCode == 201 || res.statusCode == 200) {
-        await fetchAll();
-      }
-      return body;
+      state = state.copyWith(isLoading: false);
+      await fetchAll();
+      return res.data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      final msg = AppException.fromDioError(e).message;
+      state = state.copyWith(isLoading: false, error: msg);
+      return {'success': false, 'message': msg};
     } catch (e) {
-      state = {...state, 'isLoading': false};
+      state = state.copyWith(isLoading: false, error: e.toString());
       return {'success': false, 'message': e.toString()};
     }
   }
 
-  /// DELETE /api/v1/users/payment-methods/{id}
+  // ── Delete (optimistic) ───────────────────────────────────────────────────
+
   Future<Map<String, dynamic>> delete(String id) async {
+    final previous = state.methods;
+    state = state.copyWith(
+      methods: state.methods
+          .where((m) => m['id']?.toString() != id)
+          .toList(),
+    );
     try {
-      state = {...state, 'isLoading': true};
-      final headers = await _headers();
-      final res = await http.delete(
-        Uri.parse(
-            '${ServerApi.OrderPaymentNotificationService}/api/v1/users/payment-methods/$id'),
-        headers: headers,
+      final res = await _client.delete(
+        ApiEndpoints.deletePaymentMethod(id),
       );
-      final body = json.decode(res.body);
-      state = {...state, 'isLoading': false};
-      if (res.statusCode == 200) {
-        // Optimistic removal
-        final current = List<dynamic>.from(state['methods']);
-        current.removeWhere((m) => m['id']?.toString() == id);
-        state = {...state, 'methods': current};
-      }
-      return body;
+      return res.data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      state = state.copyWith(methods: previous); // revert
+      return {'success': false, 'message': AppException.fromDioError(e).message};
     } catch (e) {
-      state = {...state, 'isLoading': false};
+      state = state.copyWith(methods: previous);
       return {'success': false, 'message': e.toString()};
     }
   }
 }
 
-final savedPaymentMethodsProvider =
-    StateNotifierProvider<SavedPaymentMethodsNotifier, Map<String, dynamic>>(
+// ── Provider ──────────────────────────────────────────────────────────────────
+
+final savedPaymentMethodsProvider = StateNotifierProvider<
+    SavedPaymentMethodsNotifier, SavedPaymentMethodsState>(
   (ref) => SavedPaymentMethodsNotifier(),
 );

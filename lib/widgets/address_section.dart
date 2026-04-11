@@ -24,7 +24,7 @@ class _AddressSectionState extends ConsumerState<AddressSection> {
   @override
   Widget build(BuildContext context) {
     final rider = ref.watch(riderPod);
-    final isLoading = rider['isLoading'] ?? false;
+    final isLoading = rider.isLoading;
 
     // 🔹 Skeleton (dark theme)
     if (isLoading) {
@@ -58,8 +58,7 @@ class _AddressSectionState extends ConsumerState<AddressSection> {
       );
     }
 
-    final userDetail = rider['user_detail'] ?? {};
-    final addresses = (userDetail['addresses'] ?? []) as List;
+    final addresses = rider.addresses;
 
     final defaultAddress = addresses.isNotEmpty
         ? addresses.firstWhere(
