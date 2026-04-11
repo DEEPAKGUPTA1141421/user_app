@@ -1,65 +1,71 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../utils/StorageService.dart';
+import '../provider/category_sections.dart';
+import '../provider/banner_provider.dart';
+import '../provider/infinite_product_Provider.dart';
 import '../widgets/collapsible_header.dart';
 import '../widgets/Home/category_page.dart';
 import '../components/product/infinite_product_section.dart';
+import '../core/widgets/app_loader.dart';
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
-  // null = "For You" default; set to a real category id on tap
+class _HomeScreenState extends ConsumerState<HomeScreen> {
   String? selectedCategoryId;
 
-  @override
-  void initState() {
-    super.initState();
-    selectedCategoryId = null;
+  // Incrementing this key remounts CategoryPage + InfiniteProductSection,
+  // resetting their dedup guards and triggering a fresh API fetch.
+  int _refreshKey = 0;
+
+  Future<void> _onRefresh() async {
+    // 1. Reset provider state so children re-fetch from scratch
+    ref.invalidate(categorySectionsProvider);
+    ref.invalidate(bannerProvider);
+    ref.invalidate(InfiniteproductProvider);
+
+    // 2. Remount children by changing their ValueKey
+    setState(() {
+      _refreshKey++;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: RefreshIndicator(
-          color:  Colors.black,
-          onRefresh: () async {
-            // Force a full rebuild by toggling state
-            setState(() {
-              selectedCategoryId = selectedCategoryId; // triggers didUpdateWidget in CategoryPage
-            });
-          },
+        child: AppRefreshIndicator(
+          onRefresh: _onRefresh,
           child: ScrollConfiguration(
-            behavior:
-                ScrollConfiguration.of(context).copyWith(scrollbars: false),
+            behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
             child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // ── Collapsible header (address + search + category tabs) ──
                   Padding(
                     padding: const EdgeInsets.only(top: 8.0),
                     child: CollapsibleHeader(
                       onCategorySelected: (id) {
-                        // ✅ Update selected category → triggers didUpdateWidget
-                        //    in CategoryPage → re-fetches all APIs
                         setState(() => selectedCategoryId = id);
                       },
                     ),
                   ),
 
-                  // ── Dynamic sections for the selected category ──────────────
-                  // CategoryPage reacts to categoryId changes via didUpdateWidget
-                  CategoryPage(categoryId: selectedCategoryId),
+                  // ValueKey forces remount on refresh so _lastKey resets
+                  CategoryPage(
+                    key: ValueKey('category_$_refreshKey'),
+                    categoryId: selectedCategoryId,
+                  ),
 
-                  // ── Infinite product scroll (always shown below) ────────────
-                  const InfiniteProductSection(),
+                  InfiniteProductSection(
+                    key: ValueKey('infinite_$_refreshKey'),
+                  ),
                 ],
               ),
             ),

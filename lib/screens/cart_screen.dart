@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/widgets/cached_product_image.dart';
+import '../core/widgets/app_loader.dart';
 import '../provider/cart_provider.dart';
 import '../utils/app_colors.dart';
 
@@ -57,16 +58,13 @@ class _CartScreenState extends ConsumerState<CartScreen> {
         absorbing: isLoading,
         child: Stack(
           children: [
-            items.isEmpty && !isLoading
-                ? _buildEmptyCart(context)
-                : _buildCartList(context, cartData, items),
-            if (isLoading)
-              Container(
-                color: Colors.black.withOpacity(0.5),
-                child: const Center(
-                  child: CircularProgressIndicator(color: AppColors.white),
-                ),
-              ),
+            AppRefreshIndicator(
+              onRefresh: _refreshCart,
+              child: items.isEmpty && !isLoading
+                  ? _buildEmptyCart(context)
+                  : _buildCartList(context, cartData, items),
+            ),
+            if (isLoading) const AppLoadingOverlay(),
           ],
         ),
       ),
@@ -74,33 +72,41 @@ class _CartScreenState extends ConsumerState<CartScreen> {
   }
 
   Widget _buildEmptyCart(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(CupertinoIcons.cart, size: 70, color: AppColors.greyDark),
-            const SizedBox(height: 16),
-            const Text("Your cart is empty",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.white)),
-            const SizedBox(height: 6),
-            const Text("Add items to get started",
-                style: TextStyle(color: AppColors.grey)),
-            const SizedBox(height: 20),
-            ElevatedButton.icon(
-              onPressed: () => Navigator.pushNamed(context, "/home"),
-              icon: const Icon(CupertinoIcons.square_grid_2x2, color: Colors.black),
-              label: const Text("Browse Categories"),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.white,
-                foregroundColor: Colors.black,
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      children: [
+        SizedBox(
+          height: MediaQuery.of(context).size.height * 0.7,
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(CupertinoIcons.cart, size: 70, color: AppColors.greyDark),
+                  const SizedBox(height: 16),
+                  const Text("Your cart is empty",
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.white)),
+                  const SizedBox(height: 6),
+                  const Text("Add items to get started",
+                      style: TextStyle(color: AppColors.grey)),
+                  const SizedBox(height: 20),
+                  ElevatedButton.icon(
+                    onPressed: () => Navigator.pushNamed(context, "/home"),
+                    icon: const Icon(CupertinoIcons.square_grid_2x2, color: Colors.black),
+                    label: const Text("Browse Categories"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.white,
+                      foregroundColor: Colors.black,
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    ),
+                  ),
+                ],
               ),
             ),
-          ],
+          ),
         ),
-      ),
+      ],
     );
   }
 
@@ -114,13 +120,10 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     // ✅ FIX: API returns 'grandTotal' not 'grand_total'
     final grandTotal = (cartData['grandTotal'] as num?)?.toDouble() ?? totalAmount;
 
-    return RefreshIndicator(
-      onRefresh: _refreshCart,
-      color: AppColors.white,
-      child: Column(
-        children: [
-          Expanded(
-            child: ListView(
+    return Column(
+      children: [
+        Expanded(
+          child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
                 // ✅ FIX: cast each item properly
@@ -200,7 +203,6 @@ class _CartScreenState extends ConsumerState<CartScreen> {
             ),
           ),
         ],
-      ),
     );
   }
 

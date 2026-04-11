@@ -4,6 +4,7 @@ import 'package:user_app/screens/auth/login_screen.dart';
 import 'package:user_app/utils/StorageService.dart';
 import '../provider/rider_provider.dart';
 import '../utils/app_colors.dart';
+import '../core/widgets/app_loader.dart';
 class PeopleScreen extends ConsumerStatefulWidget {
   const PeopleScreen({super.key});
 
@@ -38,8 +39,12 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.bg,
-      body: CustomScrollView(
-        slivers: [
+      body: AppRefreshIndicator(
+        onRefresh: () async {
+          await ref.read(riderPod.notifier).getUserDetail();
+        },
+        child: CustomScrollView(
+          slivers: [
 
           // 🔹 Header (same style as EditProfile)
           SliverToBoxAdapter(
@@ -156,6 +161,7 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
 
           const SliverToBoxAdapter(child: SizedBox(height: 80)),
         ],
+        ),
       ),
     );
   }

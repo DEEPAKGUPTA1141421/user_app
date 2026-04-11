@@ -5,6 +5,7 @@ import './app_theme.dart';
 import './shop_card.dart';
 import './filter_drawer.dart';
 import './shop_details_page.dart';
+import '../../core/widgets/app_loader.dart';
 
 class ShopsPage extends StatefulWidget {
   const ShopsPage({super.key});
@@ -98,7 +99,16 @@ class _ShopsPageState extends State<ShopsPage> {
 
     return Scaffold(
       backgroundColor: kBackground,
-      body: CustomScrollView(
+      body: AppRefreshIndicator(
+        onRefresh: () async {
+          setState(() {
+            _searchController.clear();
+            _searchQuery = '';
+            _activeCategory = null;
+            _filters = const FilterOptions();
+          });
+        },
+        child: CustomScrollView(
         slivers: [
           // App Bar
           SliverAppBar(
@@ -298,6 +308,7 @@ class _ShopsPageState extends State<ShopsPage> {
               ),
             ),
         ],
+        ),
       ),
     );
   }
