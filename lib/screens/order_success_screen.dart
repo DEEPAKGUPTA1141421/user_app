@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../provider/rider_provider.dart';
 import '../provider/order_tracking_provider.dart';
 import '../provider/checkout_provider.dart';
-
+import '../utils/app_colors.dart';
 class OrderSuccessScreen extends ConsumerStatefulWidget {
   const OrderSuccessScreen({super.key});
 
@@ -77,7 +77,7 @@ class _OrderSuccessScreenState extends ConsumerState<OrderSuccessScreen>
     final bookingId = checkoutState.bookingId ?? '—';
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0F1E),
+      backgroundColor:  AppColors.bg,
       body: SafeArea(
         child: Center(
           child: Padding(

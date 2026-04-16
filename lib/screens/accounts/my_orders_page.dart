@@ -1,249 +1,389 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shimmer/shimmer.dart';
+import '../../provider/orders_provider.dart';
+import '../../utils/app_colors.dart';
 
-class MyOrdersPage extends StatefulWidget {
+class MyOrdersPage extends ConsumerStatefulWidget {
   const MyOrdersPage({super.key});
 
   @override
-  State<MyOrdersPage> createState() => _MyOrdersPageState();
+  ConsumerState<MyOrdersPage> createState() => _MyOrdersPageState();
 }
 
-class _MyOrdersPageState extends State<MyOrdersPage> {
-  final List<Map<String, dynamic>> orders = [
-    {
-      "id": "1",
-      "items": ["🌶️", "🥬"],
-      "name": "Chilli Green",
-      "date": "Jan 04",
-      "status": "delivered",
-      "count": 2
-    },
-    {
-      "id": "2",
-      "items": ["🍚"],
-      "name": "FORTUNE Everyday Basmati Ric...",
-      "date": "Jan 04",
-      "status": "delivered",
-      "count": 2
-    },
-    {
-      "id": "3",
-      "items": ["🧅"],
-      "name": "Onion",
-      "date": "Oct 20, 2024",
-      "status": "delivered",
-      "count": 1
-    },
-    {
-      "id": "4",
-      "items": ["🥔", "🍌"],
-      "name": "Minutes Basket",
-      "date": "Oct 14",
-      "status": "delivered",
-      "count": 2
-    },
-    {
-      "id": "5",
-      "items": ["🍟", "🍟"],
-      "name": "Minutes Basket",
-      "date": "Oct 06",
-      "status": "delivered",
-      "count": 2
-    },
-  ];
+class _MyOrdersPageState extends ConsumerState<MyOrdersPage> {
+  final ScrollController _scrollCtrl = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(
+        () => ref.read(ordersProvider.notifier).fetchOrders());
+    _scrollCtrl.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollCtrl.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollCtrl.position.pixels >=
+        _scrollCtrl.position.maxScrollExtent - 200) {
+      ref.read(ordersProvider.notifier).loadMore();
+    }
+  }
+
+  Future<void> _refresh() async {
+    await ref.read(ordersProvider.notifier).fetchOrders(refresh: true);
+  }
 
   @override
   Widget build(BuildContext context) {
-    final brandColor = Color(0xFFFF5200);
+    final state = ref.watch(ordersProvider);
 
     return Scaffold(
-      backgroundColor: Colors.grey.shade100,
+      backgroundColor: AppColors.bg,
       appBar: AppBar(
-        title: const Text("My Orders"),
-        backgroundColor: brandColor,
-        foregroundColor: Colors.white,
-        centerTitle: true,
+        backgroundColor: AppColors.surface,
         elevation: 0,
+        title: const Text('My Orders',
+            style: TextStyle(
+                color: AppColors.white,
+                fontSize: 17,
+                fontWeight: FontWeight.w600)),
+        iconTheme: const IconThemeData(color: AppColors.white),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(height: 1, color: AppColors.divider),
+        ),
       ),
-      body: ListView(
-        padding: EdgeInsets.zero,
-        children: [
-          // Travel Bookings Button
-          Container(
-            color: Colors.white,
-            padding: const EdgeInsets.all(12),
-            child: OutlinedButton(
-              style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: Colors.grey),
-                padding:
-                    const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-              ),
-              onPressed: () {
-                Navigator.pushNamed(context, "/travel-bookings");
-              },
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    "Travel bookings",
-                    style: TextStyle(fontWeight: FontWeight.w500),
-                  ),
-                  Text("↗", style: TextStyle(color: brandColor, fontSize: 18)),
-                ],
-              ),
+      body: RefreshIndicator(
+        onRefresh: _refresh,
+        color: AppColors.white,
+        backgroundColor: AppColors.surface,
+        child: _buildBody(state),
+      ),
+    );
+  }
+
+  Widget _buildBody(OrdersState state) {
+    if (state.isLoading && state.orders.isEmpty) {
+      return _buildSkeletonList();
+    }
+
+    if (state.error != null && state.orders.isEmpty) {
+      return _buildError(state.error!);
+    }
+
+    if (state.orders.isEmpty) {
+      return _buildEmpty();
+    }
+
+    return ListView.builder(
+      controller: _scrollCtrl,
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      itemCount: state.orders.length + (state.hasNext ? 1 : 0),
+      itemBuilder: (context, index) {
+        if (index == state.orders.length) {
+          return _buildLoadMoreIndicator(state.isLoadingMore);
+        }
+        return _OrderCard(order: state.orders[index]);
+      },
+    );
+  }
+
+  Widget _buildError(String message) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline, color: AppColors.grey, size: 48),
+            const SizedBox(height: 12),
+            Text(message,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: AppColors.grey, fontSize: 14)),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: _refresh,
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.white,
+                  foregroundColor: AppColors.bg),
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmpty() {
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      children: [
+        SizedBox(
+          height: MediaQuery.of(context).size.height * 0.65,
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.receipt_long_outlined,
+                    size: 64, color: AppColors.greyDark),
+                const SizedBox(height: 16),
+                const Text('No orders yet',
+                    style: TextStyle(
+                        color: AppColors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600)),
+                const SizedBox(height: 6),
+                const Text('Your placed orders will appear here',
+                    style: TextStyle(color: AppColors.grey, fontSize: 14)),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: () => Navigator.pushNamed(context, '/home'),
+                  style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.white,
+                      foregroundColor: AppColors.bg,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 28, vertical: 12)),
+                  child: const Text('Start Shopping'),
+                ),
+              ],
             ),
           ),
+        ),
+      ],
+    );
+  }
 
-          // Promotional Banner
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Colors.pinkAccent, Colors.pink],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
+  Widget _buildLoadMoreIndicator(bool isLoading) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 20),
+      child: Center(
+        child: isLoading
+            ? const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                    color: AppColors.white, strokeWidth: 2))
+            : const SizedBox.shrink(),
+      ),
+    );
+  }
+
+  Widget _buildSkeletonList() {
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      itemCount: 6,
+      itemBuilder: (_, __) => Shimmer.fromColors(
+        baseColor: AppColors.surface,
+        highlightColor: AppColors.surface2,
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          height: 100,
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Order Card ───────────────────────────────────────────────────────────────
+
+class _OrderCard extends StatelessWidget {
+  final Map<String, dynamic> order;
+  const _OrderCard({required this.order});
+
+  @override
+  Widget build(BuildContext context) {
+    final bookingId = order['bookingId'] as String? ?? '';
+    final statusLabel = order['statusLabel'] as String? ?? 'Order Placed';
+    final status = order['status'] as String? ?? '';
+    final itemCount = (order['itemCount'] as num?)?.toInt() ?? 0;
+    final total = order['totalAmountRupees'] as String? ?? '0.00';
+    final paymentMode = order['paymentMode'] as String? ?? '';
+    final createdAt = order['createdAt'] as String?;
+    final shortId = bookingId.length > 12
+        ? bookingId.substring(0, 12).toUpperCase()
+        : bookingId.toUpperCase();
+
+    return GestureDetector(
+      onTap: () => Navigator.pushNamed(context, '/order/$bookingId'),
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Top row: status badge + amount
+            Row(
+              children: [
+                _StatusBadge(status: status, label: statusLabel),
+                const Spacer(),
+                Text('₹$total',
+                    style: const TextStyle(
+                        color: AppColors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700)),
+              ],
             ),
-            padding: const EdgeInsets.all(16),
-            margin: const EdgeInsets.symmetric(vertical: 8),
-            child: Row(
+
+            const SizedBox(height: 10),
+
+            // Middle row: item count + payment mode
+            Row(
+              children: [
+                const Icon(Icons.shopping_bag_outlined,
+                    size: 14, color: AppColors.grey),
+                const SizedBox(width: 5),
+                Text(
+                  '$itemCount ${itemCount == 1 ? 'item' : 'items'}',
+                  style: const TextStyle(color: AppColors.grey, fontSize: 13),
+                ),
+                const SizedBox(width: 14),
+                const Icon(Icons.payment_outlined,
+                    size: 14, color: AppColors.grey),
+                const SizedBox(width: 5),
+                Text(
+                  _paymentModeLabel(paymentMode),
+                  style: const TextStyle(color: AppColors.grey, fontSize: 13),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 10),
+            Container(height: 1, color: AppColors.divider),
+            const SizedBox(height: 10),
+
+            // Bottom row: date + view details
+            Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "Extra ₹1,000 discount* on\nSamsung appliances",
-                        style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white),
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        "Flipkart Axis Bank Credit Card ›",
-                        style: TextStyle(fontSize: 13, color: Colors.white70),
-                      ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('ID: $shortId…',
+                        style: const TextStyle(
+                            color: AppColors.greyDark, fontSize: 11)),
+                    if (createdAt != null) ...[
+                      const SizedBox(height: 2),
+                      Text(_formatDate(createdAt),
+                          style: const TextStyle(
+                              color: AppColors.grey, fontSize: 12)),
                     ],
-                  ),
+                  ],
                 ),
-                const Text("📱", style: TextStyle(fontSize: 40)),
-              ],
-            ),
-          ),
-
-          // Search and Filter
-          Container(
-            color: Colors.white,
-            padding: const EdgeInsets.all(12),
-            margin: const EdgeInsets.only(bottom: 8),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    decoration: InputDecoration(
-                      hintText: "Search your order here",
-                      prefixIcon: const Icon(Icons.search),
-                      filled: true,
-                      fillColor: Colors.grey.shade100,
-                      border: OutlineInputBorder(
-                        borderSide: BorderSide.none,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(vertical: 0),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                OutlinedButton(
-                  style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.all(12),
-                      side: const BorderSide(color: Colors.grey)),
-                  onPressed: () {},
-                  child: const Icon(Icons.filter_list, color: Colors.black),
+                Row(
+                  children: const [
+                    Text('View Details',
+                        style: TextStyle(
+                            color: AppColors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500)),
+                    SizedBox(width: 4),
+                    Icon(Icons.arrow_forward_ios,
+                        size: 12, color: AppColors.white),
+                  ],
                 ),
               ],
             ),
-          ),
+          ],
+        ),
+      ),
+    );
+  }
 
-          // Orders List
+  String _paymentModeLabel(String mode) {
+    switch (mode) {
+      case 'COD':
+        return 'Cash on Delivery';
+      case 'ONLINE':
+        return 'Paid Online';
+      case 'POINTS':
+        return 'Loyalty Points';
+      case 'MIXED':
+        return 'Split Payment';
+      case 'UNPAID':
+        return 'Payment Pending';
+      default:
+        return mode.isNotEmpty ? mode : '—';
+    }
+  }
+
+  String _formatDate(String isoDate) {
+    try {
+      final dt = DateTime.parse(isoDate).toLocal();
+      const months = [
+        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      ];
+      return '${dt.day} ${months[dt.month - 1]} ${dt.year}';
+    } catch (_) {
+      return isoDate;
+    }
+  }
+}
+
+// ─── Status Badge ─────────────────────────────────────────────────────────────
+
+class _StatusBadge extends StatelessWidget {
+  final String status;
+  final String label;
+  const _StatusBadge({required this.status, required this.label});
+
+  Color get _color {
+    switch (status.toUpperCase()) {
+      case 'CONFIRMED':
+        return Colors.greenAccent;
+      case 'INITIATED':
+        return Colors.amber;
+      case 'CANCELLED':
+      case 'FAILED':
+        return Colors.redAccent;
+      case 'REVERSE':
+        return Colors.orange;
+      case 'REVERSE_FAILED':
+        return Colors.red.shade700;
+      default:
+        return Colors.blueAccent;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: _color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: _color.withOpacity(0.4)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
           Container(
-            color: Colors.white,
-            child: Column(
-              children: orders.map((order) {
-                return InkWell(
-                  onTap: () {
-                    Navigator.pushNamed(context, "/order/${order['id']}");
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: const BoxDecoration(
-                      border: Border(
-                        bottom: BorderSide(color: Colors.grey, width: 0.3),
-                      ),
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children:
-                              (order['items'] as List<String>).map((item) {
-                            return Container(
-                              width: 50,
-                              height: 50,
-                              margin: const EdgeInsets.only(right: 6),
-                              decoration: BoxDecoration(
-                                color: Colors.grey.shade100,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              alignment: Alignment.center,
-                              child: Text(item,
-                                  style: const TextStyle(fontSize: 22)),
-                            );
-                          }).toList(),
-                        ),
-                        const SizedBox(width: 10),
-
-                        // Order Details
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Container(
-                                    width: 8,
-                                    height: 8,
-                                    decoration: const BoxDecoration(
-                                        color: Colors.green,
-                                        shape: BoxShape.circle),
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    "Delivered on ${order['date']}",
-                                    style: const TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w500),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                "${order['name']} (${order['count']} item${order['count'] > 1 ? 's' : ''})",
-                                style: const TextStyle(
-                                    fontSize: 13, color: Colors.black54),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        const Icon(Icons.chevron_right, color: Colors.grey),
-                      ],
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(shape: BoxShape.circle, color: _color),
           ),
+          const SizedBox(width: 6),
+          Text(label,
+              style: TextStyle(
+                  color: _color,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600)),
         ],
       ),
     );

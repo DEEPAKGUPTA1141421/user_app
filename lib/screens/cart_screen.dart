@@ -94,7 +94,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                   ElevatedButton.icon(
                     onPressed: () => Navigator.pushNamed(context, "/home"),
                     icon: const Icon(CupertinoIcons.square_grid_2x2, color: Colors.black),
-                    label: const Text("Browse Categories"),
+                    label: const Text("Browse Catalog"),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.white,
                       foregroundColor: Colors.black,

@@ -138,6 +138,18 @@ class ProductNotifier extends StateNotifier<ProductState> {
       return const [];
     }
   }
+
+  // ── Popular products ──────────────────────────────────────────────────────
+
+  Future<List<dynamic>> getPopularProducts() async {
+    try {
+      final res = await _client.get(ApiEndpoints.popularProducts);
+      final body = res.data as Map<String, dynamic>;
+      return (body['data'] as List<dynamic>?) ?? const [];
+    } catch (_) {
+      return const [];
+    }
+  }
 }
 
 // ── Provider ──────────────────────────────────────────────────────────────────

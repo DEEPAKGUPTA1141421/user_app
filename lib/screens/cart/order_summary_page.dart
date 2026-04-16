@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../provider/cart_provider.dart';
+import '../../provider/checkout_provider.dart';
 import '../../widgets/address_selector.dart';
 import '../../utils/app_colors.dart';
 import 'coupon_and_offers_screen.dart';
@@ -25,6 +26,8 @@ class _OrderSummaryPageState
       builder: (_) => DeliveryAddressSelector(
         onAddressSelect: (address) {
           setState(() => selectedAddress = address);
+          // Store in provider so order-success screen can display it
+          ref.read(checkoutProvider.notifier).setAddress(address);
         },
         onClose: () => Navigator.pop(context),
       ),
@@ -321,13 +324,25 @@ class _OrderSummaryPageState
             ),
             const Spacer(),
             ElevatedButton(
-              onPressed: () => Navigator.pushNamed(
-                context,
-                '/payment',
-                arguments: {
-                  'grandTotal': total,
-                },
-              ),
+              onPressed: () {
+                if (selectedAddress == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Please select a delivery address'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                  return;
+                }
+                Navigator.pushNamed(
+                  context,
+                  '/payment',
+                  arguments: {
+                    'grandTotal': total,
+                    'deliveryAddressId': selectedAddress!['id'] as String,
+                  },
+                );
+              },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.white,
                 foregroundColor: Colors.black,

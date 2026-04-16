@@ -6,8 +6,8 @@ class ApiEndpoints {
   ApiEndpoints._();
 
   // ── Base URLs ──────────────────────────────────────────────────────────────
-  static const String productServiceBase = 'http://192.168.1.105:8081';
-  static const String orderServiceBase   = 'http://192.168.1.105:8082';
+  static const String productServiceBase = 'http://localhost:8081';
+  static const String orderServiceBase   = 'http://localhost:8082';
 
   // ── Auth ───────────────────────────────────────────────────────────────────
   static const String login     = '/api/v1/auth/login';
@@ -26,9 +26,13 @@ class ApiEndpoints {
   static const String productDetail   = '/api/v1/product';
   static const String searchProducts  = '/api/v1/product/search';
   static const String trendingSearch  = '/api/v1/product/trending';
+  static const String popularProducts = '/api/v1/product/popular';
 
   static String sectionsForCategory(String categoryId) =>
       '/api/v1/sections/$categoryId';
+
+  static String categoryFilters(String categoryId) =>
+      '/api/v1/categories/$categoryId/filters';
 
   // ── Brands ─────────────────────────────────────────────────────────────────
   static String brandsForCategory(String categoryId) =>
@@ -60,6 +64,15 @@ class ApiEndpoints {
   static const String checkoutBooking = '/api/v1/booking/checkout';
   static const String createPayment   = '/api/v1/payment';
   static const String validatePayment = '/api/v1/payment/validate-payment';
+  static const String codGenerateOtp  = '/api/v1/payment/cod/generate-otp';
+
+  // Order history list (GET /api/v1/booking?page=0&size=10)
+  static const String orders = '/api/v1/booking';
+  // Single order detail (GET /api/v1/booking/{bookingId})
+  static String orderDetail(String bookingId) => '/api/v1/booking/$bookingId';
+  // Receipt PDF download — 404 means not ready yet, retry after 2–3 s
+  static String receiptDownload(String bookingId) =>
+      '/api/v1/receipt/$bookingId/download';
 
   static String orderTracking(String bookingId) =>
       '/api/v1/booking/$bookingId/tracking';

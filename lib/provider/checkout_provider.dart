@@ -4,59 +4,80 @@ import '../core/api/api_client.dart';
 import '../core/api/api_endpoints.dart';
 import '../core/errors/app_exception.dart';
 
+// ─── State ────────────────────────────────────────────────────────────────────
+
 class CheckoutState {
   final bool isLoading;
   final String? error;
 
-  // Step 1 – Booking
-  final String? bookingId;
+  // Step 1 – Booking (one entry per shop)
+  final List<Map<String, dynamic>> bookings;
+  final String? expiresAt;
+  final String? couponApplied;
 
-  // Step 2 – Payment creation (PhonePe token)
+  // Step 2 – Payment results
+  final List<String> transactionIds; // one per booking (used for COD OTP)
   final String? paymentId;
-  final String? phonePeToken;   // SDK token to launch PhonePe sheet
-  final String? phonePeOrderId; // PhonePe's orderId (merchantOrderId)
-  final String? transactionId;  // Our internal transaction / gateway txn number
+  final String? paymentMode; // CASH_ON_DELIVERY | ONLINE
 
-  // Step 3 – Verification result
+  // Step 3 – Verification
   final bool paymentVerified;
-  final String? paymentStatus; // COMPLETED | FAILED | PENDING
+  final String? paymentStatus;
 
-  // Delivery address used at checkout
+  // Delivery address (stored for order-success screen)
   final Map<String, dynamic>? selectedAddress;
 
   const CheckoutState({
     this.isLoading = false,
     this.error,
-    this.bookingId,
+    this.bookings = const [],
+    this.expiresAt,
+    this.couponApplied,
+    this.transactionIds = const [],
     this.paymentId,
-    this.phonePeToken,
-    this.phonePeOrderId,
-    this.transactionId,
+    this.paymentMode,
     this.paymentVerified = false,
     this.paymentStatus,
     this.selectedAddress,
   });
 
+  /// First bookingId — used by order-success and tracking screens.
+  String? get bookingId =>
+      bookings.isNotEmpty ? bookings.first['bookingId'] as String? : null;
+
+  /// First transactionId — convenient for single-shop COD OTP.
+  String? get transactionId =>
+      transactionIds.isNotEmpty ? transactionIds.first : null;
+
+  /// Grand total across all bookings (rupees).
+  double get totalAmountRupees => bookings.fold(
+        0.0,
+        (sum, b) =>
+            sum + ((b['totalAmountRupees'] as num?)?.toDouble() ?? 0.0),
+      );
+
   CheckoutState copyWith({
     bool? isLoading,
     String? error,
-    String? bookingId,
+    List<Map<String, dynamic>>? bookings,
+    String? expiresAt,
+    String? couponApplied,
+    List<String>? transactionIds,
     String? paymentId,
-    String? phonePeToken,
-    String? phonePeOrderId,
-    String? transactionId,
+    String? paymentMode,
     bool? paymentVerified,
     String? paymentStatus,
     Map<String, dynamic>? selectedAddress,
   }) {
     return CheckoutState(
       isLoading: isLoading ?? this.isLoading,
-      error: error,                          // always overwrite (null clears it)
-      bookingId: bookingId ?? this.bookingId,
+      error: error, // intentionally always overwritten (null clears it)
+      bookings: bookings ?? this.bookings,
+      expiresAt: expiresAt ?? this.expiresAt,
+      couponApplied: couponApplied ?? this.couponApplied,
+      transactionIds: transactionIds ?? this.transactionIds,
       paymentId: paymentId ?? this.paymentId,
-      phonePeToken: phonePeToken ?? this.phonePeToken,
-      phonePeOrderId: phonePeOrderId ?? this.phonePeOrderId,
-      transactionId: transactionId ?? this.transactionId,
+      paymentMode: paymentMode ?? this.paymentMode,
       paymentVerified: paymentVerified ?? this.paymentVerified,
       paymentStatus: paymentStatus ?? this.paymentStatus,
       selectedAddress: selectedAddress ?? this.selectedAddress,
@@ -65,6 +86,7 @@ class CheckoutState {
 }
 
 // ─── Notifier ─────────────────────────────────────────────────────────────────
+
 class CheckoutNotifier extends StateNotifier<CheckoutState> {
   CheckoutNotifier() : super(const CheckoutState());
 
@@ -75,30 +97,36 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
 
   void reset() => state = const CheckoutState();
 
-  // ─── Step 1: Create Booking from Cart ─────────────────────────────────────
-  Future<bool> createBooking() async {
-    state = state.copyWith(isLoading: true, error: null);
+  // ─── Step 1: Create Bookings from Cart ────────────────────────────────────
+  //
+  // GET /api/v1/booking/checkout?deliveryAddress=<UUID>
+  // Response: { data: { totalBookings, couponApplied, expiresAt, bookings: [...] } }
+  Future<bool> createBooking({required String deliveryAddress}) async {
+    state = state.copyWith(isLoading: true, error: null, bookings: const []);
     try {
-      final res = await _client.get(ApiEndpoints.checkoutBooking);
-      final body = res.data as Map<String, dynamic>;
-      final data = body['data'];
+      final res = await _client.get(
+        ApiEndpoints.checkoutBooking,
+        queryParameters: {'deliveryAddress': deliveryAddress},
+      );
 
-      String bookingId;
-      if (data is List && data.isNotEmpty) {
-        bookingId = (data.first as Map<String, dynamic>)['id'] as String;
-      } else if (data is Map<String, dynamic>) {
-        bookingId = data['id'] as String;
-      } else {
-        state = state.copyWith(
-            isLoading: false, error: 'Unexpected booking response');
-        return false;
-      }
-      state = state.copyWith(isLoading: false, bookingId: bookingId);
+      final body = res.data as Map<String, dynamic>;
+      final data = body['data'] as Map<String, dynamic>;
+      final rawBookings = data['bookings'] as List<dynamic>;
+
+      final bookings = rawBookings
+          .map((b) => Map<String, dynamic>.from(b as Map))
+          .toList();
+
+      state = state.copyWith(
+        isLoading: false,
+        bookings: bookings,
+        expiresAt: data['expiresAt'] as String?,
+        couponApplied: data['couponApplied'] as String?,
+      );
       return true;
     } on DioException catch (e) {
       state = state.copyWith(
-          isLoading: false,
-          error: AppException.fromDioError(e).message);
+          isLoading: false, error: AppException.fromDioError(e).message);
       return false;
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
@@ -106,42 +134,70 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
     }
   }
 
-  // ─── Step 2: Create Payment (PhonePe) ─────────────────────────────────────
+  // ─── Step 2: Create Payment ───────────────────────────────────────────────
+  //
+  // POST /api/v1/payment  — called once per booking.
+  // gateway: 'cod'     → pgPayment:false, pgPaymentAmount:"0"
+  // gateway: 'phonepe' → pgPayment:true,  pgPaymentAmount:"<rupees>"
   Future<bool> createPayment({
     required String userId,
-    required String amount, // rupees as string e.g. "2187.84"
+    required String gateway, // 'cod' | 'phonepe'
   }) async {
-    if (state.bookingId == null) {
-      state = state.copyWith(error: 'No booking found');
+    if (state.bookings.isEmpty) {
+      state = state.copyWith(error: 'No bookings found. Please try again.');
       return false;
     }
     state = state.copyWith(isLoading: true, error: null);
-    try {
-      final idempotencyKey =
-          'PAY-${state.bookingId}-${DateTime.now().millisecondsSinceEpoch}';
 
-      final res = await _client.post(
-        ApiEndpoints.createPayment,
-        data: {
-          'gateway': 'phonepe',
-          'bookingId': state.bookingId,
-          'userId': userId,
-          'idempotencyKey': idempotencyKey,
-          'pgPaymentAmount': amount,
-          'pgPayment': true,
-          'pointPayment': false,
-          'pointPaymentAmount': null,
-        },
+    final isCod = gateway == 'cod';
+    final txIds = <String>[];
+    String? firstPaymentId;
+
+    try {
+      for (final booking in state.bookings) {
+        final bookingId = booking['bookingId'] as String;
+        final amountRupees =
+            (booking['totalAmountRupees'] as num?)?.toStringAsFixed(2) ?? '0.00';
+        // Use first UUID segment only — full UUIDs exceed the 64-char limit.
+        // Format matches the API example: "d38a9231-f3a1c2d4-1713200000000"
+        final shortUser    = userId.split('-').first;
+        final shortBooking = bookingId.split('-').first;
+        final idempotencyKey =
+            '$shortUser-$shortBooking-${DateTime.now().millisecondsSinceEpoch}';
+
+        final res = await _client.post(
+          ApiEndpoints.createPayment,
+          data: {
+            'gateway': gateway,
+            'bookingId': bookingId,
+            'userId': userId,
+            'idempotencyKey': idempotencyKey,
+            'pgPaymentAmount': isCod ? '0' : amountRupees,
+            'pgPayment': !isCod,
+            'pointPayment': false,
+            'pointPaymentAmount': null,
+          },
+        );
+
+        final body = res.data as Map<String, dynamic>;
+        final data = body['data'] as Map<String, dynamic>?;
+        if (data != null) {
+          final txId = data['transactionId']?.toString();
+          if (txId != null && txId.isNotEmpty) txIds.add(txId);
+          firstPaymentId ??= data['paymentId']?.toString();
+        }
+      }
+
+      state = state.copyWith(
+        isLoading: false,
+        transactionIds: txIds,
+        paymentId: firstPaymentId,
+        paymentMode: isCod ? 'CASH_ON_DELIVERY' : 'ONLINE',
       );
-      final body = res.data as Map<String, dynamic>;
-      final data = body['data'] as Map<String, dynamic>?;
-      final paymentId = data?['paymentId']?.toString();
-      state = state.copyWith(isLoading: false, paymentId: paymentId);
       return true;
     } on DioException catch (e) {
       state = state.copyWith(
-          isLoading: false,
-          error: AppException.fromDioError(e).message);
+          isLoading: false, error: AppException.fromDioError(e).message);
       return false;
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
@@ -149,7 +205,7 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
     }
   }
 
-  // ─── Step 3: Validate / Verify Payment ────────────────────────────────────
+  // ─── Step 3: Validate / Verify Payment (PhonePe only) ────────────────────
   Future<bool> validatePayment() async {
     if (state.bookingId == null) return false;
     state = state.copyWith(isLoading: true, error: null);
@@ -174,12 +230,30 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
       return isSuccess;
     } on DioException catch (e) {
       state = state.copyWith(
-          isLoading: false,
-          error: AppException.fromDioError(e).message);
+          isLoading: false, error: AppException.fromDioError(e).message);
       return false;
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
       return false;
+    }
+  }
+
+  // ─── COD: Generate OTP ────────────────────────────────────────────────────
+  //
+  // POST /api/v1/payment/cod/generate-otp  { transactionId }
+  // Returns: { data: { otp, expiresInMinutes, transactionId } }
+  Future<Map<String, dynamic>> generateCodOtp(String transactionId) async {
+    try {
+      final res = await _client.post(
+        ApiEndpoints.codGenerateOtp,
+        data: {'transactionId': transactionId},
+      );
+      final body = res.data as Map<String, dynamic>;
+      return body['data'] as Map<String, dynamic>? ?? {};
+    } on DioException catch (e) {
+      return {'error': AppException.fromDioError(e).message};
+    } catch (e) {
+      return {'error': e.toString()};
     }
   }
 
@@ -193,6 +267,7 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
 }
 
 // ─── Provider ─────────────────────────────────────────────────────────────────
+
 final checkoutProvider =
     StateNotifierProvider<CheckoutNotifier, CheckoutState>(
   (ref) => CheckoutNotifier(),
