@@ -38,24 +38,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: AppRefreshIndicator(
-          onRefresh: _onRefresh,
-          child: ScrollConfiguration(
-            behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
-            child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8.0),
-                    child: CollapsibleHeader(
-                      onCategorySelected: (id) {
-                        setState(() => selectedCategoryId = id);
-                      },
-                    ),
-                  ),
+      body: AppRefreshIndicator(
+        onRefresh: _onRefresh,
+        child: ScrollConfiguration(
+          behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                CollapsibleHeader(
+                  onCategorySelected: (id) {
+                    setState(() => selectedCategoryId = id);
+                  },
+                ),
 
                   // ValueKey forces remount on refresh so _lastKey resets
                   CategoryPage(
@@ -67,7 +63,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     key: ValueKey('infinite_$_refreshKey'),
                   ),
                 ],
-              ),
             ),
           ),
         ),

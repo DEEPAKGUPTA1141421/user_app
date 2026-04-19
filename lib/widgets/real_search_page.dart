@@ -92,7 +92,9 @@ class SearchResultItem {
 
 // ─── Real Search Page ─────────────────────────────────────────────────────────
 class RealSearchPage extends ConsumerStatefulWidget {
-  const RealSearchPage({super.key});
+  final String? initialQuery;
+
+  const RealSearchPage({super.key, this.initialQuery});
 
   @override
   ConsumerState<RealSearchPage> createState() => _RealSearchPageState();
@@ -129,9 +131,18 @@ class _RealSearchPageState extends ConsumerState<RealSearchPage>
     _fadeAnim = CurvedAnimation(parent: _animCtrl, curve: Curves.easeOut);
     _animCtrl.forward();
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _focusNode.requestFocus();
-    });
+    final initial = widget.initialQuery;
+    if (initial != null && initial.isNotEmpty) {
+      _controller.text = initial;
+      _query = initial;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _performSearch(initial);
+      });
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _focusNode.requestFocus();
+      });
+    }
 
     _loadDefaultSections();
   }

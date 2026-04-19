@@ -445,38 +445,227 @@ class _BrandSection extends StatelessWidget {
 }
 
 // ─── BANNER Section ───────────────────────────────────────────────────────────
-class _BannerSection extends StatelessWidget {
+class _BannerSection extends StatefulWidget {
   final Section section;
   final void Function(String, Map<String, String>)? onNavigate;
   const _BannerSection({required this.section, this.onNavigate});
 
   @override
-  Widget build(BuildContext context) {
-    if (section.items.isEmpty) return const SizedBox.shrink();
-    final item = section.items.first;
-    final meta = item.meta;
-    final hasImage = meta.imageUrl != null && !meta.imageUrl!.contains('localimage');
+  State<_BannerSection> createState() => _BannerSectionState();
+}
 
-    return GestureDetector(
-      onTap: () => onNavigate?.call('/banner/${item.itemRefId ?? ''}', {}),
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        height: 150,
-        decoration: BoxDecoration(
-          color: meta.background,
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: [BoxShadow(color: meta.background.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4))],
-        ),
-        child: hasImage
-            ? ClipRRect(
-                borderRadius: BorderRadius.circular(14),
-                child: Image.network(meta.imageUrl!, fit: BoxFit.cover, width: double.infinity))
-            : Center(
-                child: Text(section.title,
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white))),
+class _BannerSectionState extends State<_BannerSection>
+    with SingleTickerProviderStateMixin {
+  late final PageController _pageCtrl;
+  late final AnimationController _progressCtrl;
+  int _current = 0;
+
+  // Time each banner stays visible before auto-advancing
+  static const Duration _holdDuration = Duration(seconds: 7);
+  static const Duration _pageDuration = Duration(milliseconds: 400);
+
+  List<SectionItem> get _items => widget.section.items;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageCtrl = PageController();
+    _progressCtrl = AnimationController(vsync: this, duration: _holdDuration);
+
+    if (_items.length > 1) {
+      _progressCtrl.addStatusListener((status) {
+        if (status == AnimationStatus.completed) _advance();
+      });
+      _progressCtrl.forward();
+    }
+  }
+
+  void _advance() {
+    if (!mounted || _items.length <= 1) return;
+    final next = (_current + 1) % _items.length;
+    _pageCtrl.animateToPage(next,
+        duration: _pageDuration, curve: Curves.easeInOut);
+  }
+
+  void _onPageChanged(int i) {
+    setState(() => _current = i);
+    // Restart the progress bar for the new page
+    _progressCtrl.forward(from: 0);
+  }
+
+  @override
+  void dispose() {
+    _progressCtrl.dispose();
+    _pageCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_items.isEmpty) return const SizedBox.shrink();
+
+    final screenWidth = MediaQuery.of(context).size.width;
+    final height = (screenWidth * 0.45).clamp(160.0, 210.0);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Column(
+        children: [
+          // ── Banner PageView (swipe to navigate) ───────────────────────────
+          SizedBox(
+            height: height,
+            child: PageView.builder(
+              controller: _pageCtrl,
+              itemCount: _items.length,
+              onPageChanged: _onPageChanged,
+              itemBuilder: (_, i) => _BannerCard(
+                item: _items[i],
+                onTap: () => widget.onNavigate
+                    ?.call('/banner/${_items[i].itemRefId ?? ''}', {}),
+              ),
+            ),
+          ),
+
+          // ── Progress indicators ───────────────────────────────────────────
+          if (_items.length > 1)
+            Padding(
+              padding: const EdgeInsets.only(top: 10, left: 14, right: 14),
+              child: Row(
+                children: List.generate(_items.length, (i) {
+                  final isActive = i == _current;
+                  return Expanded(
+                    child: Padding(
+                      padding: EdgeInsets.only(
+                          left: i == 0 ? 0 : 4,
+                          right: i == _items.length - 1 ? 0 : 4),
+                      child: _ProgressBar(
+                        isActive: isActive,
+                        progress: isActive ? _progressCtrl : null,
+                        isPast: i < _current,
+                      ),
+                    ),
+                  );
+                }),
+              ),
+            ),
+        ],
       ),
     );
   }
+}
+
+// ── Progress Bar indicator ────────────────────────────────────────────────────
+class _ProgressBar extends StatelessWidget {
+  final bool isActive;
+  final bool isPast;
+  final AnimationController? progress;
+
+  const _ProgressBar({
+    required this.isActive,
+    required this.isPast,
+    this.progress,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    const h = 3.5;
+    const radius = BorderRadius.all(Radius.circular(2));
+    const trackColor = Color(0xFFDDDDDD);
+    const fillColor = Color(0xFF1A1A1A);
+
+    // Past slide → fully filled
+    if (isPast) {
+      return Container(
+          height: h,
+          decoration: const BoxDecoration(
+              color: fillColor, borderRadius: radius));
+    }
+
+    // Future slide → empty track
+    if (!isActive) {
+      return Container(
+          height: h,
+          decoration: const BoxDecoration(
+              color: trackColor, borderRadius: radius));
+    }
+
+    // Active slide → animated fill
+    return AnimatedBuilder(
+      animation: progress!,
+      builder: (_, __) => Stack(
+        children: [
+          // Track
+          Container(
+              height: h,
+              decoration: const BoxDecoration(
+                  color: trackColor, borderRadius: radius)),
+          // Fill
+          FractionallySizedBox(
+            widthFactor: progress!.value,
+            child: Container(
+                height: h,
+                decoration: const BoxDecoration(
+                    color: fillColor, borderRadius: radius)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Banner Card ───────────────────────────────────────────────────────────────
+class _BannerCard extends StatelessWidget {
+  final SectionItem item;
+  final VoidCallback onTap;
+
+  const _BannerCard({required this.item, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final meta = item.meta;
+    final hasImage =
+        meta.imageUrl != null && !meta.imageUrl!.contains('localimage');
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: meta.background,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(14),
+          child: hasImage
+              ? Image.network(
+                  meta.imageUrl!,
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  height: double.infinity,
+                  errorBuilder: (_, __, ___) => _fallback(meta),
+                )
+              : _fallback(meta),
+        ),
+      ),
+    );
+  }
+
+  Widget _fallback(SectionItemMeta meta) => Container(
+        color: meta.background,
+        alignment: Alignment.center,
+        child: Text(
+          item.meta.name ?? '',
+          style: const TextStyle(
+              fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+        ),
+      );
 }
 
 // ─── Shared Section Container ─────────────────────────────────────────────────
