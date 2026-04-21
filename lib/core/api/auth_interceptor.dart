@@ -1,10 +1,15 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/material.dart';
 import 'package:user_app/utils/StorageService.dart';
 import 'api_endpoints.dart';
 
 class AuthInterceptor extends Interceptor {
   final Dio _dio;
   bool _isRefreshing = false;
+
+  /// Set this once in main.dart so the interceptor can navigate to /login
+  /// when both access and refresh tokens are invalid.
+  static GlobalKey<NavigatorState>? navigatorKey;
 
   final List<({RequestOptions options, ErrorInterceptorHandler handler})>
       _retryQueue = [];
@@ -32,18 +37,17 @@ class AuthInterceptor extends Interceptor {
   ) async {
     final statusCode = err.response?.statusCode;
 
-    // Only handle auth errors
     if (statusCode != 401 && statusCode != 403) {
       return handler.next(err);
     }
 
-    // Avoid infinite loop on the refresh endpoint itself
+    // Refresh endpoint itself returned 401/403 → full logout
     if (err.requestOptions.path.contains(ApiEndpoints.refresh)) {
-      await StorageService.clearTokens();
-      return handler.next(err);
+      await _clearAndDrain(err, handler);
+      return;
     }
 
-    // Queue subsequent requests while a refresh is already in flight
+    // Queue while a refresh is already in flight
     if (_isRefreshing) {
       _retryQueue.add((options: err.requestOptions, handler: handler));
       return;
@@ -54,14 +58,22 @@ class AuthInterceptor extends Interceptor {
     try {
       final refreshToken = await StorageService.getRefreshToken();
       if (refreshToken == null) {
-        return handler.next(err);
+        await _clearAndDrain(err, handler);
+        return;
       }
 
-      // POST /api/v1/auth/refresh without the auth header to avoid recursion
-      final response = await _dio.post(
+      // ── Use a CLEAN Dio with no interceptors so the expired access token
+      //    is NOT re-attached to the refresh request by onRequest above.
+      final cleanDio = Dio(BaseOptions(
+        baseUrl: _dio.options.baseUrl,
+        connectTimeout: _dio.options.connectTimeout,
+        receiveTimeout: _dio.options.receiveTimeout,
+        headers: const {'Content-Type': 'application/json'},
+      ));
+
+      final response = await cleanDio.post(
         ApiEndpoints.refresh,
         data: {'refreshToken': refreshToken},
-        options: Options(headers: {'Authorization': null}),
       );
 
       final data = response.data as Map<String, dynamic>?;
@@ -74,7 +86,7 @@ class AuthInterceptor extends Interceptor {
           refreshToken: newRefresh,
         );
 
-        // Retry the original failed request with the new token
+        // Retry the original request with the new token
         err.requestOptions.headers['Authorization'] = 'Bearer $newAccess';
         final retried = await _dio.fetch(err.requestOptions);
 
@@ -109,5 +121,9 @@ class AuthInterceptor extends Interceptor {
     }
     _retryQueue.clear();
     handler.next(err);
+
+    // Navigate to login and clear the back stack
+    navigatorKey?.currentState
+        ?.pushNamedAndRemoveUntil('/login', (_) => false);
   }
 }

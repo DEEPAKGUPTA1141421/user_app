@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../provider/category_sections.dart';
-
-const brandColor = Color(0xFFFF5200);
+import '../widgets/shop/app_theme.dart';
 
 class CategoriesScreen extends ConsumerStatefulWidget {
   const CategoriesScreen({super.key});
@@ -20,7 +19,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
     Future.microtask(() async {
       await ref
           .read(categorySectionsProvider.notifier)
-          .fetchCategories(includeChildItem: true, level: "SUPER_CATEGORY");
+          .fetchCategoryList();
       await ref
           .read(categorySectionsProvider.notifier)
           .fetchBrands('5d70fc95-8a6b-4d04-95e9-9620269ab15e');
@@ -35,7 +34,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
   Future<void> _refresh() async {
     await ref
         .read(categorySectionsProvider.notifier)
-        .fetchCategories(includeChildItem: true, level: "SUPER_CATEGORY");
+        .fetchCategoryList();
     await ref
         .read(categorySectionsProvider.notifier)
         .fetchBrands(activeCategory);
@@ -71,7 +70,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
           // ── Main Content ──────────────────────────────────────────
           Expanded(
             child: RefreshIndicator(
-              color: brandColor,
+              color: kPrimary,
               onRefresh: _refresh,
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
@@ -183,10 +182,10 @@ class _ResponsiveSidebar extends StatelessWidget {
             margin: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
             padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 3),
             decoration: BoxDecoration(
-              color: isActive ? brandColor.withOpacity(0.1) : Colors.transparent,
+              color: isActive ? kPrimary.withOpacity(0.1) : Colors.transparent,
               borderRadius: BorderRadius.circular(10),
               border: isActive
-                  ? Border.all(color: brandColor.withOpacity(0.35), width: 1.5)
+                  ? Border.all(color: kPrimary.withOpacity(0.35), width: 1.5)
                   : null,
             ),
             child: Column(
@@ -199,7 +198,7 @@ class _ResponsiveSidebar extends StatelessWidget {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: isActive ? brandColor : Colors.grey.shade300,
+                      color: isActive ? kPrimary : Colors.grey.shade300,
                       width: isActive ? 2 : 1,
                     ),
                     image: imgUrl.isNotEmpty
@@ -209,7 +208,7 @@ class _ResponsiveSidebar extends StatelessWidget {
                           )
                         : null,
                     color: isActive
-                        ? brandColor.withOpacity(0.1)
+                        ? kPrimary.withOpacity(0.1)
                         : Colors.grey.shade200,
                   ),
                   child: imgUrl.isEmpty
@@ -217,7 +216,7 @@ class _ResponsiveSidebar extends StatelessWidget {
                           child: Text(
                             label.isNotEmpty ? label[0].toUpperCase() : '?',
                             style: TextStyle(
-                              color: isActive ? brandColor : Colors.grey[600],
+                              color: isActive ? kPrimary : Colors.grey[600],
                               fontSize: 17,
                               fontWeight: FontWeight.bold,
                             ),
@@ -234,7 +233,7 @@ class _ResponsiveSidebar extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 9.5,
                     fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-                    color: isActive ? brandColor : Colors.grey[700],
+                    color: isActive ? kPrimary : Colors.grey[700],
                     height: 1.2,
                   ),
                 ),
@@ -244,7 +243,7 @@ class _ResponsiveSidebar extends StatelessWidget {
                     width: 20,
                     height: 3,
                     decoration: BoxDecoration(
-                      color: brandColor,
+                      color: kPrimary,
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -446,7 +445,7 @@ class _CategorySubSectionState extends State<_CategorySubSection> {
                       height: avatarSize,
                       decoration: const BoxDecoration(
                         shape: BoxShape.circle,
-                        color: brandColor,
+                        color: kPrimary,
                       ),
                       child: Icon(
                         _showAll
@@ -463,7 +462,7 @@ class _CategorySubSectionState extends State<_CategorySubSection> {
                       style: const TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w600,
-                        color: brandColor,
+                        color: kPrimary,
                       ),
                     ),
                   ],
@@ -704,7 +703,7 @@ class _SectionTitle extends StatelessWidget {
           width: 4,
           height: 16,
           decoration: BoxDecoration(
-            color: brandColor,
+            color: kPrimary,
             borderRadius: BorderRadius.circular(2),
           ),
         ),

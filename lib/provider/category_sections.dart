@@ -90,6 +90,28 @@ class CategorySectionsNotifier extends StateNotifier<CategorySectionsState> {
     }
   }
 
+  // ── Fetch categories from /api/v1/product/category ───────────────────────
+
+  Future<void> fetchCategoryList() async {
+    state = state.copyWith(categoriesLoading: true, error: null);
+    try {
+      final res = await _client.get(ApiEndpoints.categoryList);
+      final body = res.data as Map<String, dynamic>;
+      final raw = (body['data'] as List<dynamic>?) ?? const [];
+      state = state.copyWith(
+        categoriesLoading: false,
+        categories: raw.cast<Map<String, dynamic>>(),
+      );
+    } on DioException catch (e) {
+      state = state.copyWith(
+        categoriesLoading: false,
+        error: AppException.fromDioError(e).message,
+      );
+    } catch (e) {
+      state = state.copyWith(categoriesLoading: false, error: e.toString());
+    }
+  }
+
   // ── Fetch sections for a category ─────────────────────────────────────────
 
   Future<void> fetchSectionsOfCategory({String? categoryId}) async {

@@ -158,24 +158,22 @@ _FilterChip _chipFromApi(Map<String, dynamic> f) {
 
 _Product _productFromJson(Map<String, dynamic> p) {
   final images = (p['images'] as List?)?.cast<String>() ?? [];
-  final salePrice = (p['discountPrice'] as num?)?.toDouble()
-      ?? (p['salePrice'] as num?)?.toDouble()
-      ?? (p['price'] as num?)?.toDouble()
-      ?? 0.0;
-  final origPrice = (p['price'] as num?)?.toDouble()
-      ?? (p['originalPrice'] as num?)?.toDouble();
+  final price = (p['price'] as num?)?.toDouble() ?? 0.0;
+  final originalPrice = (p['originalPrice'] as num?)?.toDouble();
   return _Product(
     id: p['id']?.toString() ?? '',
     name: p['name'] as String? ?? 'Unnamed',
-    brand: p['brand'] as String? ?? p['category'] as String? ?? '',
-    price: salePrice,
-    originalPrice: (origPrice != null && origPrice > salePrice) ? origPrice : null,
+    brand: p['brand'] as String? ?? '',
+    price: price,
+    originalPrice: (originalPrice != null && originalPrice > price) ? originalPrice : null,
     rating: (p['rating'] as num?)?.toDouble() ?? 0.0,
-    reviewCount: (p['ratingCount'] as int?) ?? 0,
+    reviewCount: (p['reviewCount'] as int?) ?? 0,
     images: images,
-    deliveryText: 'Free Delivery',
-    isSponsored: p['isSponsored'] == true,
-    badge: p['isBestseller'] == true ? 'Bestseller' : null,
+    hasVideo: p['hasVideo'] == true,
+    deliveryText: p['deliveryText'] as String? ?? 'Free Delivery',
+    isSponsored: p['sponsored'] == true,
+    isWishlisted: p['wishlisted'] == true,
+    badge: p['badge'] as String?,
   );
 }
 
@@ -205,24 +203,37 @@ class ProductSearchResultsPage extends StatefulWidget {
 
 class _State extends State<ProductSearchResultsPage> {
   late final TextEditingController _ctrl;
+  final ScrollController _scrollCtrl = ScrollController();
 
   List<_FilterChip> _chips    = [];
   List<_Product>    _products = [];
-  bool _filtersLoading = true;
+  bool _filtersLoading  = true;
   bool _productsLoading = true;
-  int  _cartCount = 0;
+  bool _isLoadingMore   = false;
+  bool _hasMore         = false;
+  int  _currentPage     = 0;
+  int  _cartCount       = 0;
 
   @override
   void initState() {
     super.initState();
     _ctrl = TextEditingController(text: widget.query);
+    _scrollCtrl.addListener(_onScroll);
     _loadAll();
   }
 
   @override
   void dispose() {
     _ctrl.dispose();
+    _scrollCtrl.dispose();
     super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollCtrl.position.pixels >=
+        _scrollCtrl.position.maxScrollExtent - 250) {
+      _fetchProducts(nextPage: true);
+    }
   }
 
   // ── Fetch filters + products in parallel ──────────────────────────────────
@@ -255,55 +266,111 @@ class _State extends State<ProductSearchResultsPage> {
     }
   }
 
-  Future<void> _fetchProducts() async {
-    if (mounted) setState(() => _productsLoading = true);
+  Future<void> _fetchProducts({bool nextPage = false}) async {
+    if (nextPage) {
+      if (_isLoadingMore || !_hasMore) return;
+      if (mounted) setState(() => _isLoadingMore = true);
+    } else {
+      if (mounted) {
+        setState(() {
+          _productsLoading = true;
+          _currentPage = 0;
+          _products = [];
+        });
+      }
+    }
     try {
-      final params = _buildQueryParams();
+      final page = nextPage ? _currentPage + 1 : 0;
+      final params = _buildQueryParams(page: page);
       final res = await ApiClient.instance.productClient
-          .get(ApiEndpoints.searchProducts, queryParameters: params);
+          .get(ApiEndpoints.productSearch, queryParameters: params);
       final body = res.data as Map<String, dynamic>;
       final data = body['data'] as Map<String, dynamic>? ?? {};
       final rawProducts = (data['products'] as List? ?? []);
+      final hasMore = data['hasMore'] as bool? ?? false;
+      final returnedPage = data['page'] as int? ?? page;
+      final mapped = rawProducts
+          .map((p) => _productFromJson(Map<String, dynamic>.from(p)))
+          .toList();
       if (mounted) {
         setState(() {
-          _products = rawProducts
-              .map((p) => _productFromJson(Map<String, dynamic>.from(p)))
-              .toList();
+          if (nextPage) {
+            _products.addAll(mapped);
+            _currentPage = returnedPage;
+          } else {
+            _products = mapped;
+            _currentPage = returnedPage;
+          }
+          _hasMore = hasMore;
           _productsLoading = false;
+          _isLoadingMore = false;
         });
       }
     } catch (_) {
-      if (mounted) setState(() => _productsLoading = false);
+      if (mounted) {
+        setState(() {
+          _productsLoading = false;
+          _isLoadingMore = false;
+        });
+      }
     }
   }
 
-  // ── Build search query params from active filters ─────────────────────────
-  Map<String, dynamic> _buildQueryParams() {
-    final params = <String, dynamic>{'keyword': widget.query};
+  // ── Build search query params matching SearchRequest ─────────────────────
+  Map<String, dynamic> _buildQueryParams({int page = 0}) {
+    final params = <String, dynamic>{
+      'keyword': widget.query,
+      'page': page,
+      'pageSize': 20,
+      'includeSponsored': true,
+    };
 
-    // Pass categoryId and any pre-set filters from the payload
     final categoryId = widget.filterPayload['categoryId'];
     if (categoryId != null) params['categoryId'] = categoryId;
 
+    // Pre-set filters from suggestion payload (e.g. minPrice, sortBy)
     final payloadFilters =
         widget.filterPayload['filters'] as Map<String, dynamic>? ?? {};
-    payloadFilters.forEach((k, v) {
-      params[k] = v is List ? v.join(',') : v;
-    });
+    payloadFilters.forEach((k, v) => params[k] = v);
 
-    // User-selected chip values
+    // User-selected filter chips
     for (final chip in _chips) {
+      if (!chip.hasActiveSelection) continue;
+
       if (chip.filterType == 'RANGE') {
-        if (chip.hasActiveSelection) {
-          params[chip.paramKey] =
-              '${chip.selectedMin.toInt()}-${chip.selectedMax.toInt()}';
+        if (chip.id == 'price') {
+          // Backend expects minPrice / maxPrice as separate doubles
+          if (chip.selectedMin > chip.minValue) params['minPrice'] = chip.selectedMin;
+          if (chip.selectedMax < chip.maxValue) params['maxPrice'] = chip.selectedMax;
+        } else if (chip.id == 'rating') {
+          params['minRating'] = chip.selectedMin;
         }
       } else {
         final selected =
             chip.options.where((o) => o.selected).map((o) => o.value).toList();
-        if (selected.isNotEmpty) {
-          params[chip.paramKey] =
-              selected.length == 1 ? selected.first : selected.join(',');
+        if (selected.isEmpty) continue;
+
+        switch (chip.id) {
+          case 'sort':
+            // SearchRequest.sortBy: rel | price_asc | price_desc | rating | newest | discount
+            params['sortBy'] = selected.first;
+            break;
+          case 'brand':
+            // SearchRequest.brandIds: List<UUID>
+            params['brandIds'] = selected;
+            break;
+          case 'delivery':
+            // Options values are param names: sameDay, tomorrow, freeDelivery
+            for (final v in selected) { params[v] = true; }
+            break;
+          case 'discount':
+            // SearchRequest.minDiscountPercent: Integer
+            params['minDiscountPercent'] = int.tryParse(selected.first) ?? 0;
+            break;
+          default:
+            // Generic attribute filter: attributeName + attributeValues
+            params['attributeName'] = chip.paramKey;
+            params['attributeValues'] = selected;
         }
       }
     }
@@ -593,6 +660,7 @@ class _State extends State<ProductSearchResultsPage> {
 
   // ── Products grid ─────────────────────────────────────────────────────────
   Widget _grid() => CustomScrollView(
+        controller: _scrollCtrl,
         physics: const BouncingScrollPhysics(),
         slivers: [
           SliverToBoxAdapter(
@@ -663,6 +731,21 @@ class _State extends State<ProductSearchResultsPage> {
                 ),
               ),
             ),
+          SliverToBoxAdapter(
+            child: _isLoadingMore
+                ? const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 20),
+                    child: Center(
+                      child: SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: AppColors.white),
+                      ),
+                    ),
+                  )
+                : const SizedBox(height: 32),
+          ),
         ],
       );
 

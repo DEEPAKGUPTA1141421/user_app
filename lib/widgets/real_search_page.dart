@@ -184,7 +184,7 @@ class _RealSearchPageState extends ConsumerState<RealSearchPage>
     setState(() => _isLoadingSuggestions = true);
     try {
       final res = await ApiClient.instance.productClient.get(
-        ApiEndpoints.searchProducts,
+        ApiEndpoints.searchSuggestions,
         queryParameters: {'keyword': query},
       );
       final body = res.data as Map<String, dynamic>;
@@ -216,7 +216,7 @@ class _RealSearchPageState extends ConsumerState<RealSearchPage>
     _focusNode.unfocus();
     try {
       final res = await ApiClient.instance.productClient.get(
-        ApiEndpoints.searchProducts,
+        ApiEndpoints.searchSuggestions,
         queryParameters: {'keyword': query},
       );
       final body = res.data as Map<String, dynamic>;

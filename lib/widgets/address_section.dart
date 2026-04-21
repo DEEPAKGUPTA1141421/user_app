@@ -131,11 +131,10 @@ class _AddressSectionState extends ConsumerState<AddressSection> {
 
             const SizedBox(width: 8),
 
-            // 👉 Right side (arrow instead of coins → ecommerce style)
             const Icon(
-              Icons.keyboard_arrow_down_rounded,
+              CupertinoIcons.chevron_down,
               color: AppColors.grey,
-              size: 22,
+              size: 16,
             ),
           ],
         ),

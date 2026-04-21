@@ -70,7 +70,7 @@ class ProductNotifier extends StateNotifier<ProductState> {
     state = state.copyWith(isLoading: true, error: null);
     try {
       final res = await _client.get(
-        ApiEndpoints.searchProducts,
+        ApiEndpoints.searchSuggestions,
         queryParameters: {'keyword': query},
       );
       final body = res.data as Map<String, dynamic>;

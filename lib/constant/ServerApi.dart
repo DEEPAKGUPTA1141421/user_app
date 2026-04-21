@@ -15,7 +15,7 @@ class ServerApi {
   static const String GetCategoryByLevel = ApiEndpoints.categoryByLevel;
   static String GetSectionOfCategory = ApiEndpoints.sectionsForCategory('For You');
   static const String getProductDetail = ApiEndpoints.productDetail;
-  static const String searchProduct    = ApiEndpoints.searchProducts;
+  static const String searchProduct    = ApiEndpoints.searchSuggestions;
   static const String saveSearch       = ApiEndpoints.saveSearchItem;
   static const String recentSearchOfUser = ApiEndpoints.recentSearches;
   static const String TrendingSearch   = ApiEndpoints.trendingSearch;
