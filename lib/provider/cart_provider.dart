@@ -86,7 +86,7 @@ class CartNotifier extends StateNotifier<CartState> {
   Future<void> addItem(Map<String, dynamic> itemRequest) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
-      await _client.post(ApiEndpoints.cart, data: itemRequest);
+      await _client.post(ApiEndpoints.cartItems, data: itemRequest);
       await fetchCart();
     } on DioException catch (e) {
       state = state.copyWith(

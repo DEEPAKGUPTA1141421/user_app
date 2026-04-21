@@ -49,6 +49,7 @@ dependencies:
   url_launcher: ^6.2.4
   phonepe_payment_sdk: ^3.0.0
   image_picker: ^1.0.7
+  share_plus: ^9.0.0
   path_provider: ^2.1.4
 
   # The following adds the Cupertino Icons font to your application.

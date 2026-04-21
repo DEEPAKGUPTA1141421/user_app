@@ -1,115 +1,108 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import '../../utils/app_colors.dart';
 
 class ServiceFeatures extends StatelessWidget {
   const ServiceFeatures({super.key});
 
+  static const _features = [
+    {
+      'icon': CupertinoIcons.arrow_counterclockwise,
+      'title': '10-Day\nReturns',
+      'subtitle': 'Hassle-free',
+    },
+    {
+      'icon': Icons.payments_outlined,
+      'title': 'Cash on\nDelivery',
+      'subtitle': 'Available',
+    },
+    {
+      'icon': CupertinoIcons.chat_bubble_2,
+      'title': '24/7\nSupport',
+      'subtitle': 'Always here',
+    },
+  ];
+
   @override
   Widget build(BuildContext context) {
-    final primaryColor = Theme.of(context).colorScheme.primary;
-    final screenWidth = MediaQuery.of(context).size.width;
-    const brandColor = Color(0xFFFF5200);
-    final features = [
-      {
-        'icon': CupertinoIcons.refresh,
-        'title': '10-Day Return Policy',
-        'link': true,
-      },
-      {
-        'icon': CupertinoIcons.money_dollar,
-        'title': 'Cash on Delivery Available',
-        'link': true,
-      },
-      {
-        'icon': CupertinoIcons.clock,
-        'title': '24/7 Customer Support Service',
-        'link': true,
-      },
-    ];
-
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 16), // Top & bottom margin
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
       child: Column(
         children: [
-          // Top horizontal line
-          Container(
-            width: double.infinity,
-            height: 1,
-            color: Colors.grey.shade300,
-          ),
-          const SizedBox(height: 12),
-
-          // Features Row
-          SizedBox(
-            width: screenWidth,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: features.map((feature) {
-                return Expanded(
-                  child: InkWell(
-                    onTap: () {
-                      // TODO: handle feature click
-                    },
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Icon Circle
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: brandColor.withOpacity(0.2),
-                              width: 2,
-                            ),
-                          ),
-                          child: Icon(
-                            feature['icon'] as IconData,
-                            color: brandColor,
-                            size: 28,
-                          ),
+          // ── Feature tiles ─────────────────────────────────────────────
+          Row(
+            children: _features.map<Widget>((f) {
+              return Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Icon circle
+                    Container(
+                      width: 52,
+                      height: 52,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppColors.bg,
+                        border: Border.all(
+                          color: AppColors.green.withOpacity(0.35),
+                          width: 1.5,
                         ),
-                        const SizedBox(height: 8),
-                        // Text + Chevron
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Flexible(
-                              child: Text(
-                                feature['title'] as String,
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                                textAlign: TextAlign.center,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            if (feature['link'] == true)
-                              const Padding(
-                                padding: EdgeInsets.only(left: 4),
-                                child: Icon(
-                                  CupertinoIcons.chevron_right,
-                                  size: 14,
-                                ),
-                              ),
-                          ],
-                        ),
-                      ],
+                      ),
+                      child: Icon(
+                        f['icon'] as IconData,
+                        color: AppColors.green,
+                        size: 22,
+                      ),
                     ),
-                  ),
-                );
-              }).toList(),
-            ),
+                    const SizedBox(height: 8),
+                    Text(
+                      f['title'] as String,
+                      style: const TextStyle(
+                        color: AppColors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        height: 1.35,
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      f['subtitle'] as String,
+                      style: const TextStyle(
+                        color: AppColors.grey,
+                        fontSize: 10,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
           ),
-          const SizedBox(height: 12),
 
-          // Bottom horizontal line
-          Container(
-            width: double.infinity,
-            height: 1,
-            color: Colors.grey.shade300,
+          const SizedBox(height: 14),
+          Container(height: 1, color: AppColors.divider),
+          const SizedBox(height: 10),
+
+          // ── "Powered by Dashly" footer ────────────────────────────────
+          const Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                'Secured & fulfilled by ',
+                style: TextStyle(color: AppColors.greyDark, fontSize: 10),
+              ),
+              Text(
+                'Dashly',
+                style: TextStyle(
+                  color: AppColors.green,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ],
           ),
         ],
       ),

@@ -27,6 +27,16 @@ class AuthState {
   List<dynamic> get addresses =>
       (user['addresses'] as List<dynamic>?) ?? const [];
 
+  List<String> get cartItemIds =>
+      ((user['cartItemIds'] as List<dynamic>?) ?? const [])
+          .map((e) => e.toString())
+          .toList();
+
+  List<String> get wishlistItemIds =>
+      ((user['wishlistItemIds'] as List<dynamic>?) ?? const [])
+          .map((e) => e.toString())
+          .toList();
+
   bool get isEmpty => user.isEmpty;
 
   AuthState copyWith({

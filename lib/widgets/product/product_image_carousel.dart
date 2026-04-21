@@ -4,9 +4,13 @@ import 'product_highlights.dart';
 
 class ProductImageCarousel extends StatefulWidget {
   final List<String> imageUrls;
-  final Map<String, String>? productDetails; // optional
-  final double? rating; // product rating
-  final String? ratingCount; // rating count like "13.7K+"
+  final Map<String, String>? productDetails;
+  final double? rating;
+  final String? ratingCount;
+  final bool isInWishlist;
+  final bool isTogglingWishlist;
+  final VoidCallback? onWishlist;
+  final VoidCallback? onShare;
 
   const ProductImageCarousel({
     super.key,
@@ -14,6 +18,10 @@ class ProductImageCarousel extends StatefulWidget {
     this.productDetails,
     this.rating,
     this.ratingCount,
+    this.isInWishlist = false,
+    this.isTogglingWishlist = false,
+    this.onWishlist,
+    this.onShare,
   });
 
   @override
@@ -22,7 +30,6 @@ class ProductImageCarousel extends StatefulWidget {
 
 class _ProductImageCarouselState extends State<ProductImageCarousel> {
   final PageController _controller = PageController();
-  void shareContent() async {}
 
   @override
   Widget build(BuildContext context) {
@@ -99,40 +106,48 @@ class _ProductImageCarouselState extends State<ProductImageCarousel> {
                 right: 12,
                 child: Column(
                   children: [
-                    // Wishlist icon
-                    Container(
-                      margin: const EdgeInsets.only(
-                          bottom: 8), // spacing between icons
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.favorite_border,
-                        color: Colors.black,
-                        size: 20,
+                    GestureDetector(
+                      onTap: widget.onWishlist,
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.all(8),
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                        ),
+                        child: widget.isTogglingWishlist
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2, color: Colors.black),
+                              )
+                            : Icon(
+                                widget.isInWishlist
+                                    ? Icons.favorite_rounded
+                                    : Icons.favorite_border_rounded,
+                                color: widget.isInWishlist
+                                    ? Colors.red
+                                    : Colors.black,
+                                size: 20,
+                              ),
                       ),
                     ),
-
-                    // Share icon
                     GestureDetector(
-                      onTap: () async {
-                        shareContent();
-                      },
+                      onTap: widget.onShare,
                       child: Container(
                         padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
+                        decoration: const BoxDecoration(
                           color: Colors.white,
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(
-                          Icons.share,
+                          Icons.ios_share_rounded,
                           color: Colors.black,
                           size: 20,
                         ),
                       ),
-                    )
+                    ),
                   ],
                 ),
               ),

@@ -22,9 +22,11 @@ class ApiEndpoints {
   static const String recentSearches = '/api/v1/user/last';
 
   // ── Products ───────────────────────────────────────────────────────────────
-  static const String categoryByLevel = '/api/v1/product/categorylevelwise';
-  static const String productDetail   = '/api/v1/product';
-  static const String searchProducts  = '/api/v1/product/search';
+  static const String categoryByLevel  = '/api/v1/product/categorylevelwise';
+  static const String categoryList     = '/api/v1/product/category';
+  static const String productDetail    = '/api/v1/product';
+  static const String searchSuggestions   = '/api/v1/product/search';
+  static const String productSearch    = '/api/v1/product/products/search';
   static const String trendingSearch  = '/api/v1/product/trending';
   static const String popularProducts = '/api/v1/product/popular';
 
@@ -76,6 +78,13 @@ class ApiEndpoints {
 
   static String orderTracking(String bookingId) =>
       '/api/v1/booking/$bookingId/tracking';
+
+  // ── Reviews ───────────────────────────────────────────────────────────────
+  static String reviews(String productId) => '/api/v1/reviews/$productId';
+  static String reviewSummary(String productId) =>
+      '/api/v1/reviews/$productId/summary';
+  static String reviewHelpful(String reviewId) =>
+      '/api/v1/reviews/$reviewId/helpful';
 
   // ── Notification Preferences ─────────────────────────────────────────────
   static const String notificationPrefs = '/api/v1/users/notification-preferences';
