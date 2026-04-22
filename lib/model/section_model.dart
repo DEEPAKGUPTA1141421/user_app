@@ -61,10 +61,15 @@ class SectionConfig {
 
   static double? _parseHeight(dynamic v) {
     if (v == null) return null;
-    final s = v.toString().replaceAll('rem', '').trim();
+    final s = v
+        .toString()
+        .toLowerCase()
+        .replaceAll('rem', '')
+        .replaceAll('px', '')
+        .trim();
     final parsed = double.tryParse(s);
     if (parsed == null) return null;
-    return parsed * 16; // 1rem = 16px approx
+    return v.toString().toLowerCase().contains('rem') ? parsed * 16 : parsed;
   }
 
   static Color _parseColor(String? v) {
@@ -124,6 +129,10 @@ class SectionItemMeta {
   final String? description;
   final ColorType colorType;
   final Color background;
+  final Color? firstHalf;
+  final Color? secondHalf;
+  final double? rating;
+  final int? ratingCount;
   final bool showRating;
   final bool showPrice;
   final bool showDiscount;
@@ -137,6 +146,10 @@ class SectionItemMeta {
     this.description,
     required this.colorType,
     required this.background,
+    this.firstHalf,
+    this.secondHalf,
+    this.rating,
+    this.ratingCount,
     required this.showRating,
     required this.showPrice,
     required this.showDiscount,
@@ -144,16 +157,44 @@ class SectionItemMeta {
   });
 
   factory SectionItemMeta.fromJson(Map<String, dynamic> json) {
+    final bgGradient = json['bgGradient'];
+    final gradientColors = bgGradient is List
+        ? bgGradient.map((e) => e?.toString() ?? '').where((e) => e.isNotEmpty).toList()
+        : const <String>[];
+    final hasGradient = gradientColors.length >= 2;
+
     return SectionItemMeta(
-      name: json['name'],
+      name: json['name'] ?? json['title'],
       imageUrl: json['imageurl'] ?? json['imageUrl'],
-      showName: json['showname'] == true || json['showname'] == 'true',
+      showName: json['showname'] == true ||
+          json['showname'] == 'true' ||
+          json['title'] != null,
       showDescription:
-          json['showdescription'] == true || json['showdescription'] == 'true',
-      description: json['description'],
-      colorType:
-          json['colortype'] == 'gradient' ? ColorType.gradient : ColorType.simple,
-      background: SectionConfig._parseColor(json['background'] ?? 'white'),
+          json['showdescription'] == true ||
+          json['showdescription'] == 'true' ||
+          json['subtitle'] != null,
+      description: json['description'] ?? json['subtitle'],
+      colorType: json['colortype'] == 'gradient' || hasGradient
+          ? ColorType.gradient
+          : ColorType.simple,
+      background: SectionConfig._parseColor(
+        json['background'] ?? (gradientColors.isNotEmpty ? gradientColors.first : 'white'),
+      ),
+      firstHalf: hasGradient
+          ? SectionConfig._parseColor(gradientColors[0])
+          : null,
+      secondHalf: hasGradient
+          ? SectionConfig._parseColor(gradientColors[1])
+          : null,
+      rating: double.tryParse(json['rating']?.toString() ?? ''),
+      ratingCount: int.tryParse(
+        (json['ratingCount'] ??
+                    json['ratingcount'] ??
+                    json['reviewCount'] ??
+                    json['reviewcount'])
+                ?.toString() ??
+            '',
+      ),
       showRating: json['showRating'] == true || json['showRating'] == 'true',
       showPrice: json['showprice'] == true || json['showprice'] == 'true',
       showDiscount:

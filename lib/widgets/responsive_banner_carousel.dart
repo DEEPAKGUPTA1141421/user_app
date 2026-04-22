@@ -15,21 +15,39 @@ class ResponsiveBannerCarousel extends StatefulWidget {
 }
 
 class _ResponsiveBannerCarouselState extends State<ResponsiveBannerCarousel> {
-  late PageController _pageController;
+  PageController? _pageController;
+  double? _viewportFraction;
   int _currentPage = 0;
 
   @override
   void initState() {
     super.initState();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    final nextViewportFraction = _getViewportFraction(context);
+    if (_viewportFraction == nextViewportFraction && _pageController != null) {
+      return;
+    }
+
+    final previousPage = _pageController?.hasClients == true
+        ? _pageController!.page?.round()
+        : _currentPage;
+    _pageController?.dispose();
+
+    _viewportFraction = nextViewportFraction;
     _pageController = PageController(
-      initialPage: 0,
-      viewportFraction: _getViewportFraction(context),
+      initialPage: previousPage ?? 0,
+      viewportFraction: nextViewportFraction,
     );
   }
 
   @override
   void dispose() {
-    _pageController.dispose();
+    _pageController?.dispose();
     super.dispose();
   }
 
@@ -62,12 +80,17 @@ class _ResponsiveBannerCarouselState extends State<ResponsiveBannerCarousel> {
       return const SizedBox.shrink();
     }
 
+    final pageController = _pageController;
+    if (pageController == null) {
+      return const SizedBox.shrink();
+    }
+
     return Column(
       children: [
         SizedBox(
           height: 200,
           child: PageView.builder(
-            controller: _pageController,
+            controller: pageController,
             onPageChanged: (index) {
               setState(() {
                 _currentPage = index;

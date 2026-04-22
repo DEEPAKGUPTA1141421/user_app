@@ -137,8 +137,10 @@ class _CategoryChip extends StatelessWidget {
   Widget _initials(String? name, Color bg, Color fg) => Container(
         color: bg,
         alignment: Alignment.center,
-        child: Text(name != null && name.isNotEmpty ? name[0].toUpperCase() : '?',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: fg)),
+        child: name != null && name.isNotEmpty
+            ? Text(name[0].toUpperCase(),
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: fg))
+            : Icon(Icons.image_outlined, color: fg),
       );
 }
 
@@ -325,24 +327,26 @@ class _ProductGridCard extends StatelessWidget {
                       Text(meta.name!, maxLines: 2, overflow: TextOverflow.ellipsis,
                           style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, height: 1.2)),
                     const Spacer(),
-                    if (meta.showRating)
+                    if (meta.showRating && meta.rating != null)
                       Row(
                         children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                            decoration: BoxDecoration(
-                              color: Colors.green.shade600,
-                              borderRadius: BorderRadius.circular(3),
-                            ),
-                            child: const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.star_rounded, size: 9, color: Colors.white),
-                                SizedBox(width: 2),
-                                Text('4.2', style: TextStyle(fontSize: 9, color: Colors.white)),
-                              ],
+                          Icon(Icons.star_rounded, size: 12, color: Colors.green.shade600),
+                          const SizedBox(width: 3),
+                          Text(
+                            meta.rating!.toStringAsFixed(1),
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: Colors.grey.shade800,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
+                          if (meta.ratingCount != null) ...[
+                            const SizedBox(width: 4),
+                            Text(
+                              '(${meta.ratingCount})',
+                              style: TextStyle(fontSize: 9, color: Colors.grey.shade500),
+                            ),
+                          ],
                         ],
                       ),
                     if (meta.showPrice && meta.filter?.gte != null)
@@ -391,7 +395,9 @@ class _BrandSection extends StatelessWidget {
             final item = section.items[i];
             final meta = item.meta;
             final hasImage = meta.imageUrl != null && !meta.imageUrl!.contains('localimage');
-            final isGradient = meta.colorType == ColorType.gradient;
+            final isGradient = meta.colorType == ColorType.gradient &&
+                meta.firstHalf != null &&
+                meta.secondHalf != null;
 
             return GestureDetector(
               onTap: () {
@@ -408,7 +414,7 @@ class _BrandSection extends StatelessWidget {
                       shape: BoxShape.circle,
                       gradient: isGradient
                           ? LinearGradient(
-                              colors: [meta.background, meta.background.withOpacity(0.5)],
+                              colors: [meta.firstHalf!, meta.secondHalf!],
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                             )
@@ -439,8 +445,11 @@ class _BrandSection extends StatelessWidget {
   }
 
   Widget _brandInitial(String? name) => Center(
-        child: Text(name != null && name.isNotEmpty ? name[0].toUpperCase() : 'B',
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
+        child: name != null && name.isNotEmpty
+            ? Text(name[0].toUpperCase(),
+                style: const TextStyle(
+                    fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white))
+            : const Icon(Icons.image_outlined, color: Colors.white),
       );
 }
 
@@ -625,13 +634,23 @@ class _BannerCard extends StatelessWidget {
     final meta = item.meta;
     final hasImage =
         meta.imageUrl != null && !meta.imageUrl!.contains('localimage');
+    final hasGradient = meta.colorType == ColorType.gradient &&
+        meta.firstHalf != null &&
+        meta.secondHalf != null;
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 12),
         decoration: BoxDecoration(
-          color: meta.background,
+          color: hasGradient ? null : meta.background,
+          gradient: hasGradient
+              ? LinearGradient(
+                  colors: [meta.firstHalf!, meta.secondHalf!],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                )
+              : null,
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
@@ -658,12 +677,47 @@ class _BannerCard extends StatelessWidget {
   }
 
   Widget _fallback(SectionItemMeta meta) => Container(
-        color: meta.background,
-        alignment: Alignment.center,
-        child: Text(
-          item.meta.name ?? '',
-          style: const TextStyle(
-              fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+        decoration: BoxDecoration(
+          color: meta.colorType == ColorType.gradient ? null : meta.background,
+          gradient: meta.colorType == ColorType.gradient &&
+                  meta.firstHalf != null &&
+                  meta.secondHalf != null
+              ? LinearGradient(
+                  colors: [meta.firstHalf!, meta.secondHalf!],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                )
+              : null,
+        ),
+        padding: const EdgeInsets.all(20),
+        alignment: Alignment.centerLeft,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              item.meta.name ?? '',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+            if ((meta.description ?? '').isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(
+                meta.description!,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: Colors.white70,
+                ),
+              ),
+            ],
+          ],
         ),
       );
 }
