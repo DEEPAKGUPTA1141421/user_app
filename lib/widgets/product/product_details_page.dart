@@ -7,6 +7,7 @@ import '../../provider/cart_provider.dart';
 import '../../provider/rider_provider.dart';
 import '../../core/api/api_client.dart';
 import '../../utils/app_colors.dart';
+import '../../screens/buy_now_button.dart';
 import '../../widgets/real_search_page.dart';
 import 'share_sheet.dart';
 import 'product_image_carousel.dart';
@@ -374,14 +375,18 @@ class _ProductDetailsPageState extends ConsumerState<ProductDetailsPage>
           ),
 
           // ── Sticky Bottom Bar ────────────────────────────────────────
-          _BottomBar(
+          ProductActionBar(
             isInCart: isInCart,
             inStock: inStock,
             isAddingToCart: _isAddingToCart,
             onAddToCart: variantId.isNotEmpty
                 ? () => _handleAddToCart(variantId)
                 : null,
-            onBuyNow: () {},
+            productId: widget.productId,
+            variantId: variantId,
+            productName: name,
+            productImage: imageUrls.isNotEmpty ? imageUrls.first : null,
+            price: price,
           ),
         ],
       ),
@@ -872,132 +877,3 @@ Widget _shimBox(double w, double h) => Container(
       ),
     );
 
-// ─── Bottom Action Bar ─────────────────────────────────────────────────────────
-class _BottomBar extends StatelessWidget {
-  final bool isInCart;
-  final bool inStock;
-  final bool isAddingToCart;
-  final VoidCallback? onAddToCart;
-  final VoidCallback? onBuyNow;
-
-  const _BottomBar({
-    required this.isInCart,
-    required this.inStock,
-    this.isAddingToCart = false,
-    this.onAddToCart,
-    this.onBuyNow,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Positioned(
-      bottom: 0,
-      left: 0,
-      right: 0,
-      child: Container(
-        decoration: const BoxDecoration(
-          color: AppColors.surface,
-          border: Border(top: BorderSide(color: AppColors.divider)),
-        ),
-        padding: EdgeInsets.fromLTRB(
-            16, 12, 16, 12 + MediaQuery.of(context).padding.bottom),
-        child: inStock
-            ? Row(
-                children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: isAddingToCart ? null : onAddToCart,
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        decoration: BoxDecoration(
-                          color: AppColors.surface2,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color:
-                                isInCart ? AppColors.green : AppColors.white,
-                            width: 1.5,
-                          ),
-                        ),
-                        child: isAddingToCart
-                            ? const SizedBox(
-                                height: 18,
-                                width: 18,
-                                child: CircularProgressIndicator(
-                                    strokeWidth: 2, color: AppColors.white),
-                              )
-                            : Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    isInCart
-                                        ? Icons.check_rounded
-                                        : Icons.add_shopping_cart_rounded,
-                                    color: isInCart
-                                        ? AppColors.green
-                                        : AppColors.white,
-                                    size: 16,
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    isInCart ? 'In Cart' : 'Add to Cart',
-                                    style: TextStyle(
-                                        color: isInCart
-                                            ? AppColors.green
-                                            : AppColors.white,
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w700),
-                                  ),
-                                ],
-                              ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: onBuyNow,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        decoration: BoxDecoration(
-                          color: AppColors.white,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.bolt_rounded,
-                                color: AppColors.bg, size: 16),
-                            SizedBox(width: 4),
-                            Text('Buy Now',
-                                style: TextStyle(
-                                    color: AppColors.bg,
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w800)),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              )
-            : Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                decoration: BoxDecoration(
-                  color: AppColors.surface2,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.border),
-                ),
-                child: const Center(
-                  child: Text('Out of Stock',
-                      style: TextStyle(
-                          color: AppColors.greyDark,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700)),
-                ),
-              ),
-      ),
-    );
-  }
-}
