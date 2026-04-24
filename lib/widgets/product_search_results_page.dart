@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:shimmer/shimmer.dart';
 import '../core/api/api_client.dart';
 import '../core/api/api_endpoints.dart';
+import '../provider/interaction_tracker_provider.dart';
 import '../utils/app_colors.dart';
 import '../widgets/real_search_page.dart';
 
@@ -418,16 +419,28 @@ class _State extends State<ProductSearchResultsPage> {
       final i = _products.indexWhere((x) => x.id == p.id);
       if (i >= 0) _products[i].isWishlisted = !_products[i].isWishlisted;
     });
+    final nowWishlisted =
+        _products.firstWhere((x) => x.id == p.id).isWishlisted;
+    if (nowWishlisted) {
+      InteractionBuffer.instance.trackNow(
+        productId: p.id,
+        type: InteractionType.wishlist,
+        context: InteractionContext.search,
+      );
+    }
     _snack(
-      _products.firstWhere((x) => x.id == p.id).isWishlisted
-          ? 'Added to wishlist'
-          : 'Removed from wishlist',
+      nowWishlisted ? 'Added to wishlist' : 'Removed from wishlist',
       Icons.favorite_rounded,
     );
   }
 
   void _addCart(_Product p) {
     setState(() => _cartCount++);
+    InteractionBuffer.instance.trackNow(
+      productId: p.id,
+      type: InteractionType.addToCart,
+      context: InteractionContext.search,
+    );
     _snack('Added to cart', Icons.shopping_bag_outlined);
   }
 
@@ -724,8 +737,15 @@ class _State extends State<ProductSearchResultsPage> {
                     product: _products[i],
                     onWishlist: () => _wishlist(_products[i]),
                     onAddToCart: () => _addCart(_products[i]),
-                    onTap: () => Navigator.pushNamed(
-                        context, '/productDetail/${_products[i].id}'),
+                    onTap: () {
+                      InteractionBuffer.instance.trackNow(
+                        productId: _products[i].id,
+                        type: InteractionType.click,
+                        context: InteractionContext.search,
+                      );
+                      Navigator.pushNamed(
+                          context, '/productDetail/${_products[i].id}');
+                    },
                   ),
                   childCount: _products.length,
                 ),

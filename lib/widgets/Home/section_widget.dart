@@ -16,7 +16,19 @@
 
 import 'package:flutter/material.dart';
 import '../../model/section_model.dart';
+import '../../provider/interaction_tracker_provider.dart';
 import 'product_scroll_card_rich.dart';
+
+void _trackHomeClick(String productId) {
+  InteractionBuffer.instance.trackNow(
+    productId: productId,
+    type: InteractionType.click,
+    context: InteractionContext.home,
+    source: InteractionBuffer.instance.currentRecoId != null
+        ? 'reco:${InteractionBuffer.instance.currentRecoId}'
+        : null,
+  );
+}
 
 const Color kBrand = Color(0xFFFF5200);
 
@@ -179,6 +191,7 @@ class _ProductHeroScrollSection extends StatelessWidget {
     } else if (item.itemType == ItemType.CATEGORY) {
       onNavigate?.call('/category/${item.itemRefId ?? ''}', params);
     } else if (item.itemRefId != null && item.itemRefId != 'tobefilled') {
+      _trackHomeClick(item.itemRefId!);
       onNavigate?.call('/productDetail/${item.itemRefId}', params);
     } else {
       onNavigate?.call('/search', params);
@@ -209,6 +222,7 @@ class _ProductScrollSection extends StatelessWidget {
               final item = section.items[i];
               final params = item.meta.filter?.toQueryParams() ?? {};
               if (item.itemRefId != null && item.itemRefId != 'tobefilled') {
+                _trackHomeClick(item.itemRefId!);
                 onNavigate?.call('/productDetail/${item.itemRefId}', params);
               } else {
                 onNavigate?.call('/search', params);
@@ -249,6 +263,7 @@ class _ProductGridSection extends StatelessWidget {
             final item = section.items[i];
             final params = item.meta.filter?.toQueryParams() ?? {};
             if (item.itemRefId != null && item.itemRefId != 'tobefilled') {
+              _trackHomeClick(item.itemRefId!);
               onNavigate?.call('/productDetail/${item.itemRefId}', params);
             } else {
               onNavigate?.call('/search', params);

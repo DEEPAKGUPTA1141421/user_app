@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/api/api_client.dart';
 import '../core/api/api_endpoints.dart';
 import '../provider/product_provider.dart';
+import '../provider/interaction_tracker_provider.dart';
 import '../utils/app_colors.dart';
 import '../widgets/product_search_results_page.dart';
 
@@ -525,6 +526,11 @@ class _RealSearchPageState extends ConsumerState<RealSearchPage>
                   onTap: () {
                     final id = p['id']?.toString() ?? '';
                     if (id.isEmpty) return;
+                    InteractionBuffer.instance.trackNow(
+                      productId: id,
+                      type: InteractionType.click,
+                      context: InteractionContext.search,
+                    );
                     Navigator.pushNamed(
                       context,
                       '/productDetail/$id',
@@ -1233,6 +1239,11 @@ class _ProductResultCard extends StatelessWidget {
     return GestureDetector(
       onTap: () {
         if (item.id.isNotEmpty) {
+          InteractionBuffer.instance.trackNow(
+            productId: item.id,
+            type: InteractionType.click,
+            context: InteractionContext.search,
+          );
           Navigator.pushNamed(
             context,
             '/productDetail/${item.id}',

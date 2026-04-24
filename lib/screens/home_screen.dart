@@ -4,8 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../provider/category_sections.dart';
 import '../provider/banner_provider.dart';
 import '../provider/infinite_product_Provider.dart';
+import '../provider/recommendations_provider.dart';
 import '../widgets/collapsible_header.dart';
 import '../widgets/Home/category_page.dart';
+import '../widgets/Home/for_you_rail.dart';
 import '../components/product/infinite_product_section.dart';
 import '../core/widgets/app_loader.dart';
 
@@ -28,6 +30,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     ref.invalidate(categorySectionsProvider);
     ref.invalidate(bannerProvider);
     ref.invalidate(InfiniteproductProvider);
+    // Re-request a fresh recoId on pull-to-refresh
+    ref.read(recommendationsProvider.notifier).load();
 
     // 2. Remount children by changing their ValueKey
     setState(() {
@@ -58,6 +62,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     key: ValueKey('category_$_refreshKey'),
                     categoryId: selectedCategoryId,
                   ),
+
+                  const ForYouRail(),
 
                   InfiniteProductSection(
                     key: ValueKey('infinite_$_refreshKey'),

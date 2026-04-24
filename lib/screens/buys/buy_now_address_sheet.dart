@@ -6,6 +6,7 @@ import 'package:phonepe_payment_sdk/phonepe_payment_sdk.dart';
 import '../../provider/buy_now_provider.dart';
 import '../../provider/rider_provider.dart';
 import '../../provider/order_tracking_provider.dart';
+import '../../provider/interaction_tracker_provider.dart';
 import '../../utils/app_colors.dart';
 
 // ─── Address Picker Sheet ──────────────────────────────────────────────────────
@@ -344,6 +345,14 @@ class _BuyNowPaymentPageState extends ConsumerState<BuyNowPaymentPage>
     if (bookingId != null) {
       ref.read(orderTrackingProvider.notifier).loadTracking(bookingId);
     }
+    // Purchase tracking — COD carries a heavier signal weight than prepaid.
+    ref.read(interactionBufferProvider).trackNow(
+          productId: widget.productId,
+          type: _gateway == 'cod'
+              ? InteractionType.purchaseCod
+              : InteractionType.purchasePrepaid,
+          context: InteractionContext.pdp,
+        );
     Navigator.pushNamedAndRemoveUntil(
         context, '/order-success', (route) => route.isFirst);
   }

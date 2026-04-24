@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../model/product.dart';
 import '../../provider/cart_provider.dart';
+import '../../provider/interaction_tracker_provider.dart';
 import '../product/product_details_page.dart';
 
 class ProductCardWidget extends ConsumerStatefulWidget {
@@ -27,6 +28,15 @@ final Color brandColor = const Color(0xFFFF5200); // Your brand color
 
     return GestureDetector(
       onTap: () {
+        final tracker = InteractionBuffer.instance;
+        tracker.trackNow(
+          productId: product.id.toString(),
+          type: InteractionType.click,
+          context: InteractionContext.home,
+          source: tracker.currentRecoId != null
+              ? 'reco:${tracker.currentRecoId}'
+              : null,
+        );
         Navigator.push(
           context,
           MaterialPageRoute(

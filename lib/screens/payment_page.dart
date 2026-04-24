@@ -6,6 +6,8 @@ import 'package:phonepe_payment_sdk/phonepe_payment_sdk.dart';
 
 import '../provider/rider_provider.dart';
 import '../provider/checkout_provider.dart';
+import '../provider/cart_provider.dart';
+import '../provider/interaction_tracker_provider.dart';
 import '../utils/app_colors.dart';
 
 class PaymentPage extends ConsumerStatefulWidget {
@@ -110,6 +112,7 @@ class _PaymentPageState extends ConsumerState<PaymentPage>
 
     if (gateway == 'cod') {
       // COD: order is placed with PENDING status — go straight to success
+      _trackPurchase(isCod: true);
       Navigator.pushNamedAndRemoveUntil(
         context,
         '/order-success',
@@ -173,6 +176,7 @@ class _PaymentPageState extends ConsumerState<PaymentPage>
         await ref.read(checkoutProvider.notifier).validatePayment();
     if (!mounted) return;
     if (verified) {
+      _trackPurchase(isCod: false);
       Navigator.pushNamedAndRemoveUntil(
         context,
         '/order-success',
@@ -180,6 +184,22 @@ class _PaymentPageState extends ConsumerState<PaymentPage>
       );
     } else {
       _toast('Payment verification failed');
+    }
+  }
+
+  void _trackPurchase({required bool isCod}) {
+    final type = isCod
+        ? InteractionType.purchaseCod
+        : InteractionType.purchasePrepaid;
+    for (final it in ref.read(cartProvider).items) {
+      final pid = ((it as Map)['productId'] ?? it['id']).toString();
+      if (pid.isNotEmpty) {
+        InteractionBuffer.instance.trackNow(
+          productId: pid,
+          type: type,
+          context: InteractionContext.cart,
+        );
+      }
     }
   }
 

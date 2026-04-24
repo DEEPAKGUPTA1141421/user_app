@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../provider/cart_provider.dart';
 import '../../provider/checkout_provider.dart';
+import '../../provider/interaction_tracker_provider.dart';
 import '../../widgets/address_selector.dart';
 import '../../utils/app_colors.dart';
 import 'coupon_and_offers_screen.dart';
@@ -333,6 +334,16 @@ class _OrderSummaryPageState
                     ),
                   );
                   return;
+                }
+                for (final it in ref.read(cartProvider).items) {
+                  final pid = ((it as Map)['productId'] ?? it['id']).toString();
+                  if (pid.isNotEmpty) {
+                    InteractionBuffer.instance.trackNow(
+                      productId: pid,
+                      type: InteractionType.beginCheckout,
+                      context: InteractionContext.cart,
+                    );
+                  }
                 }
                 Navigator.pushNamed(
                   context,

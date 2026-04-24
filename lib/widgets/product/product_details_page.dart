@@ -5,6 +5,7 @@ import 'package:shimmer/shimmer.dart';
 import '../../provider/product_provider.dart';
 import '../../provider/cart_provider.dart';
 import '../../provider/rider_provider.dart';
+import '../../provider/interaction_tracker_provider.dart';
 import '../../core/api/api_client.dart';
 import '../../utils/app_colors.dart';
 import '../../screens/buy_now_button.dart';
@@ -14,6 +15,7 @@ import 'product_image_carousel.dart';
 import 'delivery_info.dart';
 import 'service_features.dart';
 import 'best_review.dart';
+import 'similar_rail.dart';
 
 class ProductDetailsPage extends ConsumerStatefulWidget {
   final String productId;
@@ -48,6 +50,14 @@ class _ProductDetailsPageState extends ConsumerState<ProductDetailsPage>
     _slideAnim = Tween<Offset>(begin: const Offset(0, 0.06), end: Offset.zero)
         .animate(CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOut));
 
+    // VIEW tracking on PDP open (Phase 1) — fire synchronously so it
+    // always lands even if the user backs out immediately.
+    InteractionBuffer.instance.trackNow(
+      productId: widget.productId,
+      type: InteractionType.view,
+      context: InteractionContext.pdp,
+    );
+
     Future.microtask(() {
       ref.read(productPod.notifier).fetchProductDetail(widget.productId);
     });
@@ -65,6 +75,11 @@ class _ProductDetailsPageState extends ConsumerState<ProductDetailsPage>
       });
       // Refresh user so cartItemIds updates instantly
       await ref.read(riderPod.notifier).getUserDetail();
+      ref.read(interactionBufferProvider).trackNow(
+            productId: widget.productId,
+            type: InteractionType.addToCart,
+            context: InteractionContext.pdp,
+          );
       if (mounted) {
         _showSnack('Added to cart!', isSuccess: true);
       }
@@ -90,6 +105,11 @@ class _ProductDetailsPageState extends ConsumerState<ProductDetailsPage>
       }
       // Refresh user so wishlistItemIds updates instantly
       await ref.read(riderPod.notifier).getUserDetail();
+      ref.read(interactionBufferProvider).trackNow(
+            productId: widget.productId,
+            type: InteractionType.wishlist,
+            context: InteractionContext.pdp,
+          );
     } catch (_) {
       if (mounted) _showSnack('Something went wrong');
     } finally {
@@ -99,6 +119,11 @@ class _ProductDetailsPageState extends ConsumerState<ProductDetailsPage>
 
   // ── Share ────────────────────────────────────────────────────────────────
   void _handleShare(String name, double price) {
+    ref.read(interactionBufferProvider).trackNow(
+          productId: widget.productId,
+          type: InteractionType.share,
+          context: InteractionContext.pdp,
+        );
     showShareSheet(
       context,
       productName: name,
@@ -363,6 +388,11 @@ class _ProductDetailsPageState extends ConsumerState<ProductDetailsPage>
                                       productId: widget.productId,
                                       ratingSummary: ratingSummary,
                                     ),
+                                  ),
+
+                                  // ── Similar rails (Phase 2) ──────────
+                                  SimilarRailsSection(
+                                    productId: widget.productId,
                                   ),
 
                                   const SizedBox(height: 100),

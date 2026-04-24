@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/widgets/cached_product_image.dart';
 import '../core/widgets/app_loader.dart';
 import '../provider/cart_provider.dart';
+import '../provider/interaction_tracker_provider.dart';
 import '../utils/app_colors.dart';
 
 class CartScreen extends ConsumerStatefulWidget {
@@ -294,6 +295,12 @@ class _CartScreenState extends ConsumerState<CartScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               _actionButton("Remove", CupertinoIcons.delete, () {
+                final pid = (item['productId'] ?? item['id']).toString();
+                InteractionBuffer.instance.trackNow(
+                  productId: pid,
+                  type: InteractionType.removeFromCart,
+                  context: InteractionContext.cart,
+                );
                 ref.read(cartProvider.notifier).removeItem(item['id'] as String);
               }),
               _actionButton("Save for later", CupertinoIcons.heart, () {}),

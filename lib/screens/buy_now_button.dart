@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../provider/rider_provider.dart';
 import '../provider/buy_now_provider.dart';
+import '../provider/interaction_tracker_provider.dart';
 import 'buys/buy_now_address_sheet.dart';
 import '../utils/app_colors.dart';
 
@@ -52,6 +53,13 @@ class _BuyNowButtonState extends ConsumerState<BuyNowButton> {
     }
 
     setState(() => _isLoading = true);
+
+    // BEGIN_CHECKOUT signal (Phase 1)
+    ref.read(interactionBufferProvider).trackNow(
+          productId: widget.productId,
+          type: InteractionType.beginCheckout,
+          context: InteractionContext.pdp,
+        );
 
     // Make sure user data (addresses) is loaded
     await ref.read(riderPod.notifier).getUserDetail();
