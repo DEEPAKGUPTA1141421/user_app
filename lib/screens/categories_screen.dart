@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../provider/category_sections.dart';
-import '../widgets/shop/app_theme.dart';
+import '../utils/app_colors.dart';
 
 class CategoriesScreen extends ConsumerStatefulWidget {
   const CategoriesScreen({super.key});
@@ -10,12 +10,21 @@ class CategoriesScreen extends ConsumerStatefulWidget {
   ConsumerState<CategoriesScreen> createState() => _CategoriesScreenState();
 }
 
-class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
+class _CategoriesScreenState extends ConsumerState<CategoriesScreen>
+    with TickerProviderStateMixin {
   String activeCategory = 'for-you';
+
+  late AnimationController _fadeCtrl;
+  late Animation<double> _fadeAnim;
 
   @override
   void initState() {
     super.initState();
+    _fadeCtrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 400));
+    _fadeAnim = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOut);
+    _fadeCtrl.forward();
+
     Future.microtask(() async {
       await ref
           .read(categorySectionsProvider.notifier)
@@ -24,6 +33,12 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
           .read(categorySectionsProvider.notifier)
           .fetchBrands('5d70fc95-8a6b-4d04-95e9-9620269ab15e');
     });
+  }
+
+  @override
+  void dispose() {
+    _fadeCtrl.dispose();
+    super.dispose();
   }
 
   void handleCategoryClick(String categoryId) {
@@ -51,82 +66,102 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
     final isTablet = screenWidth >= 600;
     final isDesktop = screenWidth >= 900;
 
-    // Sidebar width scales with screen
-    final sidebarWidth = isDesktop ? 100.0 : isTablet ? 88.0 : 72.0;
+    final sidebarWidth = isDesktop ? 104.0 : isTablet ? 92.0 : 76.0;
 
     return Scaffold(
-      body: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ── Sidebar ──────────────────────────────────────────────
-          _ResponsiveSidebar(
-            width: sidebarWidth,
-            activeCategory: activeCategory,
-            onCategoryClick: handleCategoryClick,
-            isLoading: isLoading,
-            categories: categories,
-          ),
-
-          // ── Main Content ──────────────────────────────────────────
-          Expanded(
-            child: RefreshIndicator(
-              color: kPrimary,
-              onRefresh: _refresh,
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: EdgeInsets.only(
-                  top: 16,
-                  bottom: 24,
-                  left: isTablet ? 14 : 10,
-                  right: isTablet ? 14 : 10,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Brand Section
-                    if (isLoading)
-                      _BrandShimmer(isTablet: isTablet, isDesktop: isDesktop)
-                    else
-                      _BrandSection(
-                        brands: brandData,
-                        isTablet: isTablet,
-                        isDesktop: isDesktop,
-                      ),
-
-                    const SizedBox(height: 20),
-
-                    // Category Sub-sections
-                    if (isLoading)
-                      _CategoryGridShimmer(
-                          isTablet: isTablet, isDesktop: isDesktop)
-                    else if (categories.isEmpty)
-                      const Center(
-                        child: Padding(
-                          padding: EdgeInsets.all(32),
-                          child: Text(
-                            'No categories available',
-                            style: TextStyle(color: Colors.grey),
-                          ),
+      backgroundColor: AppColors.bg,
+      appBar: AppBar(
+        backgroundColor: AppColors.surface,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new,
+              color: AppColors.white, size: 20),
+          onPressed: () => Navigator.maybePop(context),
+        ),
+        title: const Text(
+          'Categories',
+          style: TextStyle(
+              color: AppColors.white,
+              fontSize: 17,
+              fontWeight: FontWeight.w600,
+              letterSpacing: -0.3),
+        ),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(height: 1, color: AppColors.divider),
+        ),
+      ),
+      body: FadeTransition(
+        opacity: _fadeAnim,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _ResponsiveSidebar(
+              width: sidebarWidth,
+              activeCategory: activeCategory,
+              onCategoryClick: handleCategoryClick,
+              isLoading: isLoading,
+              categories: categories,
+            ),
+            Expanded(
+              child: RefreshIndicator(
+                color: AppColors.white,
+                backgroundColor: AppColors.surface,
+                onRefresh: _refresh,
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: EdgeInsets.only(
+                    top: 8,
+                    bottom: 24,
+                    left: isTablet ? 14 : 10,
+                    right: isTablet ? 14 : 10,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (isLoading)
+                        _BrandShimmer(isTablet: isTablet, isDesktop: isDesktop)
+                      else
+                        _BrandSection(
+                          brands: brandData,
+                          isTablet: isTablet,
+                          isDesktop: isDesktop,
                         ),
-                      )
-                    else
-                      for (var parent in categories)
-                        for (var category in (parent['children'] ?? [])) ...[
-                          _CategorySubSection(
-                            title: category['name'] ?? 'Untitled',
-                            items: List<dynamic>.from(
-                                category['children'] ?? []),
-                            isTablet: isTablet,
-                            isDesktop: isDesktop,
+                      const SizedBox(height: 12),
+                      if (isLoading)
+                        _CategoryGridShimmer(
+                            isTablet: isTablet, isDesktop: isDesktop)
+                      else if (categories.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.all(32),
+                          child: Center(
+                            child: Text(
+                              'No categories available',
+                              style: TextStyle(
+                                  color: AppColors.grey, fontSize: 13),
+                            ),
                           ),
-                          const SizedBox(height: 18),
-                        ],
-                  ],
+                        )
+                      else
+                        for (var parent in categories)
+                          for (var category in (parent['children'] ?? [])) ...[
+                            _CategorySubSection(
+                              title: category['name'] ?? 'Untitled',
+                              items: List<dynamic>.from(
+                                  category['children'] ?? []),
+                              isTablet: isTablet,
+                              isDesktop: isDesktop,
+                            ),
+                            const SizedBox(height: 14),
+                          ],
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -155,9 +190,10 @@ class _ResponsiveSidebar extends StatelessWidget {
     return SizedBox(
       width: width,
       child: Container(
-        decoration: BoxDecoration(
-          color: const Color(0xFFF7F7F7),
-          border: Border(right: BorderSide(color: Colors.grey.shade200)),
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          border: Border(
+              right: BorderSide(color: AppColors.divider)),
         ),
         child: isLoading ? _shimmer() : _list(),
       ),
@@ -179,27 +215,27 @@ class _ResponsiveSidebar extends StatelessWidget {
           onTap: () => onCategoryClick(id),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 180),
-            margin: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
-            padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 3),
+            margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
             decoration: BoxDecoration(
-              color: isActive ? kPrimary.withOpacity(0.1) : Colors.transparent,
-              borderRadius: BorderRadius.circular(10),
-              border: isActive
-                  ? Border.all(color: kPrimary.withOpacity(0.35), width: 1.5)
-                  : null,
+              color: isActive ? AppColors.surface2 : Colors.transparent,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isActive ? AppColors.white : Colors.transparent,
+                width: isActive ? 1.5 : 1,
+              ),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Circle image or letter avatar
                 Container(
                   width: 46,
                   height: 46,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: isActive ? kPrimary : Colors.grey.shade300,
-                      width: isActive ? 2 : 1,
+                      color: isActive ? AppColors.white : AppColors.border,
+                      width: isActive ? 1.5 : 1,
                     ),
                     image: imgUrl.isNotEmpty
                         ? DecorationImage(
@@ -207,43 +243,42 @@ class _ResponsiveSidebar extends StatelessWidget {
                             fit: BoxFit.cover,
                           )
                         : null,
-                    color: isActive
-                        ? kPrimary.withOpacity(0.1)
-                        : Colors.grey.shade200,
+                    color: AppColors.bg,
                   ),
                   child: imgUrl.isEmpty
                       ? Center(
                           child: Text(
                             label.isNotEmpty ? label[0].toUpperCase() : '?',
-                            style: TextStyle(
-                              color: isActive ? kPrimary : Colors.grey[600],
+                            style: const TextStyle(
+                              color: AppColors.white,
                               fontSize: 17,
-                              fontWeight: FontWeight.bold,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
                         )
                       : null,
                 ),
-                const SizedBox(height: 5),
+                const SizedBox(height: 6),
                 Text(
                   label,
                   textAlign: TextAlign.center,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: 9.5,
+                    fontSize: 10,
                     fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-                    color: isActive ? kPrimary : Colors.grey[700],
+                    color: isActive ? AppColors.white : AppColors.grey,
                     height: 1.2,
+                    letterSpacing: 0.1,
                   ),
                 ),
                 if (isActive)
                   Container(
                     margin: const EdgeInsets.only(top: 4),
                     width: 20,
-                    height: 3,
+                    height: 2.5,
                     decoration: BoxDecoration(
-                      color: kPrimary,
+                      color: AppColors.white,
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -260,32 +295,17 @@ class _ResponsiveSidebar extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 8),
       itemCount: 8,
       itemBuilder: (_, __) => _ShimmerItem(
-        margin: const EdgeInsets.symmetric(horizontal: 5, vertical: 4),
+        margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _shimBox(width: 46, height: 46, circle: true),
+            _shimCircle(46),
             const SizedBox(height: 6),
-            _shimBox(width: 44, height: 9),
+            _shimRect(width: 44, height: 9),
             const SizedBox(height: 3),
-            _shimBox(width: 32, height: 9),
+            _shimRect(width: 32, height: 9),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _shimBox(
-      {required double width,
-      required double height,
-      bool circle = false}) {
-    return Container(
-      width: width,
-      height: height,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        shape: circle ? BoxShape.circle : BoxShape.rectangle,
-        borderRadius: circle ? null : BorderRadius.circular(4),
       ),
     );
   }
@@ -310,13 +330,12 @@ class _BrandSection extends StatelessWidget {
     if (brands.isEmpty) return const SizedBox.shrink();
 
     final crossAxisCount = isDesktop ? 5 : isTablet ? 4 : 3;
-    final itemHeight = isTablet ? 115.0 : 100.0;
+    final itemHeight = isTablet ? 118.0 : 104.0;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _SectionTitle(title: 'Brands You Like'),
-        const SizedBox(height: 10),
+        const _SectionLabel('BRANDS YOU LIKE'),
         GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -341,8 +360,8 @@ class _BrandSection extends StatelessWidget {
                   height: avatarSize,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: Colors.grey.shade100,
-                    border: Border.all(color: Colors.grey.shade300),
+                    color: AppColors.surface2,
+                    border: Border.all(color: AppColors.border),
                   ),
                   child: logo.isNotEmpty
                       ? ClipOval(
@@ -352,18 +371,20 @@ class _BrandSection extends StatelessWidget {
                             errorBuilder: (_, __, ___) => const Icon(
                                 Icons.image_not_supported,
                                 size: 20,
-                                color: Colors.grey),
+                                color: AppColors.grey),
                           ),
                         )
                       : Center(
                           child: Text(
                             name.isNotEmpty ? name[0].toUpperCase() : '?',
                             style: const TextStyle(
-                                fontSize: 18, fontWeight: FontWeight.bold),
+                                color: AppColors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700),
                           ),
                         ),
                 ),
-                const SizedBox(height: 5),
+                const SizedBox(height: 6),
                 Text(
                   name,
                   textAlign: TextAlign.center,
@@ -372,6 +393,7 @@ class _BrandSection extends StatelessWidget {
                   style: TextStyle(
                     fontSize: isTablet ? 11.5 : 10.5,
                     fontWeight: FontWeight.w500,
+                    color: AppColors.white,
                   ),
                 ),
               ],
@@ -409,19 +431,18 @@ class _CategorySubSectionState extends State<_CategorySubSection> {
   @override
   Widget build(BuildContext context) {
     final crossAxisCount = widget.isDesktop ? 5 : widget.isTablet ? 4 : 3;
-    final initialCount = crossAxisCount * 2; // 2 rows
+    final initialCount = crossAxisCount * 2;
     final hasMore = widget.items.length > initialCount;
     final displayed = _showAll
         ? widget.items
         : widget.items.take(initialCount).toList();
-    final itemHeight = widget.isTablet ? 118.0 : 102.0;
+    final itemHeight = widget.isTablet ? 120.0 : 104.0;
     final avatarSize = widget.isTablet ? 56.0 : 50.0;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _SectionTitle(title: widget.title),
-        const SizedBox(height: 8),
+        _SectionLabel(widget.title.toUpperCase()),
         GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -433,7 +454,6 @@ class _CategorySubSectionState extends State<_CategorySubSection> {
             mainAxisExtent: itemHeight,
           ),
           itemBuilder: (_, index) {
-            // "View all / less" last tile
             if (hasMore && index == displayed.length) {
               return GestureDetector(
                 onTap: () => setState(() => _showAll = !_showAll),
@@ -443,26 +463,29 @@ class _CategorySubSectionState extends State<_CategorySubSection> {
                     Container(
                       width: avatarSize,
                       height: avatarSize,
-                      decoration: const BoxDecoration(
+                      decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: kPrimary,
+                        color: AppColors.surface2,
+                        border: Border.all(
+                            color: AppColors.white, width: 1.5),
                       ),
                       child: Icon(
                         _showAll
                             ? Icons.keyboard_arrow_up_rounded
                             : Icons.keyboard_arrow_down_rounded,
-                        color: Colors.white,
-                        size: 28,
+                        color: AppColors.white,
+                        size: 26,
                       ),
                     ),
-                    const SizedBox(height: 5),
+                    const SizedBox(height: 6),
                     Text(
                       _showAll ? 'Less' : 'View All',
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w600,
-                        color: kPrimary,
+                        color: AppColors.white,
+                        letterSpacing: 0.4,
                       ),
                     ),
                   ],
@@ -485,14 +508,8 @@ class _CategorySubSectionState extends State<_CategorySubSection> {
                     height: avatarSize,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: Colors.grey.shade100,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.07),
-                          blurRadius: 5,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
+                      color: AppColors.surface2,
+                      border: Border.all(color: AppColors.border),
                     ),
                     child: ClipOval(
                       child: Image.network(
@@ -500,13 +517,13 @@ class _CategorySubSectionState extends State<_CategorySubSection> {
                         fit: BoxFit.cover,
                         errorBuilder: (_, __, ___) => const Icon(
                           Icons.category_outlined,
-                          color: Colors.grey,
+                          color: AppColors.grey,
                           size: 22,
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 5),
+                  const SizedBox(height: 6),
                   Text(
                     name,
                     textAlign: TextAlign.center,
@@ -515,6 +532,7 @@ class _CategorySubSectionState extends State<_CategorySubSection> {
                     style: TextStyle(
                       fontSize: widget.isTablet ? 11 : 10,
                       fontWeight: FontWeight.w500,
+                      color: AppColors.white,
                       height: 1.2,
                     ),
                   ),
@@ -524,6 +542,32 @@ class _CategorySubSectionState extends State<_CategorySubSection> {
           },
         ),
       ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION LABEL  (ALL-CAPS, tracked)
+// ─────────────────────────────────────────────────────────────────────────────
+class _SectionLabel extends StatelessWidget {
+  final String text;
+  const _SectionLabel(this.text);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 16, 4, 10),
+      child: Text(
+        text,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(
+          color: AppColors.grey,
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 1.4,
+        ),
+      ),
     );
   }
 }
@@ -542,8 +586,10 @@ class _BrandShimmer extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _ShimmerItem(child: _shimRect(width: 110, height: 14)),
-        const SizedBox(height: 10),
+        const Padding(
+          padding: EdgeInsets.fromLTRB(4, 16, 4, 10),
+          child: _ShimmerItem(child: SizedBox(width: 110, height: 10)),
+        ),
         GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -552,7 +598,7 @@ class _BrandShimmer extends StatelessWidget {
             crossAxisCount: crossAxisCount,
             crossAxisSpacing: 8,
             mainAxisSpacing: 8,
-            mainAxisExtent: isTablet ? 115 : 100,
+            mainAxisExtent: isTablet ? 118 : 104,
           ),
           itemBuilder: (_, __) => Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -580,8 +626,10 @@ class _CategoryGridShimmer extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _ShimmerItem(child: _shimRect(width: 120, height: 14)),
-        const SizedBox(height: 10),
+        const Padding(
+          padding: EdgeInsets.fromLTRB(4, 16, 4, 10),
+          child: _ShimmerItem(child: SizedBox(width: 120, height: 10)),
+        ),
         GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -590,7 +638,7 @@ class _CategoryGridShimmer extends StatelessWidget {
             crossAxisCount: crossAxisCount,
             crossAxisSpacing: 8,
             mainAxisSpacing: 10,
-            mainAxisExtent: isTablet ? 118 : 102,
+            mainAxisExtent: isTablet ? 120 : 104,
           ),
           itemBuilder: (_, __) => Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -613,7 +661,7 @@ Widget _shimCircle(double size) => Container(
       height: size,
       decoration: const BoxDecoration(
         shape: BoxShape.circle,
-        color: Colors.white,
+        color: AppColors.surface2,
       ),
     );
 
@@ -621,7 +669,7 @@ Widget _shimRect({required double width, required double height}) => Container(
       width: width,
       height: height,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface2,
         borderRadius: BorderRadius.circular(4),
       ),
     );
@@ -645,7 +693,7 @@ class _ShimmerItemState extends State<_ShimmerItem>
     super.initState();
     _ctrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1100),
+      duration: const Duration(milliseconds: 1200),
     )..repeat();
     _anim = Tween<double>(begin: -1.5, end: 2.5).animate(
       CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
@@ -675,52 +723,15 @@ class _ShimmerItemState extends State<_ShimmerItem>
                 (_anim.value + 1).clamp(0.0, 1.0),
               ],
               colors: const [
-                Color(0xFFE0E0E0),
-                Color(0xFFF0F0F0),
-                Color(0xFFE0E0E0),
+                AppColors.surface2,
+                AppColors.border,
+                AppColors.surface2,
               ],
             ).createShader(bounds),
             child: widget.child,
           ),
         );
       },
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// SECTION TITLE
-// ─────────────────────────────────────────────────────────────────────────────
-class _SectionTitle extends StatelessWidget {
-  final String title;
-  const _SectionTitle({required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Container(
-          width: 4,
-          height: 16,
-          decoration: BoxDecoration(
-            color: kPrimary,
-            borderRadius: BorderRadius.circular(2),
-          ),
-        ),
-        const SizedBox(width: 7),
-        Expanded(
-          child: Text(
-            title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 0.1,
-            ),
-          ),
-        ),
-      ],
     );
   }
 }
