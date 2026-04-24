@@ -86,6 +86,14 @@ class ApiEndpoints {
   static String reviewHelpful(String reviewId) =>
       '/api/v1/reviews/$reviewId/helpful';
 
+  // ── Reco / Similarity / Tracking ──────────────────────────────────────────
+  static const String trackInteraction = '/api/v1/track/interaction';
+  static const String recoForYou       = '/api/v1/reco/for-you';
+  static const String recoFeedback     = '/api/v1/reco/feedback';
+
+  static String similarProducts(String productId) =>
+      '/api/v1/product/$productId/similar';
+
   // ── Notification Preferences ─────────────────────────────────────────────
   static const String notificationPrefs = '/api/v1/users/notification-preferences';
 
