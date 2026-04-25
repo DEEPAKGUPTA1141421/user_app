@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../model/section_v2.dart';
+import '../../utils/app_colors.dart';
 
 // Shared wrapper: title header + background + bottom spacing for all section widgets.
 class SectionShell extends StatelessWidget {
@@ -25,7 +26,7 @@ class SectionShell extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (showTitle && section.title.isNotEmpty)
-            _SectionHeader(title: section.title, theme: theme),
+            _SectionHeader(title: section.title, fg: theme.fg, paddingX: theme.paddingX, paddingY: theme.paddingY),
           child,
           const SizedBox(height: 10),
         ],
@@ -36,21 +37,28 @@ class SectionShell extends StatelessWidget {
 
 class _SectionHeader extends StatelessWidget {
   final String title;
-  final SectionTheme theme;
-  const _SectionHeader({required this.title, required this.theme});
+  final Color fg;
+  final double paddingX;
+  final double paddingY;
+
+  const _SectionHeader({
+    required this.title,
+    required this.fg,
+    required this.paddingX,
+    required this.paddingY,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.fromLTRB(
-          theme.paddingX, theme.paddingY, theme.paddingX, 8),
+      padding: EdgeInsets.fromLTRB(paddingX, paddingY, paddingX, 8),
       child: Row(
         children: [
           Container(
             width: 4,
             height: 18,
             decoration: BoxDecoration(
-              color: theme.accent,
+              color: AppColors.white,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -61,11 +69,11 @@ class _SectionHeader extends StatelessWidget {
               style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
-                  color: theme.fg),
+                  color: fg),
             ),
           ),
-          Icon(Icons.arrow_forward_ios_rounded,
-              size: 13, color: theme.accent),
+          const Icon(Icons.arrow_forward_ios_rounded,
+              size: 13, color: AppColors.grey),
         ],
       ),
     );

@@ -50,11 +50,13 @@ class EmbeddedProduct {
                 ?.toDouble() ??
             0.0;
 
-    final thumbnailUrl = json['thumbnailUrl'] as String? ??
-        json['imageUrl'] as String? ??
-        json['imageurl'] as String? ??
-        json['image'] as String? ??
-        '';
+    // Backend sometimes serialises thumbnailUrl as a JSON string with extra
+    // quotes or as a JSON array string: "\"url\"" or "[\"url1\",\"url2\"]"
+    final rawUrl = json['thumbnailUrl'] ??
+        json['imageUrl'] ??
+        json['imageurl'] ??
+        json['image'];
+    final thumbnailUrl = _cleanUrl(rawUrl);
 
     return EmbeddedProduct(
       id: (json['id'] ?? json['productId'] ?? '').toString(),
@@ -67,6 +69,24 @@ class EmbeddedProduct {
       isBestseller: json['isBestseller'] == true,
       isSponsored: json['isSponsored'] == true,
     );
+  }
+
+  // Strips surrounding quotes and JSON-array brackets the backend may add.
+  static String _cleanUrl(dynamic raw) {
+    if (raw == null) return '';
+    var s = raw.toString().trim();
+    // Strip outer quotes: "\"url\"" → url
+    while (s.startsWith('"') && s.endsWith('"') && s.length > 1) {
+      s = s.substring(1, s.length - 1).trim();
+    }
+    // Strip JSON array: ["url1","url2"] → first url
+    if (s.startsWith('[')) {
+      s = s.replaceAll('[', '').replaceAll(']', '').trim();
+      s = s.split(',').first.trim();
+      // remove any residual quotes
+      s = s.replaceAll('"', '').trim();
+    }
+    return s;
   }
 }
 
@@ -87,6 +107,8 @@ class SectionItemV2 {
   factory SectionItemV2.fromJson(Map<String, dynamic> json) {
     final meta = Map<String, dynamic>.from(json['metadata'] as Map? ?? {});
     EmbeddedProduct? product;
+
+    // Format A: product data nested under 'product' key (doc spec)
     if (json['product'] is Map) {
       try {
         product = EmbeddedProduct.fromJson(
@@ -94,9 +116,21 @@ class SectionItemV2 {
       } catch (_) {}
     }
 
+    // Format B: product data is FLAT on the item (actual backend response)
+    // Detected by presence of title / pricePaise / thumbnailUrl at root level
+    if (product == null &&
+        (json['title'] != null ||
+            json['pricePaise'] != null ||
+            json['thumbnailUrl'] != null)) {
+      try {
+        product = EmbeddedProduct.fromJson(json);
+      } catch (_) {}
+    }
+
     return SectionItemV2(
       itemType: (json['itemType'] as String? ?? 'UNKNOWN').toUpperCase(),
-      itemRefId: json['itemRefId'] as String?,
+      itemRefId: json['itemRefId'] as String? ??
+          json['productId'] as String?,
       product: product,
       metadata: meta,
     );
@@ -152,7 +186,6 @@ class SectionPagination {
 class SectionTheme {
   final Color bg;
   final Color fg;
-  final Color accent;
   final double paddingX;
   final double paddingY;
   final double cornerRadius;
@@ -160,7 +193,6 @@ class SectionTheme {
   const SectionTheme({
     this.bg = AppColors.surface,
     this.fg = AppColors.white,
-    this.accent = const Color(0xFFFF5200),
     this.paddingX = 16,
     this.paddingY = 12,
     this.cornerRadius = 14,
@@ -172,7 +204,7 @@ class SectionTheme {
     return SectionTheme(
       bg: _parseColor(json['bg'] as String?) ?? AppColors.surface,
       fg: _parseColor(json['fg'] as String?) ?? AppColors.white,
-      accent: _parseColor(json['accent'] as String?) ?? const Color(0xFFFF5200),
+      // accent is intentionally ignored — use brand color at widget level
       paddingX: (padding?['x'] as num?)?.toDouble() ?? 16,
       paddingY: (padding?['y'] as num?)?.toDouble() ?? 12,
       cornerRadius: (json['cornerRadius'] as num?)?.toDouble() ?? 14,
