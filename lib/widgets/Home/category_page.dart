@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../provider/category_sections.dart';
 import '../../provider/banner_provider.dart';
+import '../../provider/rider_provider.dart';
 import '../responsive_banner_carousel.dart';
 import '../../model/section_model.dart';
+import '../../model/section_v2.dart';
 import './section_widget.dart';
+import '../sections/section_renderer.dart';
 
 class CategoryPage extends ConsumerStatefulWidget {
   final String? categoryId;
@@ -21,7 +24,6 @@ class _CategoryPageState extends ConsumerState<CategoryPage> {
   @override
   void initState() {
     super.initState();
-    // ✅ Always defer past the current build frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _triggerFetch(widget.categoryId);
     });
@@ -31,8 +33,6 @@ class _CategoryPageState extends ConsumerState<CategoryPage> {
   void didUpdateWidget(CategoryPage oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.categoryId != widget.categoryId) {
-      // ✅ Defer — didUpdateWidget is called inside the build pipeline;
-      //    mutating a StateNotifier here causes the crash shown in the screenshot.
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _triggerFetch(widget.categoryId);
       });
@@ -41,34 +41,41 @@ class _CategoryPageState extends ConsumerState<CategoryPage> {
 
   void _triggerFetch(String? categoryId) {
     final key = categoryId ?? '__NULL__';
-    // Guard: skip if we already fetched for this key
     if (_lastKey == key) return;
     _lastKey = key;
 
     debugPrint('🔄 CategoryPage._triggerFetch → categoryId=$categoryId');
 
-    // 1. Sections
+    final userId = _userId;
+
     ref
         .read(categorySectionsProvider.notifier)
-        .fetchSectionsOfCategory(categoryId: categoryId);
+        .fetchSectionsOfCategory(categoryId: categoryId, userId: userId);
 
-    // 2. Banners — clear first, then fetch for real category
     ref.read(bannerProvider.notifier).clearBanners();
     if (categoryId != null && categoryId.isNotEmpty) {
       ref.read(bannerProvider.notifier).fetchBannersByCategory(categoryId);
     }
 
-    // 3. Brands
     final brandsId = (categoryId != null && categoryId.isNotEmpty)
         ? categoryId
         : '5d70fc95-8a6b-4d04-95e9-9620269ab15e';
     ref.read(categorySectionsProvider.notifier).fetchBrands(brandsId);
   }
 
+  String? get _userId {
+    try {
+      final user = ref.read(riderPod).user;
+      final id = (user['id'] ?? user['userId'] ?? '').toString();
+      return id.isNotEmpty ? id : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
   void _navigate(String route, Map<String, String> params) {
-    final uri = Uri(
-        path: route,
-        queryParameters: params.isEmpty ? null : params);
+    final uri =
+        Uri(path: route, queryParameters: params.isEmpty ? null : params);
     Navigator.pushNamed(context, uri.toString());
   }
 
@@ -79,25 +86,40 @@ class _CategoryPageState extends ConsumerState<CategoryPage> {
 
     final sectionsLoading = state.sectionsLoading;
     final rawSections = state.sections;
-    final bannerIsLoading = bannerState.isLoading;
     final banners = bannerState.banners;
 
-    // Parse + sort sections via the Section model
-    final List<Section> sections = rawSections
-        .map((e) {
-          try {
-            return Section.fromJson(Map<String, dynamic>.from(e));
-          } catch (_) {
-            return null;
-          }
-        })
-        .whereType<Section>()
-        .where((s) => s.active)
-        .toList()
-      ..sort((a, b) => a.position.compareTo(b.position));
+    // Build ordered list of (position, widget) supporting both old and new models
+    final positioned = <(int, Widget)>[];
 
-    // First-load spinner
-    if (sectionsLoading && sections.isEmpty) {
+    for (final raw in rawSections) {
+      try {
+        final e = Map<String, dynamic>.from(raw);
+        final widgetKey = (e['widgetKey'] as String?) ?? '';
+
+        if (widgetKey.isNotEmpty) {
+          // New architecture — parse as SectionV2 + SectionRenderer
+          final s2 = SectionV2.fromJson(e);
+          if (!s2.active || s2.items.isEmpty) continue;
+          positioned.add((
+            s2.position,
+            SectionRenderer(section: s2, onNavigate: _navigate),
+          ));
+        } else {
+          // Legacy — parse as old Section + SectionWidget
+          final s = Section.fromJson(e);
+          if (!s.active || s.items.isEmpty) continue;
+          positioned.add((
+            s.position,
+            SectionWidget(section: s, onNavigate: _navigate),
+          ));
+        }
+      } catch (_) {}
+    }
+
+    positioned.sort((a, b) => a.$1.compareTo(b.$1));
+    final sectionWidgets = positioned.map((p) => p.$2).toList();
+
+    if (sectionsLoading && sectionWidgets.isEmpty) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 32),
         child: Center(
@@ -106,13 +128,16 @@ class _CategoryPageState extends ConsumerState<CategoryPage> {
       );
     }
 
-    if (sections.isEmpty && !sectionsLoading) return const SizedBox.shrink();
+    if (sectionWidgets.isEmpty && !sectionsLoading) {
+      return const SizedBox.shrink();
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // ── Banner carousel ────────────────────────────────────────────
-        if (bannerIsLoading)
+        // Banner carousel — shown only when bannerProvider has data
+        // (new arch: banners arrive as banner_hero_v1 sections above)
+        if (bannerState.isLoading)
           _ShimmerBanner()
         else if (banners.isNotEmpty)
           ResponsiveBannerCarousel(
@@ -120,10 +145,7 @@ class _CategoryPageState extends ConsumerState<CategoryPage> {
             categoryId: widget.categoryId ?? '',
           ),
 
-        // ── Dynamic sections ───────────────────────────────────────────
-        ...sections.map<Widget>(
-          (section) => SectionWidget(section: section, onNavigate: _navigate),
-        ),
+        ...sectionWidgets,
       ],
     );
   }
@@ -134,10 +156,10 @@ class _ShimmerBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: 200,
-      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.grey.shade200,
-        borderRadius: BorderRadius.circular(12),
+        color: const Color(0xFF1A1A1A),
+        borderRadius: BorderRadius.circular(14),
       ),
     );
   }

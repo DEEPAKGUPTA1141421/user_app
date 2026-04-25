@@ -114,21 +114,39 @@ class CategorySectionsNotifier extends StateNotifier<CategorySectionsState> {
 
   // ── Fetch sections for a category ─────────────────────────────────────────
 
-  Future<void> fetchSectionsOfCategory({String? categoryId}) async {
-    // Clear sections immediately so UI shows loader
+  Future<void> fetchSectionsOfCategory({
+    String? categoryId,
+    String? userId,
+  }) async {
     state = state.copyWith(sectionsLoading: true, sections: const [], error: null);
     try {
       final url = (categoryId != null && categoryId.isNotEmpty)
           ? ApiEndpoints.sectionsForCategory(categoryId)
           : ApiEndpoints.sectionsForCategory('For You');
 
-      final res = await _client.get(url);
-      final body = res.data as Map<String, dynamic>;
-      final raw = (body['data'] as List<dynamic>?) ?? const [];
-      state = state.copyWith(
-        sectionsLoading: false,
-        sections: raw.cast<Map<String, dynamic>>(),
+      final res = await _client.get(
+        url,
+        queryParameters: {
+          if (userId != null && userId.isNotEmpty) 'userId': userId,
+        },
       );
+      final body = res.data as Map<String, dynamic>;
+
+      // Handle both response formats:
+      //   OLD: { "data": [...] }
+      //   NEW: { "success": true, "data": { "sections": [...] } }
+      List<Map<String, dynamic>> sections = const [];
+      final data = body['data'];
+      if (data is List) {
+        sections = data.cast<Map<String, dynamic>>();
+      } else if (data is Map) {
+        final inner = data['sections'];
+        if (inner is List) {
+          sections = inner.cast<Map<String, dynamic>>();
+        }
+      }
+
+      state = state.copyWith(sectionsLoading: false, sections: sections);
     } on DioException catch (e) {
       state = state.copyWith(
         sectionsLoading: false,
