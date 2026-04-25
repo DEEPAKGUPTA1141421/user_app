@@ -495,8 +495,7 @@ class _CategorySubSectionState extends State<_CategorySubSection> {
 
             final sub = displayed[index];
             final name = sub['name'] ?? 'Unnamed';
-            final imgUrl = sub['imageurl'] ??
-                'https://picsum.photos/200?random=${sub['id'] ?? index}';
+            final imgUrl = sub['imageurl'] ?? '';
 
             return GestureDetector(
               onTap: () {},

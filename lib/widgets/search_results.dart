@@ -59,7 +59,7 @@ class SearchResults extends ConsumerWidget {
               itemBuilder: (context, index) {
                 final brand = brands[index];
                 return SearchResultItem(
-                  image: brand['logoUrl'] ?? "https://via.placeholder.com/150",
+                  image: brand['logoUrl'] ?? '',
                   title: brand['name'] ?? "Unknown Brand",
                   category: brand['description'] ?? "No description",
                   // ✅ Navigate to full results page using the brand name as query
@@ -93,7 +93,7 @@ class SearchResults extends ConsumerWidget {
                           product['images'] is List &&
                           product['images'].isNotEmpty)
                       ? product['images'][0]
-                      : "https://via.placeholder.com/150",
+                      : '',
                   title: product['name'] ?? "Unnamed Product",
                   category: product['description'] ?? "Unknown",
                   // ✅ Navigate to full search results page with filters + grid

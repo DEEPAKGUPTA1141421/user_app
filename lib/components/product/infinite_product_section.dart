@@ -1,101 +1,85 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shimmer/shimmer.dart';
 import '../../provider/infinite_product_Provider.dart';
+import '../../utils/app_colors.dart';
+import '../../widgets/product/product_details_page.dart';
 
 class InfiniteProductSection extends ConsumerStatefulWidget {
   const InfiniteProductSection({super.key});
 
   @override
-  ConsumerState<InfiniteProductSection> createState() => _ProductSectionState();
+  ConsumerState<InfiniteProductSection> createState() =>
+      _ProductSectionState();
 }
 
 class _ProductSectionState extends ConsumerState<InfiniteProductSection> {
-  int page = 1;
-
   @override
   void initState() {
     super.initState();
-    ref.read(InfiniteproductProvider.notifier).fetchProducts();
-  }
-
-  Widget _buildShimmer() {
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(), // ✅ no scroll conflict
-      itemCount: 6,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        childAspectRatio: 0.65,
-        crossAxisSpacing: 8,
-        mainAxisSpacing: 8,
-      ),
-      itemBuilder: (context, index) {
-        return Shimmer.fromColors(
-          baseColor: Colors.grey[300]!,
-          highlightColor: Colors.grey[100]!,
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
-              color: Colors.white,
-            ),
-          ),
-        );
-      },
-    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(InfiniteproductProvider.notifier).fetchProducts();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(InfiniteproductProvider);
-    final products = state['products'] as List? ?? [];
-    final isLoading = state['isLoading'] as bool? ?? false;
-    final hasMore = state['hasMore'] as bool? ?? false;
+    final products = state.products;
+    final isLoading = state.isLoading;
+    final hasMore = state.hasMore;
+
+    if (products.isEmpty && isLoading) {
+      return _ShimmerGrid();
+    }
+
+    if (products.isEmpty && !isLoading) {
+      return const SizedBox.shrink();
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 8.0),
+          padding: EdgeInsets.fromLTRB(12, 8, 12, 8),
           child: Text(
-            "Featured Products",
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            'Popular Products',
+            style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: AppColors.white),
           ),
         ),
-        const SizedBox(height: 8),
-        if (products.isEmpty && isLoading) _buildShimmer(),
         GridView.builder(
-          shrinkWrap: true, // ✅ prevents infinite height
-          physics:
-              const NeverScrollableScrollPhysics(), // ✅ disable scroll here
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 12),
           itemCount: products.length + (hasMore ? 1 : 0),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2,
-            childAspectRatio: 0.65,
-            crossAxisSpacing: 8,
-            mainAxisSpacing: 8,
+            childAspectRatio: 0.68,
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 10,
           ),
           itemBuilder: (context, index) {
             if (index == products.length && hasMore) {
-  // bottom shimmer loader
-  ref.read(InfiniteproductProvider.notifier).fetchProducts(loadMore: true);
-  return const Center( // Center widget added here
-    child: Padding(
-      padding: EdgeInsets.all(10.0),
-      child: CircularProgressIndicator(
-        color: Color(0xFFFF5200),
-      ),
-    ),
-  );
-}
-
-
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                ref
+                    .read(InfiniteproductProvider.notifier)
+                    .fetchProducts(loadMore: true);
+              });
+              return const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(16),
+                  child: CircularProgressIndicator(
+                      color: Color(0xFFFF5200), strokeWidth: 2.5),
+                ),
+              );
+            }
             if (index >= products.length) return const SizedBox.shrink();
-
-            final product = products[index];
-            return _ProductCard(product: product);
+            return _ProductCard(product: products[index]);
           },
         ),
+        const SizedBox(height: 12),
       ],
     );
   }
@@ -103,75 +87,174 @@ class _ProductSectionState extends ConsumerState<InfiniteProductSection> {
 
 class _ProductCard extends StatelessWidget {
   final Map<String, dynamic> product;
-
   const _ProductCard({required this.product});
+
+  String get _id =>
+      (product['id'] ?? product['productId'] ?? '').toString();
+
+  String get _name =>
+      product['name'] as String? ?? product['title'] as String? ?? '';
+
+  String get _imageUrl =>
+      product['imageurl'] as String? ??
+      product['imageUrl'] as String? ??
+      product['image'] as String? ??
+      ((product['images'] as List?)?.firstOrNull as String? ?? '');
+
+  double get _salePrice =>
+      (product['salePrice'] ??
+              product['discountPrice'] ??
+              product['finalPrice'] ??
+              product['price'] as num? ??
+              0)
+          .toDouble();
+
+  double get _originalPrice =>
+      (product['originalPrice'] ??
+              product['price'] as num? ??
+              _salePrice)
+          .toDouble();
+
+  int get _discountPct {
+    final orig = _originalPrice;
+    final sale = _salePrice;
+    if (orig <= 0 || sale >= orig) return 0;
+    return (((orig - sale) / orig) * 100).round();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final price = product['price'];
-    final discountPrice = product['discountPrice'];
-    final discountPercent =
-        (((price - discountPrice) / price) * 100).toStringAsFixed(0);
+    final hasImage = _imageUrl.isNotEmpty;
+    final pct = _discountPct;
 
-    return Container(
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey.shade300),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          AspectRatio(
-            aspectRatio: 1,
-            child: ClipRRect(
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(8)),
-              child: Image.network(
-                product['image'],
-                fit: BoxFit.cover,
-              ),
+    return GestureDetector(
+      onTap: () {
+        if (_id.isNotEmpty) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ProductDetailsPage(productId: _id),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(6.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  product['name'],
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w500, fontSize: 14),
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Text(
-                      '₹${discountPrice.toString()}',
-                      style: const TextStyle(
-                          fontWeight: FontWeight.bold, color: Colors.black),
+          );
+        }
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              flex: 55,
+              child: Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius:
+                        const BorderRadius.vertical(top: Radius.circular(12)),
+                    child: Container(
+                      width: double.infinity,
+                      color: AppColors.surface2,
+                      child: hasImage
+                          ? Image.network(_imageUrl,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => _placeholder())
+                          : _placeholder(),
                     ),
-                    const SizedBox(width: 6),
-                    Text(
-                      '₹${price.toString()}',
-                      style: const TextStyle(
-                        color: Colors.grey,
-                        fontSize: 12,
-                        decoration: TextDecoration.lineThrough,
+                  ),
+                  if (pct > 0)
+                    Positioned(
+                      top: 6,
+                      left: 6,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 5, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFF5200),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text('$pct% off',
+                            style: const TextStyle(
+                                fontSize: 9,
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700)),
                       ),
                     ),
-                    const SizedBox(width: 4),
-                    Text(
-                      '$discountPercent% off',
-                      style: const TextStyle(color: Colors.green, fontSize: 12),
+                ],
+              ),
+            ),
+            Expanded(
+              flex: 45,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(_name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: AppColors.white,
+                            height: 1.3)),
+                    const Spacer(),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.baseline,
+                      textBaseline: TextBaseline.alphabetic,
+                      children: [
+                        Text('₹${_salePrice.toStringAsFixed(0)}',
+                            style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.white)),
+                        if (pct > 0) ...[
+                          const SizedBox(width: 5),
+                          Text('₹${_originalPrice.toStringAsFixed(0)}',
+                              style: const TextStyle(
+                                  fontSize: 10,
+                                  color: AppColors.grey,
+                                  decoration: TextDecoration.lineThrough)),
+                        ],
+                      ],
                     ),
                   ],
                 ),
-              ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _placeholder() => const Center(
+        child: Icon(Icons.shopping_bag_outlined,
+            size: 32, color: AppColors.grey),
+      );
+}
+
+class _ShimmerGrid extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      itemCount: 6,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        childAspectRatio: 0.68,
+        crossAxisSpacing: 10,
+        mainAxisSpacing: 10,
+      ),
+      itemBuilder: (_, __) => Container(
+        decoration: BoxDecoration(
+          color: AppColors.surface2,
+          borderRadius: BorderRadius.circular(12),
+        ),
       ),
     );
   }
