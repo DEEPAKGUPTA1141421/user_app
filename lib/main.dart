@@ -370,8 +370,18 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: AppSpinner(color: AppColors.bg)),
+    return Scaffold(
+      backgroundColor: AppColors.bg,
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.asset('assets/images/DashlyLogo.jpeg', width: 200, fit: BoxFit.contain),
+            const SizedBox(height: 32),
+            const AppSpinner(color: AppColors.primary),
+          ],
+        ),
+      ),
     );
   }
 }

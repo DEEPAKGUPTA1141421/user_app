@@ -76,17 +76,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               const SizedBox(height: 60),
 
               // ── Logo / Brand mark ──────────────────────────────────
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.border),
-                ),
-                child: const Center(
-                  child: Icon(Icons.shopping_bag_outlined, color: AppColors.white, size: 28),
-                ),
+              Image.asset(
+                'assets/images/DashlyLogo.jpeg',
+                height: 64,
+                fit: BoxFit.contain,
               ),
 
               const SizedBox(height: 32),
