@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../provider/interaction_tracker_provider.dart';
 import '../../provider/recommendations_provider.dart';
 import '../../utils/app_colors.dart';
+import '../../core/widgets/app_loader.dart';
 
 /// Home-feed "For You" rail. Fetches personalised recommendations
 /// and attributes downstream clicks via `source: "reco:<recoId>"`.
@@ -135,14 +136,7 @@ class _ForYouRailState extends ConsumerState<ForYouRail> {
           SizedBox(
             height: 246,
             child: state.isLoading && state.items.isEmpty
-                ? const Center(
-                    child: SizedBox(
-                      width: 22,
-                      height: 22,
-                      child: CircularProgressIndicator(
-                          color: AppColors.white, strokeWidth: 2),
-                    ),
-                  )
+                ? const Center(child: AppSpinner(size: 22))
                 : ListView.separated(
                     controller: _scroll,
                     scrollDirection: Axis.horizontal,

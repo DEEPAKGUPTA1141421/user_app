@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/widgets/app_loader.dart';
 import '../../provider/rider_provider.dart';
 import '../../widgets/current_location_button.dart';
 
@@ -81,7 +82,7 @@ class _AddressesScreenState extends ConsumerState<AddressesScreen> {
       ),
 
       body: isLoading
-          ? const Center(child: CircularProgressIndicator(color: _white))
+          ? const Center(child: AppSpinner())
           : addresses.isEmpty
               ? _emptyState()
               : ListView.builder(

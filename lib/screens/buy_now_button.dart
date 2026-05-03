@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../provider/rider_provider.dart';
 import '../provider/buy_now_provider.dart';
+import '../core/widgets/app_loader.dart';
 import '../provider/interaction_tracker_provider.dart';
 import 'buys/buy_now_address_sheet.dart';
 import '../utils/app_colors.dart';
@@ -165,11 +166,7 @@ class _BuyNowButtonState extends ConsumerState<BuyNowButton> {
         ),
         child: Center(
           child: _isLoading
-              ? const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(
-                      color: AppColors.bg, strokeWidth: 2.5))
+              ? const AppSpinner(size: 18, color: AppColors.bg)
               : const Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -248,15 +245,7 @@ class ProductActionBar extends ConsumerWidget {
                           ),
                         ),
                         child: isAddingToCart
-                            ? const Center(
-                                child: SizedBox(
-                                  height: 18,
-                                  width: 18,
-                                  child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: AppColors.white),
-                                ),
-                              )
+                            ? const Center(child: AppSpinner(size: 18))
                             : Row(
                                 mainAxisAlignment:
                                     MainAxisAlignment.center,

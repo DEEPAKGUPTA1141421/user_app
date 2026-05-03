@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'verify_otp_screen.dart';
 import '../../provider/rider_provider.dart';
 import '../../utils/app_colors.dart';
+import '../../core/widgets/app_loader.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -178,14 +179,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                   child: Center(
                     child: isLoading
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              color: AppColors.white,
-                              strokeWidth: 2,
-                            ),
-                          )
+                        ? const AppSpinner(size: 20)
                         : const Text(
                             "Continue",
                             style: TextStyle(

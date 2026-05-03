@@ -1,6 +1,8 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../model/section_v2.dart';
 import '../../utils/app_colors.dart';
+import '../product_search_results_page.dart';
 
 typedef OnNavigate = void Function(String route, Map<String, String> params);
 
@@ -35,6 +37,23 @@ class _BannerWidgetState extends State<BannerWidget>
       });
       _prog.forward();
     }
+    _fireImpressionPixels();
+  }
+
+  void _fireImpressionPixels() {
+    for (final item in _items) {
+      final url = item.impressionPixel;
+      if (url != null && url.isNotEmpty) {
+        _firePixel(url);
+      }
+    }
+  }
+
+  static void _firePixel(String url) {
+    HttpClient()
+        .getUrl(Uri.parse(url))
+        .then((req) => req.close())
+        .ignore();
   }
 
   void _advance() {
@@ -59,6 +78,26 @@ class _BannerWidgetState extends State<BannerWidget>
   }
 
   void _handleTap(SectionItemV2 item) {
+    final clickUrl = item.clickPixel;
+    if (clickUrl != null && clickUrl.isNotEmpty) {
+      _firePixel(clickUrl);
+    }
+
+    // filterPayload takes priority — navigate to product results page
+    final fp = item.filterPayload;
+    if (fp != null) {
+      final rawKeyword = fp['keyword'] as String? ?? '';
+      final keyword = Uri.decodeQueryComponent(rawKeyword.replaceAll('+', ' '));
+      Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => ProductSearchResultsPage(
+          query: keyword,
+          filterPayload: fp,
+        ),
+      ));
+      return;
+    }
+
+    // Fallback: tapAction routing
     final ta = item.tapAction;
     if (ta == null) return;
     switch (ta.kind) {
@@ -81,13 +120,17 @@ class _BannerWidgetState extends State<BannerWidget>
         ? widget.section.bannerHeight
         : (screenW * 0.44).clamp(155.0, 210.0);
 
+    // Each segment ~20dp wide + 4dp gap; total capped at 45% screen width
+    final barTotalWidth = (_items.length * 20.0 + (_items.length - 1) * 4.0)
+        .clamp(0.0, screenW * 0.45);
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Column(
-        children: [
-          SizedBox(
-            height: height,
-            child: PageView.builder(
+      child: SizedBox(
+        height: height,
+        child: Stack(
+          children: [
+            PageView.builder(
               controller: _page,
               itemCount: _items.length,
               onPageChanged: _onPageChanged,
@@ -96,29 +139,57 @@ class _BannerWidgetState extends State<BannerWidget>
                 onTap: () => _handleTap(_items[i]),
               ),
             ),
-          ),
-          if (_items.length > 1)
-            Padding(
-              padding: const EdgeInsets.only(top: 10, left: 14, right: 14),
-              child: Row(
-                children: List.generate(_items.length, (i) {
-                  final isActive = i == _current;
-                  return Expanded(
-                    child: Padding(
-                      padding: EdgeInsets.only(
-                          left: i == 0 ? 0 : 4,
-                          right: i == _items.length - 1 ? 0 : 4),
-                      child: _ProgressBar(
-                        isActive: isActive,
-                        isPast: i < _current,
-                        progress: isActive ? _prog : null,
-                      ),
+            if (_items.length > 1) ...[
+              // Dark gradient at bottom for bar visibility
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: Container(
+                  height: 36,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Colors.black.withOpacity(0.45),
+                      ],
                     ),
-                  );
-                }),
+                  ),
+                ),
               ),
-            ),
-        ],
+              // Progress bars centered inside banner
+              Positioned(
+                bottom: 9,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: SizedBox(
+                    width: barTotalWidth,
+                    child: Row(
+                      children: List.generate(_items.length, (i) {
+                        final isActive = i == _current;
+                        return Expanded(
+                          child: Padding(
+                            padding: EdgeInsets.only(
+                                left: i == 0 ? 0 : 4,
+                                right: i == _items.length - 1 ? 0 : 4),
+                            child: _ProgressBar(
+                              isActive: isActive,
+                              isPast: i < _current,
+                              progress: isActive ? _prog : null,
+                            ),
+                          ),
+                        );
+                      }),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -131,7 +202,10 @@ class _BannerSlide extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final imageUrl = item.imageUrl ?? '';
+    // Prefer banner-specific imageUrl from metadata; fall back to generic imageUrl
+    final imageUrl = (item.bannerImageUrl?.isNotEmpty == true)
+        ? item.bannerImageUrl!
+        : (item.imageUrl ?? '');
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -161,6 +235,8 @@ class _BannerSlide extends StatelessWidget {
   }
 
   Widget _fallback() {
+    final displayTitle = item.bannerAltText ?? item.title ?? '';
+    final displaySub = item.subtitle ?? '';
     return Container(
       color: AppColors.surface2,
       padding: const EdgeInsets.all(20),
@@ -169,16 +245,17 @@ class _BannerSlide extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(item.title ?? '',
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.white)),
-          if ((item.subtitle ?? '').isNotEmpty) ...[
+          if (displayTitle.isNotEmpty)
+            Text(displayTitle,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.white)),
+          if (displaySub.isNotEmpty) ...[
             const SizedBox(height: 8),
-            Text(item.subtitle!,
+            Text(displaySub,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
@@ -199,10 +276,10 @@ class _ProgressBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const h = 3.0;
-    const radius = BorderRadius.all(Radius.circular(2));
-    const track = AppColors.greyDark;
-    const fill = AppColors.white;
+    const h = 2.0;
+    const radius = BorderRadius.all(Radius.circular(1));
+    final track = Colors.white.withOpacity(0.35);
+    const fill = Colors.white;
 
     if (isPast) {
       return Container(
@@ -212,7 +289,7 @@ class _ProgressBar extends StatelessWidget {
     if (!isActive) {
       return Container(
           height: h,
-          decoration: const BoxDecoration(color: track, borderRadius: radius));
+          decoration: BoxDecoration(color: track, borderRadius: radius));
     }
     return AnimatedBuilder(
       animation: progress!,
@@ -220,8 +297,7 @@ class _ProgressBar extends StatelessWidget {
         children: [
           Container(
               height: h,
-              decoration:
-                  const BoxDecoration(color: track, borderRadius: radius)),
+              decoration: BoxDecoration(color: track, borderRadius: radius)),
           FractionallySizedBox(
             widthFactor: progress!.value,
             child: Container(

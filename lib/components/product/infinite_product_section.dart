@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../provider/infinite_product_Provider.dart';
 import '../../utils/app_colors.dart';
+import '../../core/widgets/app_loader.dart';
 import '../../widgets/product/product_details_page.dart';
 
 class InfiniteProductSection extends ConsumerStatefulWidget {
@@ -70,8 +71,7 @@ class _ProductSectionState extends ConsumerState<InfiniteProductSection> {
               return const Center(
                 child: Padding(
                   padding: EdgeInsets.all(16),
-                  child: CircularProgressIndicator(
-                      color: Color(0xFFFF5200), strokeWidth: 2.5),
+                  child: AppSpinner(),
                 ),
               );
             }
@@ -242,7 +242,7 @@ class _ShimmerGrid extends StatelessWidget {
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 12),
+      padding: EdgeInsets.zero,
       itemCount: 6,
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,

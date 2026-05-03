@@ -4,6 +4,7 @@ import '../provider/rider_provider.dart';
 import '../provider/order_tracking_provider.dart';
 import '../provider/checkout_provider.dart';
 import '../utils/app_colors.dart';
+import '../core/widgets/app_loader.dart';
 class OrderSuccessScreen extends ConsumerStatefulWidget {
   const OrderSuccessScreen({super.key});
 
@@ -212,12 +213,7 @@ class _OrderSuccessScreenState extends ConsumerState<OrderSuccessScreen>
 
                       // Auto-redirect indicator
                       Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                        const SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white38),
-                        ),
+                        const AppSpinner(size: 14, color: Colors.white38),
                         const SizedBox(width: 10),
                         Text(
                           'Redirecting to order tracking…',

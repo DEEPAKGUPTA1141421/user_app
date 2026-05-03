@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../provider/product_provider.dart';
+import '../core/widgets/app_loader.dart';
 import 'search_result_item.dart';
 import '../widgets/product_search_results_page.dart';
 
@@ -25,7 +26,7 @@ class SearchResults extends ConsumerWidget {
       return const Center(
         child: Padding(
           padding: EdgeInsets.only(top: 40),
-          child: CircularProgressIndicator(),
+          child: AppSpinner(),
         ),
       );
     }

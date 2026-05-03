@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/api/api_client.dart';
+import '../core/api/api_endpoints.dart';
 import '../core/errors/app_exception.dart';
 
 // ─── State ─────────────────────────────────────────────────────────────────────
@@ -104,7 +105,7 @@ class BuyNowNotifier extends StateNotifier<BuyNowState> {
     state = const BuyNowState(isLoading: true);
     try {
       final res = await _client.post(
-        '/api/v1/buy-now',
+        ApiEndpoints.buyNow,
         data: {
           'productId': productId,
           'variantId': variantId,
@@ -144,7 +145,6 @@ class BuyNowNotifier extends StateNotifier<BuyNowState> {
 
   // ── Step 2: POST /api/v1/payment ─────────────────────────────────────────
   Future<bool> createPayment({
-    required String userId,
     required String gateway, // 'cod' | 'phonepe'
   }) async {
     final bookingId = state.bookingId;
@@ -158,13 +158,12 @@ class BuyNowNotifier extends StateNotifier<BuyNowState> {
     final isCod = gateway == 'cod';
 
     try {
-      final shortUser = userId.split('-').first;
       final shortBooking = bookingId.split('-').first;
       final idempotencyKey =
-          'buynow-$shortUser-$shortBooking-${DateTime.now().millisecondsSinceEpoch}';
+          'buynow-$shortBooking-${DateTime.now().millisecondsSinceEpoch}';
 
       final res = await _client.post(
-        '/api/v1/payment',
+        ApiEndpoints.createPayment,
         data: {
           'gateway': gateway,
           'bookingId': bookingId,

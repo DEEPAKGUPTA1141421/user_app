@@ -22,15 +22,34 @@ class _CategorySectionState extends ConsumerState<CategorySection> {
     final isLoading = state.isLoading;
     final categories = state.categoryData;
 
+    if (isLoading) {
+      return Container(
+        width: double.infinity,
+        color: AppColors.bg,
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            const itemWidth = 68.0; // 48px icon + 10px margin × 2
+            final count = (constraints.maxWidth / itemWidth).ceil() + 1;
+            return Shimmer.fromColors(
+              baseColor: AppColors.surface2,
+              highlightColor: AppColors.surface,
+              child: Row(
+                children: List.generate(count, (_) => _buildSkeleton()),
+              ),
+            );
+          },
+        ),
+      );
+    }
+
     return Container(
       color: AppColors.bg,
       padding: const EdgeInsets.symmetric(vertical: 14),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(
-          children: isLoading
-              ? List.generate(6, (index) => _buildSkeleton())
-              : List.generate(categories.length, (index) {
+          children: List.generate(categories.length, (index) {
                   final cat = categories[index];
                   final isActive = activeIndex == index;
 
@@ -79,7 +98,7 @@ class _CategorySectionState extends ConsumerState<CategorySection> {
                               child: Image.network(
                                 image,
                                 fit: BoxFit.contain,
-                                errorBuilder: (_, __, ___) => Icon(
+                                errorBuilder: (_, __, ___) => const Icon(
                                   Icons.category_outlined,
                                   color: AppColors.grey,
                                   size: 22,

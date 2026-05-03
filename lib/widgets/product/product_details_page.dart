@@ -328,16 +328,24 @@ class _ProductDetailsPageState extends ConsumerState<ProductDetailsPage>
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   // Image carousel
-                                  ProductImageCarousel(
-                                    imageUrls: imageUrls,
-                                    productDetails: const {},
-                                    rating: avgRating,
-                                    ratingCount: _fmtCount(totalRatings),
-                                    isInWishlist: isInWishlist,
-                                    isTogglingWishlist: _isTogglingWishlist,
-                                    onWishlist: () =>
-                                        _handleWishlist(isInWishlist),
-                                    onShare: () => _handleShare(name, price),
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 14),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(16),
+                                      child: ProductImageCarousel(
+                                        imageUrls: imageUrls,
+                                        productDetails: const {},
+                                        rating: avgRating,
+                                        ratingCount: _fmtCount(totalRatings),
+                                        isInWishlist: isInWishlist,
+                                        isTogglingWishlist: _isTogglingWishlist,
+                                        onWishlist: () =>
+                                            _handleWishlist(isInWishlist),
+                                        onShare: () =>
+                                            _handleShare(name, price),
+                                      ),
+                                    ),
                                   ),
 
                                   const SizedBox(height: 4),
@@ -775,7 +783,15 @@ class _ProductDetailsPageState extends ConsumerState<ProductDetailsPage>
   Widget _buildShimmer() {
     return Column(
       children: [
-        _Shimmer(child: Container(height: 320, color: AppColors.surface)),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          child: _Shimmer(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: Container(height: 320, color: AppColors.surface),
+            ),
+          ),
+        ),
         const SizedBox(height: 10),
         Container(
           margin: const EdgeInsets.symmetric(horizontal: 14),

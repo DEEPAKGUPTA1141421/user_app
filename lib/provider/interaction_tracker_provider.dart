@@ -73,8 +73,7 @@ class InteractionEvent {
 
   Map<String, dynamic> toJson() => {
         'productId': productId,
-        'type': type.wire,
-        if (context != null) 'context': context!.wire,
+        'eventType': type.wire,
         if (source != null) 'source': source,
         if (dwellMs != null) 'dwellMs': dwellMs,
         'ts': ts,
@@ -127,6 +126,7 @@ class InteractionBuffer with WidgetsBindingObserver {
   String? currentRecoId;
 
   void track(InteractionEvent event) {
+    if (event.type == InteractionType.view) return;
     _queue.add(event);
     if (_queue.length > _maxQueue) {
       _queue.removeRange(0, _queue.length - _maxQueue);

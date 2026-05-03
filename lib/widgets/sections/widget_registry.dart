@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../model/section_v2.dart';
+import 'banner_peek_scroll_widget.dart';
 import 'banner_widget.dart';
 import 'brand_feature_widget.dart';
 import 'brand_rail_widget.dart';
@@ -15,6 +16,8 @@ typedef SectionBuilder = Widget Function(SectionV2 section, OnNavigate? onNaviga
 /// widgetKey (backend JSONB) → Flutter widget factory.
 final Map<String, SectionBuilder> widgetRegistry = {
   'banner_hero_v1': (s, nav) => BannerWidget(section: s, onNavigate: nav),
+  'banner_peek_scroll_v1': (s, nav) =>
+      BannerPeekScrollWidget(section: s, onNavigate: nav),
   'product_grid_v1': (s, nav) => GridWidget(section: s, onNavigate: nav),
   'product_scroll_v1': (s, nav) => RailWidget(section: s, onNavigate: nav),
   'product_highlight_v1': (s, nav) =>

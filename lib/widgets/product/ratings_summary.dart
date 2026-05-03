@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../provider/reviews_provider.dart';
 import '../../provider/rider_provider.dart';
 import '../../utils/app_colors.dart';
+import '../../core/widgets/app_loader.dart';
 import '../../widgets/real_search_page.dart';
 import 'best_review.dart';
 
@@ -106,9 +107,7 @@ class _RatingsSummaryState extends ConsumerState<RatingsSummary>
         ),
       ),
       body: state.isLoading
-          ? const Center(
-              child: CircularProgressIndicator(
-                  strokeWidth: 2, color: AppColors.green))
+          ? const Center(child: AppSpinner())
           : state.error != null
               ? _buildError(state.error!)
               : CustomScrollView(
@@ -137,10 +136,7 @@ class _RatingsSummaryState extends ConsumerState<RatingsSummary>
                               return state.isLoadingMore
                                   ? const Padding(
                                       padding: EdgeInsets.all(16),
-                                      child: Center(
-                                          child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                              color: AppColors.green)),
+                                      child: Center(child: AppSpinner()),
                                     )
                                   : const SizedBox.shrink();
                             }

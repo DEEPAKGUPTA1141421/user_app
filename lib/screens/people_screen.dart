@@ -125,6 +125,8 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
 
           SliverToBoxAdapter(child: _menuSection("ACTIVITY", [
             _menuItem(Icons.star_border, "My Reviews", "/account/reviews"),
+            _menuItem(Icons.assignment_return_outlined, "My Returns", "/account/returns"),
+            _menuItem(Icons.account_balance_wallet_outlined, "My Wallet", "/account/wallet"),
           ])),
 
           SliverToBoxAdapter(child: _menuSection("INFO", [
@@ -177,7 +179,7 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
       ),
       child: ClipOval(
         child: loading
-            ? const Center(child: CircularProgressIndicator(color: AppColors.white))
+            ? const Center(child: AppSpinner())
             : url != null
                 ? Image.network(url, fit: BoxFit.cover)
                 : Center(

@@ -6,6 +6,7 @@ import 'package:phonepe_payment_sdk/phonepe_payment_sdk.dart';
 
 import '../provider/rider_provider.dart';
 import '../provider/checkout_provider.dart';
+import '../core/widgets/app_loader.dart';
 import '../provider/cart_provider.dart';
 import '../provider/interaction_tracker_provider.dart';
 import '../utils/app_colors.dart';
@@ -799,11 +800,7 @@ class _BottomPayBar extends StatelessWidget {
                       ),
                     ),
                     child: isLoading
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                                color: AppColors.bg, strokeWidth: 2.5))
+                        ? const AppSpinner(size: 20, color: AppColors.bg)
                         : Text(
                             selectedMethod.isEmpty ? 'Pay Now' : _methodLabel,
                             style: TextStyle(

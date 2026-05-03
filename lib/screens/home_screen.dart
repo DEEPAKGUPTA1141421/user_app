@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../provider/category_sections.dart';
-import '../provider/banner_provider.dart';
 import '../provider/infinite_product_Provider.dart';
 import '../provider/recommendations_provider.dart';
 import '../widgets/collapsible_header.dart';
@@ -28,7 +27,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Future<void> _onRefresh() async {
     // 1. Reset provider state so children re-fetch from scratch
     ref.invalidate(categorySectionsProvider);
-    ref.invalidate(bannerProvider);
     ref.invalidate(InfiniteproductProvider);
     // Re-request a fresh recoId on pull-to-refresh
     ref.read(recommendationsProvider.notifier).load();

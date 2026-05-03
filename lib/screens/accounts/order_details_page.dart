@@ -5,6 +5,8 @@ import 'package:shimmer/shimmer.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../provider/orders_provider.dart';
 import '../../utils/app_colors.dart';
+import '../../core/widgets/app_loader.dart';
+import 'return_reason_sheet.dart';
 
 class OrderDetailsPage extends ConsumerStatefulWidget {
   final String orderId; // bookingId from the route
@@ -81,6 +83,8 @@ class _OrderDetailsPageState extends ConsumerState<OrderDetailsPage> {
     final data = state.data;
     if (data == null) return const SizedBox.shrink();
 
+    final status = (data['status'] as String? ?? '').toUpperCase();
+
     return ListView(
       padding: const EdgeInsets.only(bottom: 32),
       children: [
@@ -93,6 +97,8 @@ class _OrderDetailsPageState extends ConsumerState<OrderDetailsPage> {
           onOtpGenerated: (otp, expiresIn) => _showOtpDialog(otp, expiresIn),
         ),
         _ReceiptButton(data: data, onDownload: _downloadReceipt),
+        if (status == 'DELIVERED')
+          _ReturnButton(bookingId: widget.orderId),
       ],
     );
   }
@@ -612,11 +618,7 @@ class _CodOtpButtonState extends ConsumerState<_CodOtpButton> {
       child: ElevatedButton.icon(
         onPressed: _loading ? null : _generate,
         icon: _loading
-            ? const SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(
-                    color: AppColors.bg, strokeWidth: 2))
+            ? const AppSpinner(size: 16, color: AppColors.bg)
             : const Icon(Icons.lock_open_outlined, size: 18),
         label: Text(_loading ? 'Generating…' : 'Generate OTP'),
         style: ElevatedButton.styleFrom(
@@ -658,11 +660,7 @@ class _ReceiptButtonState extends State<_ReceiptButton> {
       child: OutlinedButton.icon(
         onPressed: _loading ? null : _tap,
         icon: _loading
-            ? const SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(
-                    color: AppColors.grey, strokeWidth: 2))
+            ? const AppSpinner(size: 16)
             : const Icon(Icons.download_outlined, size: 18),
         label: Text(_loading ? 'Downloading…' : 'Download Receipt'),
         style: OutlinedButton.styleFrom(
@@ -672,6 +670,37 @@ class _ReceiptButtonState extends State<_ReceiptButton> {
           minimumSize: const Size.fromHeight(50),
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Return Button ────────────────────────────────────────────────────────────
+
+class _ReturnButton extends StatelessWidget {
+  final String bookingId;
+  const _ReturnButton({required this.bookingId});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      child: OutlinedButton.icon(
+        onPressed: () => showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (_) => ReturnReasonSheet(bookingId: bookingId),
+        ),
+        icon: const Icon(Icons.assignment_return_outlined, size: 18),
+        label: const Text('Return Order'),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: Colors.redAccent,
+          side: const BorderSide(color: Colors.redAccent),
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          minimumSize: const Size.fromHeight(50),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       ),
     );

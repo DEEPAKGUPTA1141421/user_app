@@ -167,6 +167,17 @@ class SectionItemV2 {
   String? get ctaText => metadata['ctaText'] as String?;
   String? get reason => metadata['reason'] as String?;
   String? get campaignId => metadata['campaignId'] as String?;
+
+  // Banner-specific getters (metadata fields from banner_hero_v1 sections)
+  String? get bannerImageUrl => metadata['imageUrl'] as String?;
+  String? get bannerAltText => metadata['altText'] as String?;
+  String? get impressionPixel => metadata['impressionPixel'] as String?;
+  String? get clickPixel => metadata['clickPixel'] as String?;
+  Map<String, dynamic>? get filterPayload {
+    final fp = metadata['filterPayload'];
+    if (fp is Map) return Map<String, dynamic>.from(fp);
+    return null;
+  }
 }
 
 // ── Section Pagination ────────────────────────────────────────────────────────

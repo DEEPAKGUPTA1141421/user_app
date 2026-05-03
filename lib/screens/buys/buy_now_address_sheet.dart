@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:user_app/core/widgets/app_loader.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:phonepe_payment_sdk/phonepe_payment_sdk.dart';
@@ -7,6 +8,7 @@ import '../../provider/buy_now_provider.dart';
 import '../../provider/rider_provider.dart';
 import '../../provider/order_tracking_provider.dart';
 import '../../provider/interaction_tracker_provider.dart';
+import '../../provider/wallet_provider.dart';
 import '../../utils/app_colors.dart';
 
 // ─── Address Picker Sheet ──────────────────────────────────────────────────────
@@ -215,6 +217,8 @@ class _BuyNowPaymentPageState extends ConsumerState<BuyNowPaymentPage>
     _fadeCtrl.forward();
     _initSdk();
     _createBooking();
+    // Load wallet balance so we can show it in the payment method list
+    Future.microtask(() => ref.read(walletProvider.notifier).loadBalance());
   }
 
   @override
@@ -248,6 +252,8 @@ class _BuyNowPaymentPageState extends ConsumerState<BuyNowPaymentPage>
     switch (_selectedMethod) {
       case 'cod':
         return 'cod';
+      case 'wallet':
+        return 'wallet';
       default:
         return 'phonepe';
     }
@@ -265,11 +271,30 @@ class _BuyNowPaymentPageState extends ConsumerState<BuyNowPaymentPage>
       return;
     }
 
+    // ── Wallet payment ────────────────────────────────────────────────────────
+    if (_selectedMethod == 'wallet') {
+      final totalRupees = buyNowState.totalAmountRupees ?? widget.price;
+      final amountPaise = (totalRupees * 100).round();
+      final bookingId = buyNowState.bookingId ?? '';
+
+      setState(() => _isProcessing = true);
+      final error = await ref
+          .read(walletProvider.notifier)
+          .payWithWallet(bookingId: bookingId, amountPaise: amountPaise);
+      if (!mounted) return;
+      setState(() => _isProcessing = false);
+
+      if (error != null) {
+        _toast(error);
+        return;
+      }
+      _navigateToSuccess();
+      return;
+    }
+
     setState(() => _isProcessing = true);
 
-    final userId = (ref.read(riderPod).user['id'] ?? '').toString();
     final ok = await ref.read(buyNowProvider.notifier).createPayment(
-          userId: userId,
           gateway: _gateway,
         );
 
@@ -453,6 +478,12 @@ class _BuyNowPaymentPageState extends ConsumerState<BuyNowPaymentPage>
                             message: state.error!,
                             onRetry: _createBooking,
                           ),
+
+                        // ── Wallet ───────────────────────────────────────
+                        _WalletMethodTile(
+                          selected: _selectedMethod,
+                          onTap: (v) => setState(() => _selectedMethod = v),
+                        ),
 
                         // ── Payment Methods ───────────────────────────────
                         const _SectionLabel('UPI & ONLINE'),
@@ -1024,6 +1055,131 @@ class _MethodTile extends StatelessWidget {
   }
 }
 
+// ─── Wallet Method Tile ────────────────────────────────────────────────────────
+
+class _WalletMethodTile extends ConsumerWidget {
+  final String selected;
+  final ValueChanged<String> onTap;
+  const _WalletMethodTile({required this.selected, required this.onTap});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final walletState = ref.watch(walletProvider);
+    final balance = walletState.balance;
+    final balancePaise = balance?.balancePaise ?? 0;
+    final hasBalance = balancePaise > 0;
+    final isSelected = selected == 'wallet';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _SectionLabel('WALLET'),
+        GestureDetector(
+          onTap: hasBalance ? () => onTap('wallet') : null,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: isSelected ? AppColors.surface2 : AppColors.surface,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: isSelected
+                    ? AppColors.green
+                    : hasBalance
+                        ? AppColors.border
+                        : AppColors.border.withOpacity(0.5),
+                width: isSelected ? 1.5 : 1,
+              ),
+            ),
+            child: Row(children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: hasBalance
+                      ? AppColors.green.withOpacity(0.1)
+                      : AppColors.bg,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Center(
+                  child: walletState.isLoadingBalance
+                      ? const AppSpinner(size: 16, color: AppColors.green)
+                      : Icon(
+                          Icons.account_balance_wallet_outlined,
+                          color:
+                              hasBalance ? AppColors.green : AppColors.greyDark,
+                          size: 22,
+                        ),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Pay with Wallet',
+                      style: TextStyle(
+                          color: hasBalance
+                              ? AppColors.white
+                              : AppColors.greyDark,
+                          fontSize: 14,
+                          fontWeight: isSelected
+                              ? FontWeight.w700
+                              : FontWeight.w500),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      hasBalance
+                          ? 'Balance: ₹${balance!.balanceRupees}'
+                          : 'No balance available',
+                      style: TextStyle(
+                          color: hasBalance
+                              ? AppColors.green
+                              : AppColors.greyDark,
+                          fontSize: 11,
+                          fontWeight: hasBalance
+                              ? FontWeight.w600
+                              : FontWeight.normal),
+                    ),
+                  ],
+                ),
+              ),
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                width: 20,
+                height: 20,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: isSelected
+                        ? AppColors.green
+                        : AppColors.greyDark,
+                    width: isSelected ? 2 : 1.5,
+                  ),
+                ),
+                child: isSelected
+                    ? Center(
+                        child: Container(
+                          width: 9,
+                          height: 9,
+                          decoration: const BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: AppColors.green),
+                        ),
+                      )
+                    : null,
+              ),
+            ]),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 // ─── Trust Row ─────────────────────────────────────────────────────────────────
 class _TrustRow extends StatelessWidget {
   @override
@@ -1135,6 +1291,8 @@ class _BottomBar extends StatelessWidget {
   String get _label {
     if (!hasBooking) return 'Preparing...';
     switch (selectedMethod) {
+      case 'wallet':
+        return 'Pay with Wallet';
       case 'phonepe':
         return 'Pay via PhonePe';
       case 'gpay':
@@ -1193,11 +1351,7 @@ class _BottomBar extends StatelessWidget {
                 ),
                 child: Center(
                   child: isLoading
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                              color: AppColors.bg, strokeWidth: 2.5))
+                      ? const AppSpinner(size: 20, color: AppColors.bg)
                       : Text(_label,
                           style: TextStyle(
                               color: canPay

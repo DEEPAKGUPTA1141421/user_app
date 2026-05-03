@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:user_app/core/widgets/app_loader.dart';
 import 'package:user_app/utils/app_colors.dart';
 
 /// Solid filled primary action button.
@@ -41,14 +42,7 @@ class AppButton extends StatelessWidget {
           ),
         ),
         child: isLoading
-            ? SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: foregroundColor,
-                ),
-              )
+            ? AppSpinner(size: 20, color: foregroundColor)
             : Text(
                 label,
                 style: TextStyle(
@@ -99,14 +93,7 @@ class AppOutlineButton extends StatelessWidget {
           ),
         ),
         child: isLoading
-            ? SizedBox(
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: textColor,
-                ),
-              )
+            ? AppSpinner(size: 18, color: textColor)
             : Text(
                 label,
                 style: TextStyle(

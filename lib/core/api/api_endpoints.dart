@@ -8,6 +8,10 @@ class ApiEndpoints {
   // ── Base URLs ──────────────────────────────────────────────────────────────
   static const String productServiceBase = 'http://localhost:8081';
   static const String orderServiceBase   = 'http://localhost:8082';
+  static const String chatServiceBase    = 'http://localhost:8082';
+
+  // ── SendBird App ID (set to your SendBird Application ID) ─────────────────
+  static const String sendbirdAppId = 'F125EC09-A15E-4141-9C1F-3B1BD2A8A309';
 
   // ── Auth ───────────────────────────────────────────────────────────────────
   static const String login     = '/api/v1/auth/login';
@@ -63,7 +67,8 @@ class ApiEndpoints {
   static const String banners = '/api/v1/banners';
 
   // ── Order / Payment ─────────────────────────────────────────────────────────
-  static const String checkoutBooking = '/api/v1/booking/checkout';
+  static const String buyNow           = '/api/v1/buy-now';
+  static const String checkoutBooking  = '/api/v1/booking/checkout';
   static const String createPayment   = '/api/v1/payment';
   static const String validatePayment = '/api/v1/payment/validate-payment';
   static const String codGenerateOtp  = '/api/v1/payment/cod/generate-otp';
@@ -93,6 +98,40 @@ class ApiEndpoints {
 
   static String similarProducts(String productId) =>
       '/api/v1/product/$productId/similar';
+
+  // ── Shops ─────────────────────────────────────────────────────────────────
+  // Nearby shop listing  → GET /api/v1/shops/nearby?userLat=&userLng=&...
+  static const String shopsNearby  = '/api/v1/shops/nearby';
+  // Text search          → GET /api/v1/shops/search?q=&userLat=&userLng=&...
+  static const String shopsSearch  = '/api/v1/shops/search';
+  // Autocomplete         → GET /api/v1/shops/suggestions?q=<prefix>
+  static const String shopsSuggest = '/api/v1/shops/suggestions';
+  // Shop detail          → GET /api/v1/shops/{id}?userLat=&userLng=
+  static String shopDetail(String id) => '/api/v1/shops/$id';
+  // Storefront sections  → GET /api/v1/shops/{id}/storefront
+  // Returns backend-ordered sections: BUY_AGAIN first, then CATEGORY groups
+  static String shopStorefront(String id) => '/api/v1/shops/$id/storefront';
+  // Products inside shop → GET /api/v1/search/results?sellerId=<id>&keyword=&...
+  // Reuses the existing ES search endpoint — sellerId param scopes to one shop.
+  static const String searchResults = '/api/v1/search/results';
+
+  // ── Returns & Refunds ─────────────────────────────────────────────────────
+  static const String returns = '/api/v1/returns';
+  static String returnDetail(String id) => '/api/v1/returns/$id';
+
+  // ── Wallet ────────────────────────────────────────────────────────────────
+  static const String wallet             = '/api/v1/wallet';
+  static const String walletTransactions = '/api/v1/wallet/transactions';
+  static String walletPay(String bookingId) => '/api/v1/wallet/pay/$bookingId';
+
+  // ── Chat / Support ────────────────────────────────────────────────────────
+  // POST /api/chat/token → { sendbirdUserId, sessionToken, expiresAt }
+  static const String chatToken = '/api/chat/token';
+  // POST /api/chat/support/ticket → { channelUrl, ticketId }
+  static const String chatSupportTicket = '/api/chat/support/ticket';
+
+  // ── FCM Device Token ──────────────────────────────────────────────────────
+  static const String fcmToken = '/api/v1/user/fcm-token';
 
   // ── Notification Preferences ─────────────────────────────────────────────
   static const String notificationPrefs = '/api/v1/users/notification-preferences';

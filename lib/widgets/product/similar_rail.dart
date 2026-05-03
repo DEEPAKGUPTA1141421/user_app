@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../provider/interaction_tracker_provider.dart';
 import '../../provider/similarity_provider.dart';
 import '../../utils/app_colors.dart';
+import '../../core/widgets/app_loader.dart';
 
 /// Renders the three "similar products" rails on the PDP.
 ///
@@ -46,14 +47,7 @@ class _RailSection extends ConsumerWidget {
         title: rail.variant.label,
         child: const SizedBox(
           height: 200,
-          child: Center(
-            child: SizedBox(
-              width: 22,
-              height: 22,
-              child: CircularProgressIndicator(
-                  color: AppColors.white, strokeWidth: 2),
-            ),
-          ),
+          child: Center(child: AppSpinner(size: 22)),
         ),
       );
     }

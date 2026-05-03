@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../provider/rider_provider.dart';
 import '../../utils/StorageService.dart';
 import '../../utils/app_colors.dart';
+import '../../core/widgets/app_loader.dart';
 
 class VerifyOtpScreen extends ConsumerStatefulWidget {
   final String phone;
@@ -380,14 +381,7 @@ class _VerifyOtpScreenState extends ConsumerState<VerifyOtpScreen> {
                   ),
                   child: Center(
                     child: isLoading
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              color: AppColors.white,
-                              strokeWidth: 2,
-                            ),
-                          )
+                        ? const AppSpinner(size: 20)
                         : Text(
                             "Verify & Continue",
                             style: TextStyle(

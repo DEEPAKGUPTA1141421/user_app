@@ -1,9 +1,38 @@
 import 'package:flutter/material.dart';
 import '../../utils/app_colors.dart';
 
-const Color _kBrand = Color(0xFFFF5200);
+/// Deep-white modern spinner. Use everywhere instead of [CircularProgressIndicator].
+///
+/// [color] defaults to white. For spinners inside light/white buttons pass
+/// the button's foreground color (e.g. [AppColors.bg]).
+class AppSpinner extends StatelessWidget {
+  final double size;
+  final Color color;
+  final double strokeWidth;
 
-/// Full-screen dark overlay with a branded pill loader.
+  const AppSpinner({
+    super.key,
+    this.size = 22,
+    this.color = Colors.white,
+    this.strokeWidth = 2.5,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: size,
+      height: size,
+      child: CircularProgressIndicator(
+        color: color,
+        backgroundColor: color.withOpacity(0.12),
+        strokeWidth: strokeWidth,
+        strokeCap: StrokeCap.round,
+      ),
+    );
+  }
+}
+
+/// Full-screen dark overlay with a pill loader.
 /// Drop into a [Stack] above content when [isLoading] is true.
 class AppLoadingOverlay extends StatelessWidget {
   const AppLoadingOverlay({super.key});
@@ -27,7 +56,7 @@ class AppLoader extends StatelessWidget {
   }
 }
 
-/// The shared pill widget: rounded dark card + brand-orange spinner.
+/// Rounded card containing the white spinner.
 class _LoaderPill extends StatelessWidget {
   const _LoaderPill();
 
@@ -49,15 +78,7 @@ class _LoaderPill extends StatelessWidget {
         ],
       ),
       child: const Center(
-        child: SizedBox(
-          width: 26,
-          height: 26,
-          child: CircularProgressIndicator(
-            color: _kBrand,
-            strokeWidth: 2.5,
-            strokeCap: StrokeCap.round,
-          ),
-        ),
+        child: AppSpinner(size: 26),
       ),
     );
   }
@@ -79,7 +100,7 @@ class AppRefreshIndicator extends StatelessWidget {
   Widget build(BuildContext context) {
     return RefreshIndicator(
       onRefresh: onRefresh,
-      color: _kBrand,
+      color: Colors.white,
       backgroundColor: AppColors.surface,
       strokeWidth: 2.5,
       child: child,

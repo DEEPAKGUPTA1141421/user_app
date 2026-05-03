@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shimmer/shimmer.dart';
 import '../../provider/saved_payment_methods_provider.dart';
+import '../../core/widgets/app_loader.dart';
 
 class SavedCardsUpiScreen extends ConsumerStatefulWidget {
   const SavedCardsUpiScreen({super.key});
@@ -663,11 +664,7 @@ class _AddCardSheetState extends ConsumerState<_AddCardSheet> {
                       borderRadius: BorderRadius.circular(10)),
                 ),
                 child: _loading
-                    ? const SizedBox(
-                        height: 18,
-                        width: 18,
-                        child: CircularProgressIndicator(
-                            color: Colors.white, strokeWidth: 2))
+                    ? const AppSpinner(size: 18)
                     : const Text('Save Card',
                         style: TextStyle(fontWeight: FontWeight.bold)),
               ),
@@ -770,11 +767,7 @@ class _AddUpiSheetState extends ConsumerState<_AddUpiSheet> {
                       borderRadius: BorderRadius.circular(10)),
                 ),
                 child: _loading
-                    ? const SizedBox(
-                        height: 18,
-                        width: 18,
-                        child: CircularProgressIndicator(
-                            color: Colors.white, strokeWidth: 2))
+                    ? const AppSpinner(size: 18)
                     : const Text('Save UPI ID',
                         style: TextStyle(fontWeight: FontWeight.bold)),
               ),

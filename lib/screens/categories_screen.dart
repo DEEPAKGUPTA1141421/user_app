@@ -74,11 +74,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen>
         backgroundColor: AppColors.surface,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new,
-              color: AppColors.white, size: 20),
-          onPressed: () => Navigator.maybePop(context),
-        ),
+        automaticallyImplyLeading: false,
         title: const Text(
           'Categories',
           style: TextStyle(

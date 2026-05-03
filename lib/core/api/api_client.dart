@@ -18,9 +18,11 @@ class ApiClient {
 
   late final Dio _productClient = _build(ApiEndpoints.productServiceBase);
   late final Dio _orderClient   = _build(ApiEndpoints.orderServiceBase);
+  late final Dio _chatClient    = _build(ApiEndpoints.chatServiceBase);
 
   Dio get productClient => _productClient;
   Dio get orderClient   => _orderClient;
+  Dio get chatClient    => _chatClient;
 
   Dio _build(String baseUrl) {
     final dio = Dio(

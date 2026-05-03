@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../provider/reviews_provider.dart';
 import '../../provider/rider_provider.dart';
 import '../../utils/app_colors.dart';
+import '../../core/widgets/app_loader.dart';
 import 'ratings_summary.dart';
 
 class BestReview extends ConsumerStatefulWidget {
@@ -837,11 +838,7 @@ class _WriteReviewSheetState extends ConsumerState<_WriteReviewSheet> {
                 ),
                 child: Center(
                   child: state.isSubmitting
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: AppColors.bg))
+                      ? const AppSpinner(size: 18, color: AppColors.bg)
                       : Text(
                           'Submit Review',
                           style: TextStyle(

@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:user_app/core/widgets/app_loader.dart';
 import 'product_highlights.dart';
 
 class ProductImageCarousel extends StatefulWidget {
@@ -116,12 +117,7 @@ class _ProductImageCarouselState extends State<ProductImageCarousel> {
                           shape: BoxShape.circle,
                         ),
                         child: widget.isTogglingWishlist
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                    strokeWidth: 2, color: Colors.black),
-                              )
+                            ? const AppSpinner(size: 20, color: Colors.black)
                             : Icon(
                                 widget.isInWishlist
                                     ? Icons.favorite_rounded

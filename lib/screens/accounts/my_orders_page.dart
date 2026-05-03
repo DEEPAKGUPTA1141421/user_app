@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shimmer/shimmer.dart';
 import '../../provider/orders_provider.dart';
 import '../../utils/app_colors.dart';
+import '../../core/widgets/app_loader.dart';
 
 class MyOrdersPage extends ConsumerStatefulWidget {
   const MyOrdersPage({super.key});
@@ -90,7 +91,7 @@ class _MyOrdersPageState extends ConsumerState<MyOrdersPage> {
         if (index == state.orders.length) {
           return _buildLoadMoreIndicator(state.isLoadingMore);
         }
-        return _OrderCard(order: state.orders[index]);
+        return OrderCard(order: state.orders[index]);
       },
     );
   }
@@ -165,11 +166,7 @@ class _MyOrdersPageState extends ConsumerState<MyOrdersPage> {
       padding: const EdgeInsets.symmetric(vertical: 20),
       child: Center(
         child: isLoading
-            ? const SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(
-                    color: AppColors.white, strokeWidth: 2))
+            ? const AppSpinner(size: 24)
             : const SizedBox.shrink(),
       ),
     );
@@ -184,10 +181,54 @@ class _MyOrdersPageState extends ConsumerState<MyOrdersPage> {
         highlightColor: AppColors.surface2,
         child: Container(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-          height: 100,
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: AppColors.surface,
             borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Top row: status badge + amount
+              Row(
+                children: [
+                  _shimBox(90, 26, radius: 20),
+                  const Spacer(),
+                  _shimBox(60, 18),
+                ],
+              ),
+              const SizedBox(height: 12),
+              // Middle row: item count + payment mode
+              Row(
+                children: [
+                  _shimBox(16, 14, radius: 4),
+                  const SizedBox(width: 6),
+                  _shimBox(60, 13),
+                  const SizedBox(width: 14),
+                  _shimBox(16, 14, radius: 4),
+                  const SizedBox(width: 6),
+                  _shimBox(90, 13),
+                ],
+              ),
+              const SizedBox(height: 12),
+              _shimBox(double.infinity, 1, radius: 0),
+              const SizedBox(height: 12),
+              // Bottom row: id/date + view details
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _shimBox(100, 11),
+                      const SizedBox(height: 4),
+                      _shimBox(70, 12),
+                    ],
+                  ),
+                  _shimBox(80, 14),
+                ],
+              ),
+            ],
           ),
         ),
       ),
@@ -197,9 +238,11 @@ class _MyOrdersPageState extends ConsumerState<MyOrdersPage> {
 
 // ─── Order Card ───────────────────────────────────────────────────────────────
 
-class _OrderCard extends StatelessWidget {
+class OrderCard extends StatelessWidget {
   final Map<String, dynamic> order;
-  const _OrderCard({required this.order});
+  /// When set, a "Get Help" button is shown; tapping calls this.
+  final VoidCallback? onGetHelp;
+  const OrderCard({super.key, required this.order, this.onGetHelp});
 
   @override
   Widget build(BuildContext context) {
@@ -230,7 +273,7 @@ class _OrderCard extends StatelessWidget {
             // Top row: status badge + amount
             Row(
               children: [
-                _StatusBadge(status: status, label: statusLabel),
+                OrderStatusBadge(status: status, label: statusLabel),
                 const Spacer(),
                 Text('₹$total',
                     style: const TextStyle(
@@ -285,8 +328,8 @@ class _OrderCard extends StatelessWidget {
                     ],
                   ],
                 ),
-                Row(
-                  children: const [
+                const Row(
+                  children: [
                     Text('View Details',
                         style: TextStyle(
                             color: AppColors.white,
@@ -299,6 +342,28 @@ class _OrderCard extends StatelessWidget {
                 ),
               ],
             ),
+
+            // "Get Help" row — only shown when onGetHelp is wired up
+            if (onGetHelp != null) ...[
+              const SizedBox(height: 10),
+              Container(height: 1, color: AppColors.divider),
+              const SizedBox(height: 10),
+              GestureDetector(
+                onTap: onGetHelp,
+                child: const Row(
+                  children: [
+                    Icon(Icons.headset_mic_outlined,
+                        size: 14, color: Color(0xFFFF5200)),
+                    SizedBox(width: 6),
+                    Text('Get Help for this order',
+                        style: TextStyle(
+                            color: Color(0xFFFF5200),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500)),
+                  ],
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -338,10 +403,10 @@ class _OrderCard extends StatelessWidget {
 
 // ─── Status Badge ─────────────────────────────────────────────────────────────
 
-class _StatusBadge extends StatelessWidget {
+class OrderStatusBadge extends StatelessWidget {
   final String status;
   final String label;
-  const _StatusBadge({required this.status, required this.label});
+  const OrderStatusBadge({super.key, required this.status, required this.label});
 
   Color get _color {
     switch (status.toUpperCase()) {
@@ -385,6 +450,80 @@ class _StatusBadge extends StatelessWidget {
                   fontSize: 12,
                   fontWeight: FontWeight.w600)),
         ],
+      ),
+    );
+  }
+}
+
+Widget _shimBox(double w, double h, {double radius = 6}) => Container(
+      width: w,
+      height: h,
+      decoration: BoxDecoration(
+        color: AppColors.surface2,
+        borderRadius: BorderRadius.circular(radius),
+      ),
+    );
+
+// ─── Order Card Skeleton ──────────────────────────────────────────────────────
+
+/// Single shimmer placeholder that matches the [OrderCard] layout exactly.
+/// Use inside a [Shimmer.fromColors] or standalone — it wraps its own shimmer.
+class OrderCardSkeleton extends StatelessWidget {
+  const OrderCardSkeleton({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Shimmer.fromColors(
+      baseColor: AppColors.surface,
+      highlightColor: AppColors.surface2,
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                _shimBox(90, 26, radius: 20),
+                const Spacer(),
+                _shimBox(60, 18),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                _shimBox(16, 14, radius: 4),
+                const SizedBox(width: 6),
+                _shimBox(60, 13),
+                const SizedBox(width: 14),
+                _shimBox(16, 14, radius: 4),
+                const SizedBox(width: 6),
+                _shimBox(90, 13),
+              ],
+            ),
+            const SizedBox(height: 12),
+            _shimBox(double.infinity, 1, radius: 0),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _shimBox(100, 11),
+                    const SizedBox(height: 4),
+                    _shimBox(70, 12),
+                  ],
+                ),
+                _shimBox(80, 14),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

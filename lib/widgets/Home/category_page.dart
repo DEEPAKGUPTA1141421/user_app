@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../provider/category_sections.dart';
-import '../../provider/banner_provider.dart';
 import '../../provider/rider_provider.dart';
-import '../responsive_banner_carousel.dart';
+import '../../core/widgets/app_loader.dart';
 import '../../model/section_model.dart';
 import '../../model/section_v2.dart';
 import './section_widget.dart';
@@ -52,11 +51,6 @@ class _CategoryPageState extends ConsumerState<CategoryPage> {
         .read(categorySectionsProvider.notifier)
         .fetchSectionsOfCategory(categoryId: categoryId, userId: userId);
 
-    ref.read(bannerProvider.notifier).clearBanners();
-    if (categoryId != null && categoryId.isNotEmpty) {
-      ref.read(bannerProvider.notifier).fetchBannersByCategory(categoryId);
-    }
-
     final brandsId = (categoryId != null && categoryId.isNotEmpty)
         ? categoryId
         : '5d70fc95-8a6b-4d04-95e9-9620269ab15e';
@@ -82,11 +76,9 @@ class _CategoryPageState extends ConsumerState<CategoryPage> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(categorySectionsProvider);
-    final bannerState = ref.watch(bannerProvider);
 
     final sectionsLoading = state.sectionsLoading;
     final rawSections = state.sections;
-    final banners = bannerState.banners;
 
     // Build ordered list of (position, widget) supporting both old and new models
     final positioned = <(int, Widget)>[];
@@ -123,7 +115,7 @@ class _CategoryPageState extends ConsumerState<CategoryPage> {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 32),
         child: Center(
-          child: CircularProgressIndicator(color: Color(0xFFFF5200)),
+          child: AppSpinner(),
         ),
       );
     }
@@ -134,33 +126,7 @@ class _CategoryPageState extends ConsumerState<CategoryPage> {
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Banner carousel — shown only when bannerProvider has data
-        // (new arch: banners arrive as banner_hero_v1 sections above)
-        if (bannerState.isLoading)
-          _ShimmerBanner()
-        else if (banners.isNotEmpty)
-          ResponsiveBannerCarousel(
-            banners: banners,
-            categoryId: widget.categoryId ?? '',
-          ),
-
-        ...sectionWidgets,
-      ],
-    );
-  }
-}
-
-class _ShimmerBanner extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 200,
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1A1A1A),
-        borderRadius: BorderRadius.circular(14),
-      ),
+      children: sectionWidgets,
     );
   }
 }

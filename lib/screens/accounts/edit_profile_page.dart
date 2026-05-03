@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../core/api/api_client.dart';
 import '../../core/api/api_endpoints.dart';
+import '../../core/widgets/app_loader.dart';
 import '../../provider/rider_provider.dart';
 import '../../utils/app_colors.dart';
 
@@ -280,10 +281,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage>
                 Padding(
                   padding: const EdgeInsets.only(right: 16),
                   child: _saving
-                      ? const SizedBox(
-                          width: 20, height: 20,
-                          child: CircularProgressIndicator(
-                              color: AppColors.white, strokeWidth: 2))
+                      ? const AppSpinner(size: 20)
                       : GestureDetector(
                           onTap: _savePersonal,
                           child: Container(
@@ -517,9 +515,7 @@ class _AvatarHeader extends StatelessWidget {
                 child: loading
                     ? Container(
                         color: AppColors.surface2,
-                        child: const Center(
-                            child: CircularProgressIndicator(
-                                color: AppColors.white, strokeWidth: 2)))
+                        child: const Center(child: AppSpinner()))
                     : avatarFile != null
                         ? Image.file(avatarFile!, fit: BoxFit.cover)
                         : avatarUrl != null
@@ -835,9 +831,7 @@ class _FilledButton extends StatelessWidget {
         child: Center(
           child: loading
               ? const SizedBox(
-                  width: 18, height: 18,
-                  child: CircularProgressIndicator(
-                      color: AppColors.white, strokeWidth: 2))
+                  child: AppSpinner(size: 18))
               : Text(label,
                   style: const TextStyle(
                       color:      AppColors.white,
@@ -877,9 +871,7 @@ class _OutlineButton extends StatelessWidget {
         child: Center(
           child: loading
               ? const SizedBox(
-                  width: 18, height: 18,
-                  child: CircularProgressIndicator(
-                      color: AppColors.white, strokeWidth: 2))
+                  child: AppSpinner(size: 18))
               : Text(label,
                   style: const TextStyle(
                       color:      AppColors.white,

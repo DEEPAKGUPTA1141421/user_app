@@ -5,6 +5,7 @@ import '../core/api/api_client.dart';
 import '../core/api/api_endpoints.dart';
 import '../provider/interaction_tracker_provider.dart';
 import '../utils/app_colors.dart';
+import '../core/widgets/app_loader.dart';
 import '../widgets/real_search_page.dart';
 
 // ─── Models ───────────────────────────────────────────────────────────────────
@@ -755,14 +756,7 @@ class _State extends State<ProductSearchResultsPage> {
             child: _isLoadingMore
                 ? const Padding(
                     padding: EdgeInsets.symmetric(vertical: 20),
-                    child: Center(
-                      child: SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: AppColors.white),
-                      ),
-                    ),
+                    child: Center(child: AppSpinner(size: 24)),
                   )
                 : const SizedBox(height: 32),
           ),

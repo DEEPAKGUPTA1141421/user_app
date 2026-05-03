@@ -3,7 +3,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../provider/rider_provider.dart';
-import '../utils/app_colors.dart'; // ✅ USE YOUR COLOR FILE
+import '../utils/app_colors.dart';
+import '../core/widgets/app_loader.dart';
 
 class CurrentLocationButton extends ConsumerStatefulWidget {
   const CurrentLocationButton({super.key});
@@ -85,14 +86,7 @@ class _CurrentLocationButtonState
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               isLoading
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: AppColors.white,
-                      ),
-                    )
+                  ? const AppSpinner(size: 18)
                   : const Icon(
                       CupertinoIcons.location_fill,
                       color: AppColors.white,
