@@ -226,7 +226,7 @@ class ShopNotifier extends StateNotifier<ShopState> {
         'userLat':  lat,
         'userLng':  lng,
         'page':     page,
-        'size':     _pageSize,
+        'pageSize': _pageSize,
         ...state.filter.toQueryParams(),
       },
     );
@@ -242,11 +242,11 @@ class ShopNotifier extends StateNotifier<ShopState> {
     final res = await _client.get(
       ApiEndpoints.shopsSearch,
       queryParameters: {
-        'q':        q,
+        'keyword':  q,
         'userLat':  lat,
         'userLng':  lng,
         'page':     page,
-        'size':     _pageSize,
+        'pageSize': _pageSize,
         ...state.filter.toQueryParams(),
       },
     );

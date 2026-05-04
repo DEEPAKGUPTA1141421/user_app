@@ -6,45 +6,104 @@ import '../core/errors/app_exception.dart';
 
 // ── Typed State ───────────────────────────────────────────────────────────────
 
+// ── Browse Models ─────────────────────────────────────────────────────────────
+
+class SubSubCategoryItem {
+  final String id;
+  final String name;
+  final String imageUrl;
+
+  const SubSubCategoryItem({
+    required this.id,
+    required this.name,
+    required this.imageUrl,
+  });
+
+  factory SubSubCategoryItem.fromJson(Map<String, dynamic> json) =>
+      SubSubCategoryItem(
+        id: json['id']?.toString() ?? '',
+        name: json['name'] ?? '',
+        imageUrl: json['imageUrl'] ?? '',
+      );
+}
+
+class BrowseSubcategory {
+  final String id;
+  final String name;
+  final String imageUrl;
+  final List<SubSubCategoryItem> subCategories;
+
+  const BrowseSubcategory({
+    required this.id,
+    required this.name,
+    required this.imageUrl,
+    required this.subCategories,
+  });
+
+  factory BrowseSubcategory.fromJson(Map<String, dynamic> json) =>
+      BrowseSubcategory(
+        id: json['id']?.toString() ?? '',
+        name: json['name'] ?? '',
+        imageUrl: json['imageUrl'] ?? '',
+        subCategories: ((json['subCategories'] as List?) ?? [])
+            .map((e) => SubSubCategoryItem.fromJson(e as Map<String, dynamic>))
+            .toList(),
+      );
+}
+
+// ── State ─────────────────────────────────────────────────────────────────────
+
 class CategorySectionsState {
   final bool categoriesLoading;
   final bool sectionsLoading;
   final bool brandsLoading;
+  final bool browseLoading;
   final String? error;
   final List<Map<String, dynamic>> categories;
   final List<Map<String, dynamic>> sections;
   final List<Map<String, dynamic>> brands;
+  final List<BrowseSubcategory> browseGroups;
+  final String? browseActiveSuperCategoryId;
 
   const CategorySectionsState({
     this.categoriesLoading = false,
     this.sectionsLoading   = false,
     this.brandsLoading     = false,
+    this.browseLoading     = false,
     this.error,
     this.categories = const [],
     this.sections   = const [],
     this.brands     = const [],
+    this.browseGroups = const [],
+    this.browseActiveSuperCategoryId,
   });
 
-  /// True if any sub-fetch is in flight.
   bool get isLoading => categoriesLoading || sectionsLoading || brandsLoading;
 
   CategorySectionsState copyWith({
     bool? categoriesLoading,
     bool? sectionsLoading,
     bool? brandsLoading,
+    bool? browseLoading,
     String? error,
     List<Map<String, dynamic>>? categories,
     List<Map<String, dynamic>>? sections,
     List<Map<String, dynamic>>? brands,
+    List<BrowseSubcategory>? browseGroups,
+    String? browseActiveSuperCategoryId,
   }) {
     return CategorySectionsState(
       categoriesLoading: categoriesLoading ?? this.categoriesLoading,
       sectionsLoading:   sectionsLoading   ?? this.sectionsLoading,
       brandsLoading:     brandsLoading     ?? this.brandsLoading,
+      browseLoading:     browseLoading     ?? this.browseLoading,
       error: error,
       categories: categories ?? this.categories,
       sections:   sections   ?? this.sections,
       brands:     brands     ?? this.brands,
+      browseGroups: browseGroups ?? this.browseGroups,
+      browseActiveSuperCategoryId:
+          browseActiveSuperCategoryId ?? this.browseActiveSuperCategoryId,
     );
   }
 }
@@ -159,6 +218,42 @@ class CategorySectionsNotifier extends StateNotifier<CategorySectionsState> {
         sections: const [],
         error: e.toString(),
       );
+    }
+  }
+
+  // ── Fetch browse groups (SUBCATEGORY + SUBSUBCATEGORY) ───────────────────
+
+  Future<void> fetchBrowseCategories(String superCategoryId,
+      {bool forceRefresh = false}) async {
+    if (!forceRefresh &&
+        state.browseActiveSuperCategoryId == superCategoryId &&
+        state.browseGroups.isNotEmpty) return; // already loaded
+
+    state = state.copyWith(
+      browseLoading: true,
+      browseActiveSuperCategoryId: superCategoryId,
+      browseGroups: const [],
+      error: null,
+    );
+    try {
+      final res = await _client.get(
+        ApiEndpoints.categoryBrowse(superCategoryId),
+      );
+      final body = res.data as Map<String, dynamic>;
+      final raw = (body['data'] as List?) ?? const [];
+      state = state.copyWith(
+        browseLoading: false,
+        browseGroups: raw
+            .map((e) => BrowseSubcategory.fromJson(e as Map<String, dynamic>))
+            .toList(),
+      );
+    } on DioException catch (e) {
+      state = state.copyWith(
+        browseLoading: false,
+        error: AppException.fromDioError(e).message,
+      );
+    } catch (e) {
+      state = state.copyWith(browseLoading: false, error: e.toString());
     }
   }
 
