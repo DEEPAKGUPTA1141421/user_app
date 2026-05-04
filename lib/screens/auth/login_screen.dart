@@ -76,10 +76,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               const SizedBox(height: 60),
 
               // ── Logo / Brand mark ──────────────────────────────────
-              Image.asset(
-                'assets/images/DashlyLogo.jpeg',
-                height: 64,
-                fit: BoxFit.contain,
+              ColorFiltered(
+                colorFilter: const ColorFilter.matrix(<double>[
+                  1, 0, 0, 0, 0,
+                  0, 1, 0, 0, 0,
+                  0, 0, 1, 0, 0,
+                  -1, -1, -1, 3, 0, // white → alpha 0; dark/colored → alpha 1
+                ]),
+                child: Image.asset(
+                  'assets/images/DashlyLogo.jpeg',
+                  height: 64,
+                  fit: BoxFit.contain,
+                ),
               ),
 
               const SizedBox(height: 32),

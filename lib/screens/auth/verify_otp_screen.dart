@@ -255,7 +255,6 @@ class _VerifyOtpScreenState extends ConsumerState<VerifyOtpScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: List.generate(6, (index) {
-                  final isFocused = _focusNodes[index].hasFocus;
                   final hasValue = _controllers[index].text.isNotEmpty;
 
                   return SizedBox(
@@ -400,9 +399,9 @@ class _VerifyOtpScreenState extends ConsumerState<VerifyOtpScreen> {
               const SizedBox(height: 24),
 
               // ── Security note ──────────────────────────────────────
-              Row(
+              const Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: const [
+                children: [
                   Icon(Icons.lock_outline, size: 14, color: AppColors.greyDark),
                   SizedBox(width: 6),
                   Text(
