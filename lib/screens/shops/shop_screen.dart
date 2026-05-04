@@ -87,22 +87,37 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
 
   // ── Search + autocomplete ────────────────────────────────────────────────────
 
-  void _onSearchChanged(String q) {
-    // Full search debounce — replaces the shop list
-    _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 420), () {
-      ref.read(shopPod.notifier).search(q, lat: _lat, lng: _lng);
-    });
+  static const int _minSearchLength = 3;
+  static const Duration _searchThrottle  = Duration(milliseconds: 500);
+  static const Duration _suggestThrottle = Duration(milliseconds: 300);
 
-    // Suggestion debounce — shorter so overlay appears quickly
+  void _onSearchChanged(String q) {
+    final trimmed = q.trim();
+
+    _debounce?.cancel();
     _suggestDebounce?.cancel();
-    if (q.trim().isEmpty) {
+
+    // Empty → reset to nearby, hide suggestions
+    if (trimmed.isEmpty) {
+      _hideSuggestions();
+      ref.read(shopPod.notifier).loadNearby(lat: _lat, lng: _lng);
+      return;
+    }
+
+    // Below minimum length → hide suggestions, do not fire backend
+    if (trimmed.length < _minSearchLength) {
       _hideSuggestions();
       return;
     }
-    _suggestDebounce = Timer(const Duration(milliseconds: 280), () async {
-      final results =
-          await ref.read(shopPod.notifier).getSuggestions(q.trim());
+
+    // ≥ 3 chars — throttled search
+    _debounce = Timer(_searchThrottle, () {
+      ref.read(shopPod.notifier).search(trimmed, lat: _lat, lng: _lng);
+    });
+
+    // ≥ 3 chars — throttled suggestions
+    _suggestDebounce = Timer(_suggestThrottle, () async {
+      final results = await ref.read(shopPod.notifier).getSuggestions(trimmed);
       if (!mounted) return;
       if (results.isEmpty) {
         _hideSuggestions();
@@ -509,7 +524,7 @@ class _SearchBar extends StatelessWidget {
           fontSize: 14,
         ),
         decoration: InputDecoration(
-          hintText: 'Search shops…',
+          hintText: 'Search shop, product, category',
           hintStyle: const TextStyle(color: AppColors.greyDark, fontSize: 14),
           prefixIcon: const Icon(Icons.search, color: AppColors.greyDark, size: 18),
           suffixIcon: controller.text.isNotEmpty

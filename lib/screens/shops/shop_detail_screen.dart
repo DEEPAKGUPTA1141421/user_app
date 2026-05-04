@@ -2,14 +2,13 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:share_plus/share_plus.dart';
-
 import '../../core/api/api_client.dart';
 import '../../core/api/api_endpoints.dart';
 import '../../core/widgets/app_loader.dart';
 import '../../model/shop.dart';
 import '../../provider/shop_provider.dart';
 import '../../utils/app_colors.dart';
+import '../../widgets/product/share_sheet.dart';
 
 // ─── Models ────────────────────────────────────────────────────────────────────
 
@@ -375,16 +374,18 @@ class _ShopDetailScreenState extends ConsumerState<ShopDetailScreen> {
       Navigator.pushNamed(context, '/productDetail/$productId');
 
   void _shareShop(Shop shop) {
-    final text = StringBuffer();
-    text.write('Check out ${shop.displayName}');
-    if (shop.categoryName != null) text.write(' — ${shop.categoryName}');
-    text.write('\n\n');
-    text.write('⭐ ${shop.avgRating.toStringAsFixed(1)}');
-    if (shop.reviewCount > 0) text.write(' (${shop.reviewCount} reviews)');
-    text.write('  ·  🕒 ${shop.deliveryEtaLabel}');
-    text.write('  ·  📍 ${shop.distanceLabel}');
-    if (!shop.isOpen) text.write('\n⚠️ Currently closed');
-    Share.share(text.toString());
+    final tagline = StringBuffer();
+    tagline.write('⭐ ${shop.avgRating.toStringAsFixed(1)}');
+    if (shop.reviewCount > 0) tagline.write(' (${shop.reviewCount} reviews)');
+    tagline.write('  ·  🕒 ${shop.deliveryEtaLabel}');
+    tagline.write('  ·  📍 ${shop.distanceLabel}');
+    if (!shop.isOpen) tagline.write('  ·  ⚠️ Currently closed');
+    showShopShareSheet(
+      context,
+      shopName: shop.displayName,
+      shopId: shop.id,
+      tagline: tagline.toString(),
+    );
   }
 
   // ── Derived helpers ───────────────────────────────────────────────────────

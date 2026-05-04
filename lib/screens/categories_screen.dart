@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../provider/category_sections.dart';
 import '../utils/app_colors.dart';
+import '../widgets/product_search_results_page.dart';
 
 class CategoriesScreen extends ConsumerStatefulWidget {
   const CategoriesScreen({super.key});
@@ -11,8 +13,9 @@ class CategoriesScreen extends ConsumerStatefulWidget {
 }
 
 class _CategoriesScreenState extends ConsumerState<CategoriesScreen>
-    with TickerProviderStateMixin {
-  String activeCategory = 'for-you';
+    with SingleTickerProviderStateMixin {
+  String? _activeSuperCategoryId;
+  final ScrollController _rightScroll = ScrollController();
 
   late AnimationController _fadeCtrl;
   late Animation<double> _fadeAnim;
@@ -21,52 +24,91 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen>
   void initState() {
     super.initState();
     _fadeCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 400));
+        vsync: this, duration: const Duration(milliseconds: 300));
     _fadeAnim = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOut);
     _fadeCtrl.forward();
 
-    Future.microtask(() async {
-      await ref
-          .read(categorySectionsProvider.notifier)
-          .fetchCategoryList();
-      await ref
-          .read(categorySectionsProvider.notifier)
-          .fetchBrands('5d70fc95-8a6b-4d04-95e9-9620269ab15e');
+    // If categories are already cached, auto-select the first one immediately.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final cats = ref.read(categorySectionsProvider).categories;
+      if (cats.isNotEmpty) {
+        final id = cats.first['id']?.toString() ?? '';
+        if (id.isNotEmpty) _selectSuperCategory(id);
+      }
     });
   }
 
   @override
   void dispose() {
     _fadeCtrl.dispose();
+    _rightScroll.dispose();
     super.dispose();
   }
 
-  void handleCategoryClick(String categoryId) {
-    setState(() => activeCategory = categoryId);
-    ref.read(categorySectionsProvider.notifier).fetchBrands(categoryId);
+  void _selectSuperCategory(String id) {
+    if (id.isEmpty || _activeSuperCategoryId == id) return;
+    setState(() => _activeSuperCategoryId = id);
+    if (_rightScroll.hasClients) _rightScroll.jumpTo(0);
+    ref.read(categorySectionsProvider.notifier).fetchBrowseCategories(id);
   }
 
   Future<void> _refresh() async {
-    await ref
-        .read(categorySectionsProvider.notifier)
-        .fetchCategoryList();
-    await ref
-        .read(categorySectionsProvider.notifier)
-        .fetchBrands(activeCategory);
+    if (_activeSuperCategoryId == null) return;
+    // Force re-fetch by clearing cached id in provider and re-calling.
+    ref.read(categorySectionsProvider.notifier).fetchBrowseCategories(
+          _activeSuperCategoryId!,
+          forceRefresh: true,
+        );
+  }
+
+  void _openResults(SubSubCategoryItem item) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ProductSearchResultsPage(
+          query: item.name,
+          filterPayload: {'categoryId': item.id},
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(categorySectionsProvider);
-    final bool isLoading = state.isLoading;
-    final List<dynamic> brandData = state.brands;
-    final List<dynamic> categories = state.categories;
-
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth >= 600;
-    final isDesktop = screenWidth >= 900;
+    final sidebarWidth = isTablet ? 96.0 : 80.0;
 
-    final sidebarWidth = isDesktop ? 104.0 : isTablet ? 92.0 : 76.0;
+    // Auto-select the first SUPER_CATEGORY when categories finish loading.
+    // ref.listen fires on every state transition — more reliable than
+    // addPostFrameCallback inside build.
+    ref.listen<CategorySectionsState>(categorySectionsProvider, (prev, next) {
+      if (_activeSuperCategoryId != null) return;
+      if (next.categoriesLoading || next.categories.isEmpty) return;
+      final id = next.categories.first['id']?.toString() ?? '';
+      if (id.isNotEmpty) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _selectSuperCategory(id);
+        });
+      }
+    });
+
+    // Decide what to show in the right panel.
+    Widget rightPanel;
+    if (_activeSuperCategoryId == null || state.browseLoading) {
+      rightPanel = _BrowseShimmer(isTablet: isTablet);
+    } else if (state.error != null && state.browseGroups.isEmpty) {
+      rightPanel = _ErrorPanel(message: state.error!);
+    } else {
+      rightPanel = _BrowseContent(
+        groups: state.browseGroups,
+        isTablet: isTablet,
+        onItemTap: _openResults,
+        scrollController: _rightScroll,
+      );
+    }
 
     return Scaffold(
       backgroundColor: AppColors.bg,
@@ -78,10 +120,11 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen>
         title: const Text(
           'Categories',
           style: TextStyle(
-              color: AppColors.white,
-              fontSize: 17,
-              fontWeight: FontWeight.w600,
-              letterSpacing: -0.3),
+            color: AppColors.white,
+            fontSize: 17,
+            fontWeight: FontWeight.w600,
+            letterSpacing: -0.3,
+          ),
         ),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
@@ -93,68 +136,25 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen>
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _ResponsiveSidebar(
+            // ── Left sidebar: SUPER_CATEGORY ──────────────────────────
+            _SuperCategorySidebar(
               width: sidebarWidth,
-              activeCategory: activeCategory,
-              onCategoryClick: handleCategoryClick,
-              isLoading: isLoading,
-              categories: categories,
+              categories: state.categories,
+              isLoading: state.categoriesLoading,
+              activeId: _activeSuperCategoryId,
+              onTap: _selectSuperCategory,
             ),
+
+            // ── Right panel: SUBCATEGORY headings + SUBSUBCATEGORY items
             Expanded(
-              child: RefreshIndicator(
-                color: AppColors.white,
-                backgroundColor: AppColors.surface,
-                onRefresh: _refresh,
-                child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: EdgeInsets.only(
-                    top: 8,
-                    bottom: 24,
-                    left: isTablet ? 14 : 10,
-                    right: isTablet ? 14 : 10,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (isLoading)
-                        _BrandShimmer(isTablet: isTablet, isDesktop: isDesktop)
-                      else
-                        _BrandSection(
-                          brands: brandData,
-                          isTablet: isTablet,
-                          isDesktop: isDesktop,
-                        ),
-                      const SizedBox(height: 12),
-                      if (isLoading)
-                        _CategoryGridShimmer(
-                            isTablet: isTablet, isDesktop: isDesktop)
-                      else if (categories.isEmpty)
-                        const Padding(
-                          padding: EdgeInsets.all(32),
-                          child: Center(
-                            child: Text(
-                              'No categories available',
-                              style: TextStyle(
-                                  color: AppColors.grey, fontSize: 13),
-                            ),
-                          ),
-                        )
-                      else
-                        for (var parent in categories)
-                          for (var category in (parent['children'] ?? [])) ...[
-                            _CategorySubSection(
-                              title: category['name'] ?? 'Untitled',
-                              items: List<dynamic>.from(
-                                  category['children'] ?? []),
-                              isTablet: isTablet,
-                              isDesktop: isDesktop,
-                            ),
-                            const SizedBox(height: 14),
-                          ],
-                    ],
-                  ),
-                ),
-              ),
+              child: state.browseGroups.isNotEmpty && _activeSuperCategoryId != null
+                  ? RefreshIndicator(
+                      color: AppColors.white,
+                      backgroundColor: AppColors.surface,
+                      onRefresh: _refresh,
+                      child: rightPanel,
+                    )
+                  : rightPanel,
             ),
           ],
         ),
@@ -163,22 +163,21 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen>
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SIDEBAR
-// ─────────────────────────────────────────────────────────────────────────────
-class _ResponsiveSidebar extends StatelessWidget {
-  final double width;
-  final String activeCategory;
-  final Function(String) onCategoryClick;
-  final bool isLoading;
-  final List<dynamic> categories;
+// ─── Left Sidebar ─────────────────────────────────────────────────────────────
 
-  const _ResponsiveSidebar({
+class _SuperCategorySidebar extends StatelessWidget {
+  final double width;
+  final List<Map<String, dynamic>> categories;
+  final bool isLoading;
+  final String? activeId;
+  final void Function(String) onTap;
+
+  const _SuperCategorySidebar({
     required this.width,
-    required this.activeCategory,
-    required this.onCategoryClick,
-    required this.isLoading,
     required this.categories,
+    required this.isLoading,
+    required this.activeId,
+    required this.onTap,
   });
 
   @override
@@ -188,8 +187,7 @@ class _ResponsiveSidebar extends StatelessWidget {
       child: Container(
         decoration: const BoxDecoration(
           color: AppColors.surface,
-          border: Border(
-              right: BorderSide(color: AppColors.divider)),
+          border: Border(right: BorderSide(color: AppColors.divider)),
         ),
         child: isLoading ? _shimmer() : _list(),
       ),
@@ -202,13 +200,13 @@ class _ResponsiveSidebar extends StatelessWidget {
       itemCount: categories.length,
       itemBuilder: (context, index) {
         final cat = categories[index];
-        final id = cat['id'] ?? '';
+        final id = cat['id']?.toString() ?? '';
         final label = cat['name'] ?? '';
-        final imgUrl = cat['imageurl'] ?? '';
-        final isActive = activeCategory == id;
+        final imgUrl = cat['imageUrl'] ?? ''; // camelCase from Spring
+        final isActive = activeId == id;
 
         return GestureDetector(
-          onTap: () => onCategoryClick(id),
+          onTap: () => onTap(id),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 180),
             margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
@@ -216,9 +214,12 @@ class _ResponsiveSidebar extends StatelessWidget {
             decoration: BoxDecoration(
               color: isActive ? AppColors.surface2 : Colors.transparent,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: isActive ? AppColors.white : Colors.transparent,
-                width: isActive ? 1.5 : 1,
+              border: Border(
+                left: BorderSide(
+                  color:
+                      isActive ? const Color(0xFFFF5200) : Colors.transparent,
+                  width: 3,
+                ),
               ),
             ),
             child: Column(
@@ -229,30 +230,26 @@ class _ResponsiveSidebar extends StatelessWidget {
                   height: 46,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
+                    color: AppColors.bg,
                     border: Border.all(
-                      color: isActive ? AppColors.white : AppColors.border,
+                      color: isActive
+                          ? const Color(0xFFFF5200)
+                          : AppColors.border,
                       width: isActive ? 1.5 : 1,
                     ),
-                    image: imgUrl.isNotEmpty
-                        ? DecorationImage(
-                            image: NetworkImage(imgUrl),
-                            fit: BoxFit.cover,
-                          )
-                        : null,
-                    color: AppColors.bg,
                   ),
-                  child: imgUrl.isEmpty
-                      ? Center(
-                          child: Text(
-                            label.isNotEmpty ? label[0].toUpperCase() : '?',
-                            style: const TextStyle(
-                              color: AppColors.white,
-                              fontSize: 17,
-                              fontWeight: FontWeight.w700,
+                  child: ClipOval(
+                    child: imgUrl.isNotEmpty
+                        ? Padding(
+                            padding: const EdgeInsets.all(8),
+                            child: Image.network(
+                              imgUrl,
+                              fit: BoxFit.contain,
+                              errorBuilder: (_, __, ___) => _initial(label),
                             ),
-                          ),
-                        )
-                      : null,
+                          )
+                        : _initial(label),
+                  ),
                 ),
                 const SizedBox(height: 6),
                 Text(
@@ -262,22 +259,13 @@ class _ResponsiveSidebar extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 10,
-                    fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                    fontWeight:
+                        isActive ? FontWeight.w700 : FontWeight.w500,
                     color: isActive ? AppColors.white : AppColors.grey,
                     height: 1.2,
                     letterSpacing: 0.1,
                   ),
                 ),
-                if (isActive)
-                  Container(
-                    margin: const EdgeInsets.only(top: 4),
-                    width: 20,
-                    height: 2.5,
-                    decoration: BoxDecoration(
-                      color: AppColors.white,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
               ],
             ),
           ),
@@ -286,11 +274,21 @@ class _ResponsiveSidebar extends StatelessWidget {
     );
   }
 
+  Widget _initial(String label) => Center(
+        child: Text(
+          label.isNotEmpty ? label[0].toUpperCase() : '?',
+          style: const TextStyle(
+              color: AppColors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w700),
+        ),
+      );
+
   Widget _shimmer() {
     return ListView.builder(
       padding: const EdgeInsets.symmetric(vertical: 8),
       itemCount: 8,
-      itemBuilder: (_, __) => _ShimmerItem(
+      itemBuilder: (_, __) => _ShimmerBox(
         margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -307,378 +305,329 @@ class _ResponsiveSidebar extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// BRAND SECTION
-// ─────────────────────────────────────────────────────────────────────────────
-class _BrandSection extends StatelessWidget {
-  final List<dynamic> brands;
-  final bool isTablet;
-  final bool isDesktop;
+// ─── Error Panel ──────────────────────────────────────────────────────────────
 
-  const _BrandSection({
-    required this.brands,
-    required this.isTablet,
-    required this.isDesktop,
-  });
+class _ErrorPanel extends StatelessWidget {
+  final String message;
+  const _ErrorPanel({required this.message});
 
   @override
   Widget build(BuildContext context) {
-    if (brands.isEmpty) return const SizedBox.shrink();
-
-    final crossAxisCount = isDesktop ? 5 : isTablet ? 4 : 3;
-    final itemHeight = isTablet ? 118.0 : 104.0;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const _SectionLabel('BRANDS YOU LIKE'),
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: brands.length,
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: crossAxisCount,
-            crossAxisSpacing: 8,
-            mainAxisSpacing: 8,
-            mainAxisExtent: itemHeight,
-          ),
-          itemBuilder: (_, i) {
-            final b = brands[i];
-            final name = b['name'] ?? 'Brand';
-            final logo = b['logoUrl'] ?? '';
-            final avatarSize = isTablet ? 58.0 : 50.0;
-
-            return Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  width: avatarSize,
-                  height: avatarSize,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: AppColors.surface2,
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: logo.isNotEmpty
-                      ? ClipOval(
-                          child: Image.network(
-                            logo,
-                            fit: BoxFit.contain,
-                            errorBuilder: (_, __, ___) => const Icon(
-                                Icons.image_not_supported,
-                                size: 20,
-                                color: AppColors.grey),
-                          ),
-                        )
-                      : Center(
-                          child: Text(
-                            name.isNotEmpty ? name[0].toUpperCase() : '?',
-                            style: const TextStyle(
-                                color: AppColors.white,
-                                fontSize: 18,
-                                fontWeight: FontWeight.w700),
-                          ),
-                        ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  name,
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: isTablet ? 11.5 : 10.5,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.white,
-                  ),
-                ),
-              ],
-            );
-          },
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.error_outline, color: AppColors.grey, size: 32),
+            const SizedBox(height: 10),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppColors.grey, fontSize: 12),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// CATEGORY SUB-SECTION (with expand/collapse)
-// ─────────────────────────────────────────────────────────────────────────────
-class _CategorySubSection extends StatefulWidget {
-  final String title;
-  final List<dynamic> items;
-  final bool isTablet;
-  final bool isDesktop;
+// ─── Right Panel ──────────────────────────────────────────────────────────────
 
-  const _CategorySubSection({
-    required this.title,
-    required this.items,
+class _BrowseContent extends StatelessWidget {
+  final List<BrowseSubcategory> groups;
+  final bool isTablet;
+  final void Function(SubSubCategoryItem) onItemTap;
+  final ScrollController scrollController;
+
+  const _BrowseContent({
+    required this.groups,
     required this.isTablet,
-    required this.isDesktop,
+    required this.onItemTap,
+    required this.scrollController,
   });
 
   @override
-  State<_CategorySubSection> createState() => _CategorySubSectionState();
+  Widget build(BuildContext context) {
+    if (groups.isEmpty) {
+      return const Center(
+        child: Text('No categories found',
+            style: TextStyle(color: AppColors.grey, fontSize: 13)),
+      );
+    }
+
+    return ListView.separated(
+      controller: scrollController,
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.only(bottom: 32),
+      itemCount: groups.length,
+      separatorBuilder: (_, __) =>
+          Container(height: 1, color: AppColors.divider),
+      itemBuilder: (_, i) => _SubcategorySection(
+        group: groups[i],
+        isTablet: isTablet,
+        onItemTap: onItemTap,
+      ),
+    );
+  }
 }
 
-class _CategorySubSectionState extends State<_CategorySubSection> {
+// ─── Subcategory Section ──────────────────────────────────────────────────────
+
+class _SubcategorySection extends StatefulWidget {
+  final BrowseSubcategory group;
+  final bool isTablet;
+  final void Function(SubSubCategoryItem) onItemTap;
+
+  const _SubcategorySection({
+    required this.group,
+    required this.isTablet,
+    required this.onItemTap,
+  });
+
+  @override
+  State<_SubcategorySection> createState() => _SubcategorySectionState();
+}
+
+class _SubcategorySectionState extends State<_SubcategorySection> {
   bool _showAll = false;
 
   @override
   Widget build(BuildContext context) {
-    final crossAxisCount = widget.isDesktop ? 5 : widget.isTablet ? 4 : 3;
+    final crossAxisCount = widget.isTablet ? 4 : 3;
     final initialCount = crossAxisCount * 2;
-    final hasMore = widget.items.length > initialCount;
-    final displayed = _showAll
-        ? widget.items
-        : widget.items.take(initialCount).toList();
-    final itemHeight = widget.isTablet ? 120.0 : 104.0;
-    final avatarSize = widget.isTablet ? 56.0 : 50.0;
+    final items = widget.group.subCategories;
+    final hasMore = items.length > initialCount;
+    final displayed = _showAll ? items : items.take(initialCount).toList();
+    final avatarSize = widget.isTablet ? 56.0 : 48.0;
+    final itemHeight = widget.isTablet ? 116.0 : 104.0;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _SectionLabel(widget.title.toUpperCase()),
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: displayed.length + (hasMore ? 1 : 0),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: crossAxisCount,
-            crossAxisSpacing: 8,
-            mainAxisSpacing: 10,
-            mainAxisExtent: itemHeight,
-          ),
-          itemBuilder: (_, index) {
-            if (hasMore && index == displayed.length) {
-              return GestureDetector(
-                onTap: () => setState(() => _showAll = !_showAll),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      width: avatarSize,
-                      height: avatarSize,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: AppColors.surface2,
-                        border: Border.all(
-                            color: AppColors.white, width: 1.5),
-                      ),
-                      child: Icon(
-                        _showAll
-                            ? Icons.keyboard_arrow_up_rounded
-                            : Icons.keyboard_arrow_down_rounded,
-                        color: AppColors.white,
-                        size: 26,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      _showAll ? 'Less' : 'View All',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.white,
-                        letterSpacing: 0.4,
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }
+    return Container(
+      color: AppColors.bg,
+      padding: const EdgeInsets.fromLTRB(10, 16, 10, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // SUBCATEGORY heading (matches _SectionLabel in payment_page.dart)
+          _SectionLabel(widget.group.name.toUpperCase()),
 
-            final sub = displayed[index];
-            final name = sub['name'] ?? 'Unnamed';
-            final imgUrl = sub['imageurl'] ?? '';
-
-            return GestureDetector(
-              onTap: () {},
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    width: avatarSize,
-                    height: avatarSize,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AppColors.surface2,
-                      border: Border.all(color: AppColors.border),
+          if (items.isEmpty)
+            const Padding(
+              padding: EdgeInsets.only(bottom: 8),
+              child: Text('No items',
+                  style: TextStyle(color: AppColors.greyDark, fontSize: 12)),
+            )
+          else
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: displayed.length + (hasMore ? 1 : 0),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: crossAxisCount,
+                crossAxisSpacing: 8,
+                mainAxisSpacing: 10,
+                mainAxisExtent: itemHeight,
+              ),
+              itemBuilder: (_, index) {
+                // "View All" button
+                if (hasMore && index == displayed.length) {
+                  return GestureDetector(
+                    onTap: () => setState(() => _showAll = !_showAll),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: avatarSize,
+                          height: avatarSize,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: AppColors.surface2,
+                            border: Border.all(
+                                color: AppColors.white, width: 1.5),
+                          ),
+                          child: Icon(
+                            _showAll
+                                ? Icons.keyboard_arrow_up_rounded
+                                : Icons.keyboard_arrow_down_rounded,
+                            color: AppColors.white,
+                            size: 24,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          _showAll ? 'Less' : 'View All',
+                          style: const TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.white,
+                            letterSpacing: 0.4,
+                          ),
+                        ),
+                      ],
                     ),
-                    child: ClipOval(
-                      child: Image.network(
-                        imgUrl,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => const Icon(
-                          Icons.category_outlined,
-                          color: AppColors.grey,
-                          size: 22,
+                  );
+                }
+
+                final item = displayed[index];
+                return GestureDetector(
+                  onTap: () => widget.onItemTap(item),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: avatarSize,
+                        height: avatarSize,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: AppColors.surface2,
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: ClipOval(
+                          child: Padding(
+                            padding: const EdgeInsets.all(8),
+                            child: Image.network(
+                              item.imageUrl,
+                              fit: BoxFit.contain,
+                              errorBuilder: (_, __, ___) => const Icon(
+                                Icons.category_outlined,
+                                color: AppColors.grey,
+                                size: 20,
+                              ),
+                            ),
+                          ),
                         ),
                       ),
-                    ),
+                      const SizedBox(height: 6),
+                      Text(
+                        item.name,
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: widget.isTablet ? 11 : 10,
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.white,
+                          height: 1.2,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    name,
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: widget.isTablet ? 11 : 10,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.white,
-                      height: 1.2,
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        ),
-      ],
+                );
+              },
+            ),
+        ],
+      ),
     );
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SECTION LABEL  (ALL-CAPS, tracked)
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── Section Label ────────────────────────────────────────────────────────────
+
 class _SectionLabel extends StatelessWidget {
   final String text;
   const _SectionLabel(this.text);
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 16, 4, 10),
-      child: Text(
-        text,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: const TextStyle(
-          color: AppColors.grey,
-          fontSize: 10,
-          fontWeight: FontWeight.w600,
-          letterSpacing: 1.4,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          text,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            color: AppColors.grey,
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 1.4,
+          ),
         ),
+        const SizedBox(height: 8),
+        Container(height: 1, color: AppColors.divider),
+        const SizedBox(height: 12),
+      ],
+    );
+  }
+}
+
+// ─── Shimmer ──────────────────────────────────────────────────────────────────
+
+class _BrowseShimmer extends StatelessWidget {
+  final bool isTablet;
+  const _BrowseShimmer({required this.isTablet});
+
+  @override
+  Widget build(BuildContext context) {
+    final crossAxisCount = isTablet ? 4 : 3;
+    final itemHeight = isTablet ? 116.0 : 104.0;
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(10),
+      itemCount: 3,
+      itemBuilder: (_, __) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _ShimmerBox(
+              child: _shimRect(width: 110, height: 10),
+              margin: const EdgeInsets.only(bottom: 10)),
+          _ShimmerBox(child: _shimRect(width: double.infinity, height: 1),
+              margin: const EdgeInsets.only(bottom: 12)),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: crossAxisCount * 2,
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: crossAxisCount,
+              crossAxisSpacing: 8,
+              mainAxisSpacing: 10,
+              mainAxisExtent: itemHeight,
+            ),
+            itemBuilder: (_, __) => Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _ShimmerBox(child: _shimCircle(isTablet ? 56 : 48)),
+                const SizedBox(height: 6),
+                _ShimmerBox(child: _shimRect(width: 44, height: 9)),
+                const SizedBox(height: 3),
+                _ShimmerBox(child: _shimRect(width: 32, height: 9)),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+        ],
       ),
     );
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SHIMMER WIDGETS
-// ─────────────────────────────────────────────────────────────────────────────
-class _BrandShimmer extends StatelessWidget {
-  final bool isTablet;
-  final bool isDesktop;
-  const _BrandShimmer({required this.isTablet, required this.isDesktop});
-
-  @override
-  Widget build(BuildContext context) {
-    final crossAxisCount = isDesktop ? 5 : isTablet ? 4 : 3;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Padding(
-          padding: EdgeInsets.fromLTRB(4, 16, 4, 10),
-          child: _ShimmerItem(child: SizedBox(width: 110, height: 10)),
-        ),
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: 6,
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: crossAxisCount,
-            crossAxisSpacing: 8,
-            mainAxisSpacing: 8,
-            mainAxisExtent: isTablet ? 118 : 104,
-          ),
-          itemBuilder: (_, __) => Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _ShimmerItem(child: _shimCircle(isTablet ? 58 : 50)),
-              const SizedBox(height: 6),
-              _ShimmerItem(child: _shimRect(width: 44, height: 9)),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _CategoryGridShimmer extends StatelessWidget {
-  final bool isTablet;
-  final bool isDesktop;
-  const _CategoryGridShimmer(
-      {required this.isTablet, required this.isDesktop});
-
-  @override
-  Widget build(BuildContext context) {
-    final crossAxisCount = isDesktop ? 5 : isTablet ? 4 : 3;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Padding(
-          padding: EdgeInsets.fromLTRB(4, 16, 4, 10),
-          child: _ShimmerItem(child: SizedBox(width: 120, height: 10)),
-        ),
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: crossAxisCount * 2,
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: crossAxisCount,
-            crossAxisSpacing: 8,
-            mainAxisSpacing: 10,
-            mainAxisExtent: isTablet ? 120 : 104,
-          ),
-          itemBuilder: (_, __) => Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _ShimmerItem(child: _shimCircle(isTablet ? 56 : 50)),
-              const SizedBox(height: 6),
-              _ShimmerItem(child: _shimRect(width: 48, height: 9)),
-              const SizedBox(height: 3),
-              _ShimmerItem(child: _shimRect(width: 36, height: 9)),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
+// ─── Shared Shimmer Helpers ───────────────────────────────────────────────────
 
 Widget _shimCircle(double size) => Container(
       width: size,
       height: size,
       decoration: const BoxDecoration(
-        shape: BoxShape.circle,
-        color: AppColors.surface2,
-      ),
+          shape: BoxShape.circle, color: AppColors.surface2),
     );
 
 Widget _shimRect({required double width, required double height}) => Container(
       width: width,
       height: height,
       decoration: BoxDecoration(
-        color: AppColors.surface2,
-        borderRadius: BorderRadius.circular(4),
-      ),
+          color: AppColors.surface2, borderRadius: BorderRadius.circular(4)),
     );
 
-class _ShimmerItem extends StatefulWidget {
+class _ShimmerBox extends StatefulWidget {
   final Widget child;
   final EdgeInsetsGeometry? margin;
-  const _ShimmerItem({required this.child, this.margin});
+  const _ShimmerBox({required this.child, this.margin});
 
   @override
-  State<_ShimmerItem> createState() => _ShimmerItemState();
+  State<_ShimmerBox> createState() => _ShimmerBoxState();
 }
 
-class _ShimmerItemState extends State<_ShimmerItem>
+class _ShimmerBoxState extends State<_ShimmerBox>
     with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl;
   late final Animation<double> _anim;
@@ -687,12 +636,10 @@ class _ShimmerItemState extends State<_ShimmerItem>
   void initState() {
     super.initState();
     _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1200),
-    )..repeat();
-    _anim = Tween<double>(begin: -1.5, end: 2.5).animate(
-      CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
-    );
+        vsync: this, duration: const Duration(milliseconds: 1200))
+      ..repeat();
+    _anim = Tween<double>(begin: -1.5, end: 2.5)
+        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
   }
 
   @override
@@ -705,28 +652,26 @@ class _ShimmerItemState extends State<_ShimmerItem>
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _anim,
-      builder: (_, __) {
-        return Container(
-          margin: widget.margin,
-          child: ShaderMask(
-            shaderCallback: (bounds) => LinearGradient(
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
-              stops: [
-                (_anim.value - 1).clamp(0.0, 1.0),
-                _anim.value.clamp(0.0, 1.0),
-                (_anim.value + 1).clamp(0.0, 1.0),
-              ],
-              colors: const [
-                AppColors.surface2,
-                AppColors.border,
-                AppColors.surface2,
-              ],
-            ).createShader(bounds),
-            child: widget.child,
-          ),
-        );
-      },
+      builder: (_, __) => Container(
+        margin: widget.margin,
+        child: ShaderMask(
+          shaderCallback: (bounds) => LinearGradient(
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+            stops: [
+              (_anim.value - 1).clamp(0.0, 1.0),
+              _anim.value.clamp(0.0, 1.0),
+              (_anim.value + 1).clamp(0.0, 1.0),
+            ],
+            colors: const [
+              AppColors.surface2,
+              AppColors.border,
+              AppColors.surface2,
+            ],
+          ).createShader(bounds),
+          child: widget.child,
+        ),
+      ),
     );
   }
 }
