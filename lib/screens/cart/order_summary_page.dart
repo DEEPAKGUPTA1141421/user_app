@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../provider/cart_provider.dart';
 import '../../provider/checkout_provider.dart';
+import '../../provider/rider_provider.dart';
 import '../../provider/interaction_tracker_provider.dart';
 import '../../widgets/address_selector.dart';
 import '../../utils/app_colors.dart';
@@ -19,6 +20,25 @@ class OrderSummaryPage extends ConsumerStatefulWidget {
 class _OrderSummaryPageState
     extends ConsumerState<OrderSummaryPage> {
   Map<String, dynamic>? selectedAddress;
+
+  @override
+  void initState() {
+    super.initState();
+    // Auto-select the default address on open
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final addresses = ref.read(riderPod).addresses;
+      final defaultAddr = addresses.cast<Map<String, dynamic>>().firstWhere(
+            (a) => a['default'] == true,
+            orElse: () => addresses.isNotEmpty
+                ? addresses.first as Map<String, dynamic>
+                : <String, dynamic>{},
+          );
+      if (defaultAddr.isNotEmpty) {
+        setState(() => selectedAddress = defaultAddr);
+        ref.read(checkoutProvider.notifier).setAddress(defaultAddr);
+      }
+    });
+  }
 
   void showAddressModal() {
     showModalBottomSheet(
