@@ -6,9 +6,9 @@ class ApiEndpoints {
   ApiEndpoints._();
 
   // ── Base URLs ──────────────────────────────────────────────────────────────
-  static const String productServiceBase = 'http://localhost:8081';
-  static const String orderServiceBase   = 'http://localhost:8082';
-  static const String chatServiceBase    = 'http://localhost:8082';
+  static const String productServiceBase = 'http://192.168.1.116:8081';
+static const String orderServiceBase   = 'http://192.168.1.116:8082';
+static const String chatServiceBase    = 'http://192.168.1.116:8082';
 
   // ── SendBird App ID (set to your SendBird Application ID) ─────────────────
   static const String sendbirdAppId = 'F125EC09-A15E-4141-9C1F-3B1BD2A8A309';
@@ -28,6 +28,8 @@ class ApiEndpoints {
   // ── Products ───────────────────────────────────────────────────────────────
   static const String categoryByLevel  = '/api/v1/product/categorylevelwise';
   static const String categoryList     = '/api/v1/product/category';
+  static String categoryBrowse(String superCategoryId) =>
+      '/api/v1/product/category/browse?superCategoryId=$superCategoryId';
   static const String productDetail    = '/api/v1/product';
   static const String searchSuggestions   = '/api/v1/product/search';
   static const String productSearch    = '/api/v1/product/products/search';

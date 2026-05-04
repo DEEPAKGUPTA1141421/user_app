@@ -17,10 +17,10 @@ enum ShopSortBy {
       };
 
   String get apiValue => switch (this) {
-        ShopSortBy.distance     => 'DISTANCE',
-        ShopSortBy.rating       => 'RATING',
-        ShopSortBy.deliveryTime => 'DELIVERY_TIME',
-        ShopSortBy.newest       => 'NEWEST',
+        ShopSortBy.distance     => 'distance',
+        ShopSortBy.rating       => 'rating',
+        ShopSortBy.deliveryTime => 'distance',
+        ShopSortBy.newest       => 'distance',
       };
 }
 
@@ -210,7 +210,7 @@ class ShopFilter {
         sortBy              = ShopSortBy.distance;
 
   Map<String, dynamic> toQueryParams() => {
-        if (categoryId != null)         'category':            categoryId,
+        if (categoryId != null)         'categoryId':          categoryId,
         if (minRating != null)          'minRating':           minRating,
         if (maxDeliveryMinutes != null) 'maxDeliveryMinutes':  maxDeliveryMinutes,
         'sortBy':                        sortBy.apiValue,
