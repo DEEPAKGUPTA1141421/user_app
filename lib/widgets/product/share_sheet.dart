@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../utils/app_colors.dart';
 
@@ -10,14 +11,31 @@ Future<void> showShareSheet(
   required String productId,
 }) {
   final link = 'dashly.app/product/$productId';
-  final shareText =
+  final text =
       'Check out $productName on Dashly!\n₹${price.toStringAsFixed(0)}\n$link';
+  return _show(context, text: text, link: link);
+}
 
+Future<void> showShopShareSheet(
+  BuildContext context, {
+  required String shopName,
+  required String shopId,
+  String? tagline,
+}) {
+  final link = 'dashly.app/shop/$shopId';
+  final text = tagline != null
+      ? 'Check out $shopName on Dashly!\n$tagline\n$link'
+      : 'Check out $shopName on Dashly!\n$link';
+  return _show(context, text: text, link: link);
+}
+
+Future<void> _show(BuildContext context,
+    {required String text, required String link}) {
   return showModalBottomSheet<void>(
     context: context,
     backgroundColor: Colors.transparent,
     isScrollControlled: true,
-    builder: (_) => _ShareSheet(text: shareText, link: link),
+    builder: (_) => _ShareSheet(text: text, link: link),
   );
 }
 
@@ -63,7 +81,7 @@ class _ShareSheet extends StatelessWidget {
           ),
           const SizedBox(height: 20),
 
-          // ── App grid ─────────────────────────────────────────────────────
+          // ── App grid ────────────────────────────────────────────────────
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
@@ -71,7 +89,7 @@ class _ShareSheet extends StatelessWidget {
                 _AppTile(
                   label: 'WhatsApp',
                   color: const Color(0xFF25D366),
-                  icon: Icons.chat_rounded,
+                  icon: FontAwesomeIcons.whatsapp,
                   onTap: () => _launch(
                       'https://wa.me/?text=${Uri.encodeComponent(text)}',
                       context),
@@ -80,7 +98,7 @@ class _ShareSheet extends StatelessWidget {
                 _AppTile(
                   label: 'Facebook',
                   color: const Color(0xFF1877F2),
-                  icon: Icons.thumb_up_alt_rounded,
+                  icon: FontAwesomeIcons.facebook,
                   onTap: () => _launch(
                       'https://www.facebook.com/sharer/sharer.php?u=${Uri.encodeComponent('https://$link')}&quote=${Uri.encodeComponent(text)}',
                       context),
@@ -89,16 +107,16 @@ class _ShareSheet extends StatelessWidget {
                 _AppTile(
                   label: 'Telegram',
                   color: const Color(0xFF2AABEE),
-                  icon: Icons.send_rounded,
+                  icon: FontAwesomeIcons.telegram,
                   onTap: () => _launch(
                       'https://t.me/share/url?url=${Uri.encodeComponent('https://$link')}&text=${Uri.encodeComponent(text)}',
                       context),
                 ),
                 const SizedBox(width: 20),
                 _AppTile(
-                  label: 'Twitter / X',
-                  color: const Color(0xFF1DA1F2),
-                  icon: Icons.alternate_email_rounded,
+                  label: 'X / Twitter',
+                  color: const Color(0xFF000000),
+                  icon: FontAwesomeIcons.xTwitter,
                   onTap: () => _launch(
                       'https://twitter.com/intent/tweet?text=${Uri.encodeComponent(text)}',
                       context),
@@ -107,7 +125,7 @@ class _ShareSheet extends StatelessWidget {
                 _AppTile(
                   label: 'Email',
                   color: const Color(0xFFEA4335),
-                  icon: Icons.email_rounded,
+                  icon: FontAwesomeIcons.envelope,
                   onTap: () => _launch(
                       'mailto:?subject=${Uri.encodeComponent('Check this out on Dashly!')}&body=${Uri.encodeComponent(text)}',
                       context),
@@ -120,7 +138,7 @@ class _ShareSheet extends StatelessWidget {
           Container(height: 1, color: AppColors.divider),
           const SizedBox(height: 16),
 
-          // ── Copy link row ─────────────────────────────────────────────────
+          // ── Copy link row ────────────────────────────────────────────────
           GestureDetector(
             onTap: () async {
               await Clipboard.setData(ClipboardData(text: text));
@@ -135,8 +153,7 @@ class _ShareSheet extends StatelessWidget {
                     behavior: SnackBarBehavior.floating,
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10)),
-                    margin:
-                        const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                     duration: const Duration(seconds: 2),
                   ),
                 );
@@ -242,7 +259,9 @@ class _AppTile extends StatelessWidget {
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: color.withOpacity(0.35), width: 1.5),
             ),
-            child: Icon(icon, color: color, size: 26),
+            child: Center(
+              child: FaIcon(icon, color: color, size: 26),
+            ),
           ),
           const SizedBox(height: 8),
           Text(

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../provider/category_sections.dart';
 import '../../provider/rider_provider.dart';
-import '../../core/widgets/app_loader.dart';
+import './home_shimmer.dart';
 import '../../model/section_model.dart';
 import '../../model/section_v2.dart';
 import './section_widget.dart';
@@ -112,12 +112,7 @@ class _CategoryPageState extends ConsumerState<CategoryPage> {
     final sectionWidgets = positioned.map((p) => p.$2).toList();
 
     if (sectionsLoading && sectionWidgets.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 32),
-        child: Center(
-          child: AppSpinner(),
-        ),
-      );
+      return const HomeShimmer();
     }
 
     if (sectionWidgets.isEmpty && !sectionsLoading) {

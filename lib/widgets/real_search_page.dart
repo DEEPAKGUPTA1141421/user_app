@@ -755,12 +755,24 @@ class _RealSearchPageState extends ConsumerState<RealSearchPage>
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: AppColors.border),
                   ),
-                  child: Center(
-                    child: badge != null
-                        ? Text(badge, style: const TextStyle(fontSize: 16))
-                        : const Icon(CupertinoIcons.search,
-                            size: 14, color: AppColors.grey),
-                  ),
+                  clipBehavior: Clip.hardEdge,
+                  child: s.imageUrl.isNotEmpty
+                      ? Image.network(
+                          s.imageUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Center(
+                            child: badge != null
+                                ? Text(badge, style: const TextStyle(fontSize: 16))
+                                : const Icon(CupertinoIcons.search,
+                                    size: 14, color: AppColors.grey),
+                          ),
+                        )
+                      : Center(
+                          child: badge != null
+                              ? Text(badge, style: const TextStyle(fontSize: 16))
+                              : const Icon(CupertinoIcons.search,
+                                  size: 14, color: AppColors.grey),
+                        ),
                 ),
                 const SizedBox(width: 14),
                 Expanded(

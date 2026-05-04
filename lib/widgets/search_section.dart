@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'speech_search_page.dart';
 import 'real_search_page.dart';
-import '../utils/app_colors.dart'; 
+import '../utils/app_colors.dart';
+import '../screens/qr_scanner_screen.dart';
 
 class SearchSection extends StatefulWidget {
   const SearchSection({super.key});
@@ -86,7 +87,13 @@ class _SearchSectionState extends State<SearchSection> {
           // ───────── QR SCANNER ─────────
           GestureDetector(
             onTap: () {
-              // TODO: Add QR Scanner navigation
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  fullscreenDialog: true,
+                  builder: (_) => const QrScannerScreen(),
+                ),
+              );
             },
             child: Container(
               padding: const EdgeInsets.all(14),
