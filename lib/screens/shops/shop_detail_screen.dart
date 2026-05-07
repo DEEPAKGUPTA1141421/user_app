@@ -1,14 +1,15 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api/api_client.dart';
 import '../../core/api/api_endpoints.dart';
 import '../../core/widgets/app_loader.dart';
 import '../../model/shop.dart';
+import '../../model/shop_product.dart';
 import '../../provider/shop_provider.dart';
 import '../../utils/app_colors.dart';
 import '../../widgets/product/share_sheet.dart';
+import '../../widgets/shop/shop_product_empty_state.dart';
+import 'shop_product_search_screen.dart';
 
 // ─── Models ────────────────────────────────────────────────────────────────────
 
@@ -42,6 +43,22 @@ class _Product {
     this.isWishlisted = false,
     this.isInCart = false,
   });
+
+  factory _Product.fromShopProduct(ShopProduct p) => _Product(
+        id: p.id,
+        name: p.name,
+        price: p.price,
+        originalPrice: p.originalPrice,
+        discountPercent: p.discountPercent,
+        rating: p.rating,
+        reviewCount: p.reviewCount,
+        images: List<String>.from(p.images),
+        badge: p.badge,
+        categoryId: p.categoryId,
+        categoryName: p.categoryName,
+        isWishlisted: p.isWishlisted,
+        isInCart: p.isInCart,
+      );
 
   factory _Product.fromJson(Map<String, dynamic> j) => _Product(
         id: j['id'] as String? ?? '',
@@ -124,8 +141,6 @@ class ShopDetailScreen extends ConsumerStatefulWidget {
 
 class _ShopDetailScreenState extends ConsumerState<ShopDetailScreen> {
   final ScrollController _scroll = ScrollController();
-  final TextEditingController _searchCtrl = TextEditingController();
-  Timer? _debounce;
 
   Shop? _shop;
   String? _shopId;
@@ -148,14 +163,9 @@ class _ShopDetailScreenState extends ConsumerState<ShopDetailScreen> {
   bool _categoryHasMore = false;
   int _categoryPage = 0;
 
-  // Search mode
-  List<_Product> _searchResults = [];
-  bool _searchLoading = false;
-  bool _searchHasMore = false;
-  int _searchPage = 0;
-  String _searchQuery = '';
-
   static const int _pageSize = 20;
+
+  bool _appBarSolid = false;
 
   // ── Init ──────────────────────────────────────────────────────────────────
 
@@ -168,9 +178,7 @@ class _ShopDetailScreenState extends ConsumerState<ShopDetailScreen> {
 
   @override
   void dispose() {
-    _debounce?.cancel();
     _scroll.dispose();
-    _searchCtrl.dispose();
     super.dispose();
   }
 
@@ -277,6 +285,8 @@ class _ShopDetailScreenState extends ConsumerState<ShopDetailScreen> {
           'categoryId': _selectedCategoryId,
           'page': page,
           'pageSize': _pageSize,
+          if (_userLat != 0.0) 'userLat': _userLat,
+          if (_userLng != 0.0) 'userLng': _userLng,
         },
       );
       final body = res.data as Map<String, dynamic>;
@@ -298,80 +308,29 @@ class _ShopDetailScreenState extends ConsumerState<ShopDetailScreen> {
     }
   }
 
-  // ── Search ────────────────────────────────────────────────────────────────
-
-  void _onSearchChanged(String q) {
-    _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 400), () {
-      setState(() {
-        _searchQuery = q.trim();
-        _searchResults = [];
-        _searchPage = 0;
-        _searchHasMore = false;
-        _selectedCategoryId = null;
-      });
-      if (_searchQuery.isNotEmpty) _loadSearch(refresh: true);
-    });
-  }
-
-  void _clearSearch() {
-    _searchCtrl.clear();
-    _debounce?.cancel();
-    setState(() {
-      _searchQuery = '';
-      _searchResults = [];
-      _searchPage = 0;
-      _selectedCategoryId = null;
-    });
-  }
-
-  Future<void> _loadSearch({bool refresh = false}) async {
-    if (_searchLoading || _shopId == null) return;
-    setState(() => _searchLoading = true);
-    final page = refresh ? 0 : _searchPage;
-    try {
-      final res = await ApiClient.instance.productClient.get(
-        ApiEndpoints.searchResults,
-        queryParameters: {
-          'sellerId': _shopId,
-          'keyword': _searchQuery,
-          'page': page,
-          'pageSize': _pageSize,
-        },
-      );
-      final body = res.data as Map<String, dynamic>;
-      final data = body['data'] as Map<String, dynamic>? ?? body;
-      final list = (data['products'] as List<dynamic>?) ?? [];
-      final hasMore = data['hasMore'] as bool? ?? false;
-      final parsed = list.whereType<Map<String, dynamic>>().map(_Product.fromJson).toList();
-      if (mounted) {
-        setState(() {
-          _searchResults = refresh ? parsed : [..._searchResults, ...parsed];
-          _searchHasMore = hasMore;
-          _searchPage = page + 1;
-          _searchLoading = false;
-        });
-      }
-    } catch (_) {
-      if (mounted) setState(() => _searchLoading = false);
-    }
-  }
-
   // ── Scroll ────────────────────────────────────────────────────────────────
 
   void _onScroll() {
     if (!_scroll.hasClients) return;
+
+    // Toggle app bar solid state based on scroll offset (cover photo ~220px tall)
+    final solid = _scroll.offset > 180;
+    if (solid != _appBarSolid) setState(() => _appBarSolid = solid);
+
     final atBottom = _scroll.offset >= _scroll.position.maxScrollExtent - 300;
     if (!atBottom) return;
-    if (_searchQuery.isNotEmpty && _searchHasMore && !_searchLoading) {
-      _loadSearch();
-    } else if (_selectedCategoryId != null && _categoryHasMore && !_categoryLoading) {
+    if (_selectedCategoryId != null && _categoryHasMore && !_categoryLoading) {
       _loadCategoryProducts();
     }
   }
 
-  void _openProduct(String productId) =>
-      Navigator.pushNamed(context, '/productDetail/$productId');
+  void _openProduct(String productId) => Navigator.pushNamed(
+        context,
+        '/productDetail/$productId',
+        arguments: {
+          'etaLabel': _shop?.deliveryEtaLabel,
+        },
+      );
 
   void _shareShop(Shop shop) {
     final tagline = StringBuffer();
@@ -386,6 +345,31 @@ class _ShopDetailScreenState extends ConsumerState<ShopDetailScreen> {
       shopId: shop.id,
       tagline: tagline.toString(),
     );
+  }
+
+  Future<bool> _toggleFollow(bool currentlyFollowed) async {
+    final shopId = _shopId;
+    if (shopId == null) return currentlyFollowed;
+
+    bool success;
+    if (currentlyFollowed) {
+      success = await ref.read(shopPod.notifier).unfollowShop(shopId);
+    } else {
+      success = await ref.read(shopPod.notifier).followShop(shopId);
+    }
+
+    if (success && mounted && _detail != null) {
+      final newFollowed = !currentlyFollowed;
+      final delta = newFollowed ? 1 : -1;
+      setState(() {
+        _detail = _detail!.copyWith(
+          isFollowed: newFollowed,
+          followerCount: (_detail!.followerCount + delta).clamp(0, 9999999999),
+        );
+        _shop = _detail;
+      });
+    }
+    return success;
   }
 
   // ── Derived helpers ───────────────────────────────────────────────────────
@@ -412,66 +396,95 @@ class _ShopDetailScreenState extends ConsumerState<ShopDetailScreen> {
       );
     }
 
-    final isSearching = _searchQuery.isNotEmpty;
+    final shopId = _shopId;
 
     return Scaffold(
       backgroundColor: AppColors.bg,
       body: CustomScrollView(
         controller: _scroll,
         slivers: [
-          // ── App bar ────────────────────────────────────────────────────────
+          // ── App bar — transparent over cover, solid when scrolled ─────────
           SliverAppBar(
             pinned: true,
-            backgroundColor: AppColors.bg,
+            floating: false,
+            backgroundColor: _appBarSolid
+                ? AppColors.bg
+                : Colors.transparent,
             surfaceTintColor: Colors.transparent,
             elevation: 0,
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                  color: AppColors.white, size: 18),
-              onPressed: () => Navigator.pop(context),
-            ),
-            titleSpacing: 0,
-            title: Text(
-              shop.displayName,
-              style: const TextStyle(
-                color: AppColors.white,
-                fontSize: 17,
-                fontWeight: FontWeight.w700,
-                letterSpacing: -0.3,
+            leading: Padding(
+              padding: const EdgeInsets.all(8),
+              child: _FloatingIconButton(
+                icon: Icons.arrow_back_ios_new_rounded,
+                onTap: () => Navigator.pop(context),
+                forceDark: _appBarSolid,
               ),
             ),
+            title: _appBarSolid
+                ? Text(
+                    shop.displayName,
+                    style: const TextStyle(
+                      color: AppColors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.3,
+                    ),
+                  )
+                : null,
             actions: [
-              IconButton(
-                icon: const Icon(Icons.ios_share_rounded,
-                    color: AppColors.white, size: 20),
-                onPressed: () => _shareShop(shop),
+              Padding(
+                padding: const EdgeInsets.all(8),
+                child: _FloatingIconButton(
+                  icon: Icons.ios_share_rounded,
+                  onTap: () => _shareShop(shop),
+                  forceDark: _appBarSolid,
+                ),
               ),
             ],
-            bottom: PreferredSize(
-              preferredSize: const Size.fromHeight(1),
-              child: Container(height: 1, color: AppColors.divider),
-            ),
+            bottom: _appBarSolid
+                ? PreferredSize(
+                    preferredSize: const Size.fromHeight(1),
+                    child: Container(height: 1, color: AppColors.divider),
+                  )
+                : null,
           ),
 
           // ── Shop hero ──────────────────────────────────────────────────────
           SliverToBoxAdapter(
-            child: _ShopHero(shop: shop, detail: _detail, detailLoading: _detailLoading),
+            child: _ShopHero(
+              shop: shop,
+              detail: _detail,
+              detailLoading: _detailLoading,
+              onShare: () => _shareShop(shop),
+              onToggleFollow: _toggleFollow,
+            ),
           ),
 
-          // ── Search bar ─────────────────────────────────────────────────────
+          // ── Search bar (tap to open full-screen search) ────────────────────
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-              child: _SearchBar(
-                controller: _searchCtrl,
-                onChanged: _onSearchChanged,
-                onClear: _clearSearch,
+              child: _TapToSearchBar(
+                hint: 'Search in ${shop.displayName}',
+                onTap: shopId != null
+                    ? () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ShopProductSearchScreen(
+                              shopId: shopId,
+                              shopName: shop.displayName,
+                              userLat: _userLat,
+                              userLng: _userLng,
+                            ),
+                          ),
+                        )
+                    : null,
               ),
             ),
           ),
 
-          // ── Category pills (hidden while searching) ────────────────────────
-          if (!isSearching && _categorySections.isNotEmpty)
+          // ── Category pills ─────────────────────────────────────────────────
+          if (_categorySections.isNotEmpty)
             SliverToBoxAdapter(
               child: _CategoryPills(
                 sections: _categorySections,
@@ -481,51 +494,11 @@ class _ShopDetailScreenState extends ConsumerState<ShopDetailScreen> {
             ),
 
           // ── Loading storefront ─────────────────────────────────────────────
-          if (_storefrontLoading && !isSearching)
+          if (_storefrontLoading)
             const SliverFillRemaining(child: Center(child: AppSpinner())),
 
-          // ── SEARCH results ─────────────────────────────────────────────────
-          if (isSearching) ...[
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 14, 20, 8),
-                child: Text(
-                  'Results for "$_searchQuery"',
-                  style: const TextStyle(
-                    color: AppColors.grey,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                    letterSpacing: 0.4,
-                  ),
-                ),
-              ),
-            ),
-            if (_searchLoading && _searchResults.isEmpty)
-              const SliverFillRemaining(child: Center(child: AppSpinner()))
-            else if (_searchResults.isEmpty)
-              SliverFillRemaining(
-                child: _EmptyState(
-                  message: 'No products found for "$_searchQuery"',
-                  icon: Icons.search_off_rounded,
-                ),
-              )
-            else
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-                sliver: SliverGrid.count(
-                  crossAxisCount: 2,
-                  mainAxisSpacing: 10,
-                  crossAxisSpacing: 10,
-                  childAspectRatio: 0.72,
-                  children: _searchResults
-                      .map((p) => _ProductCard(product: p, onTap: () => _openProduct(p.id)))
-                      .toList(),
-                ),
-              ),
-          ],
-
           // ── CATEGORY GRID (pill selected) ──────────────────────────────────
-          if (!isSearching && _selectedCategoryId != null) ...[
+          if (_selectedCategoryId != null) ...[
             if (_categoryLoading && _categoryProducts.isEmpty)
               const SliverFillRemaining(child: Center(child: AppSpinner()))
             else if (_categoryProducts.isEmpty && !_categoryLoading) ...[
@@ -538,10 +511,10 @@ class _ShopDetailScreenState extends ConsumerState<ShopDetailScreen> {
           ],
 
           // ── STOREFRONT SECTIONS (all / no pill selected) ───────────────────
-          if (!isSearching && _selectedCategoryId == null && !_storefrontLoading) ...[
+          if (_selectedCategoryId == null && !_storefrontLoading) ...[
             if (_sections.isEmpty)
               const SliverFillRemaining(
-                child: _EmptyState(
+                child: ShopProductEmptyState(
                   message: 'No products listed yet.',
                   icon: Icons.shopping_bag_outlined,
                 ),
@@ -554,8 +527,7 @@ class _ShopDetailScreenState extends ConsumerState<ShopDetailScreen> {
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 20),
-              child: (_searchLoading && _searchResults.isNotEmpty) ||
-                      (_categoryLoading && _categoryProducts.isNotEmpty)
+              child: (_categoryLoading && _categoryProducts.isNotEmpty)
                   ? const Center(child: AppSpinner(size: 20))
                   : const SizedBox.shrink(),
             ),
@@ -596,7 +568,7 @@ class _ShopDetailScreenState extends ConsumerState<ShopDetailScreen> {
     if (products.isEmpty) {
       return [
         const SliverFillRemaining(
-          child: _EmptyState(
+          child: ShopProductEmptyState(
             message: 'No products in this category.',
             icon: Icons.category_outlined,
           ),
@@ -1148,94 +1120,260 @@ class _ProductCard extends StatelessWidget {
       );
 }
 
-// ─── Shop hero ────────────────────────────────────────────────────────────────
+// ─── Shop hero (world-class redesign) ────────────────────────────────────────
 
-class _ShopHero extends StatelessWidget {
+class _ShopHero extends StatefulWidget {
   final Shop shop;
   final ShopDetail? detail;
   final bool detailLoading;
+  final VoidCallback onShare;
+  final Future<bool> Function(bool currentlyFollowed) onToggleFollow;
 
-  const _ShopHero({required this.shop, required this.detail, required this.detailLoading});
+  const _ShopHero({
+    required this.shop,
+    required this.detail,
+    required this.detailLoading,
+    required this.onShare,
+    required this.onToggleFollow,
+  });
+
+  @override
+  State<_ShopHero> createState() => _ShopHeroState();
+}
+
+class _ShopHeroState extends State<_ShopHero> {
+  bool _followLoading = false;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    final shop = widget.shop;
+    final detail = widget.detail;
+    final coverUrl = detail?.coverImageUrl;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // ── Cover photo ──────────────────────────────────────────────────────
+        Stack(
+          clipBehavior: Clip.none,
+          children: [
+            // Cover image with gradient
+            SizedBox(
+              height: 220,
+              width: double.infinity,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  coverUrl != null
+                      ? Image.network(
+                          coverUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => _CoverPlaceholder(shop: shop),
+                        )
+                      : _CoverPlaceholder(shop: shop),
+                  // Gradient overlay — bottom fade
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.transparent,
+                          AppColors.bg.withOpacity(0.7),
+                          AppColors.bg,
+                        ],
+                        stops: const [0.4, 0.8, 1.0],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Shop avatar overlapping the cover bottom
+            Positioned(
+              bottom: -36,
+              left: 20,
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: AppColors.bg, width: 3),
+                ),
+                child: _ShopAvatar(shop: shop, size: 72),
+              ),
+            ),
+
+            // Open/Closed badge — top right of cover
+            Positioned(
+              top: 12,
+              right: 16,
+              child: _OpenBadge(isOpen: shop.isOpen),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 44), // space for avatar overlap
+
+        // ── Shop name + category ─────────────────────────────────────────────
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _ShopAvatar(shop: shop, size: 64),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            shop.displayName,
-                            style: const TextStyle(
-                              color: AppColors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: -0.3,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        _OpenBadge(isOpen: shop.isOpen),
-                      ],
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      shop.categoryName != null
-                          ? '${shop.categoryName} · ${shop.city}'
-                          : shop.city,
-                      style: const TextStyle(color: AppColors.grey, fontSize: 12),
-                    ),
-                  ],
+              Text(
+                shop.displayName,
+                style: const TextStyle(
+                  color: AppColors.white,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.5,
                 ),
               ),
+              if (shop.categoryName != null || shop.city.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(
+                  [if (shop.categoryName != null) shop.categoryName!, if (shop.city.isNotEmpty) shop.city]
+                      .join(' · '),
+                  style: const TextStyle(color: AppColors.grey, fontSize: 13),
+                ),
+              ],
             ],
           ),
-          const SizedBox(height: 14),
-          Container(height: 1, color: AppColors.divider),
-          const SizedBox(height: 14),
-          Row(
+        ),
+
+        const SizedBox(height: 16),
+
+        // ── Stats row: Products | Followers | Rating ─────────────────────────
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Row(
             children: [
-              _StatItem(
-                icon: Icons.star_rounded,
-                iconColor: const Color(0xFFFFC107),
-                label: shop.avgRating.toStringAsFixed(1),
-                sub: '${shop.reviewCount} reviews',
+              _StatsColumn(
+                value: detail != null ? _formatCount(detail.totalProducts) : '—',
+                label: 'Products',
               ),
-              Container(width: 1, height: 32, color: AppColors.divider),
-              _StatItem(
-                icon: Icons.schedule_outlined,
-                label: shop.deliveryEtaLabel,
-                sub: 'Delivery',
+              _VertDivider(),
+              _StatsColumn(
+                value: detail != null ? _formatCount(detail.followerCount) : '—',
+                label: 'Followers',
               ),
-              Container(width: 1, height: 32, color: AppColors.divider),
-              _StatItem(
-                icon: Icons.near_me_outlined,
-                label: shop.distanceLabel,
-                sub: 'Distance',
+              _VertDivider(),
+              _StatsColumn(
+                value: shop.avgRating > 0 ? shop.avgRating.toStringAsFixed(1) : '—',
+                label: '${shop.reviewCount} reviews',
+                valueColor: shop.avgRating > 0 ? const Color(0xFFFFC107) : AppColors.white,
               ),
             ],
+          ),
+        ),
+
+        const SizedBox(height: 18),
+
+        // ── Follow + Share buttons ────────────────────────────────────────────
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Row(
+            children: [
+              Expanded(
+                child: _FollowButton(
+                  shopId: widget.shop.id,
+                  detail: detail,
+                  loading: _followLoading,
+                  onTap: _handleFollow,
+                ),
+              ),
+              const SizedBox(width: 10),
+              _ShareIconButton(onTap: widget.onShare),
+            ],
+          ),
+        ),
+
+        // ── Delivery info row ─────────────────────────────────────────────────
+        const SizedBox(height: 16),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Row(
+            children: [
+              _InfoChip(icon: Icons.schedule_outlined, label: shop.deliveryEtaLabel),
+              const SizedBox(width: 8),
+              _InfoChip(icon: Icons.near_me_outlined, label: shop.distanceLabel),
+              if (detail?.websiteUrl != null) ...[
+                const SizedBox(width: 8),
+                _InfoChip(icon: Icons.language_outlined, label: 'Website'),
+              ],
+            ],
+          ),
+        ),
+
+        // ── Bio ───────────────────────────────────────────────────────────────
+        if (detail?.bio != null && detail!.bio!.isNotEmpty) ...[
+          const SizedBox(height: 14),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Text(
+              detail.bio!,
+              style: const TextStyle(
+                color: AppColors.grey,
+                fontSize: 13,
+                height: 1.5,
+              ),
+            ),
           ),
         ],
-      ),
+
+        // ── Tags ──────────────────────────────────────────────────────────────
+        if (detail != null && detail.tags.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 30,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              separatorBuilder: (_, __) => const SizedBox(width: 6),
+              itemCount: detail.tags.length,
+              itemBuilder: (_, i) => _TagChip(detail.tags[i]),
+            ),
+          ),
+        ],
+
+        // ── Trust badges ──────────────────────────────────────────────────────
+        const SizedBox(height: 16),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _TrustBadge(icon: Icons.verified_outlined, label: 'Verified Seller'),
+              _TrustBadge(icon: Icons.local_shipping_outlined, label: 'Fast Delivery'),
+              if (detail?.avgRating != null && detail!.avgRating >= 4.0)
+                const _TrustBadge(icon: Icons.thumb_up_outlined, label: 'Top Rated'),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 8),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Container(height: 1, color: AppColors.divider),
+        ),
+      ],
     );
+  }
+
+  Future<void> _handleFollow() async {
+    final detail = widget.detail;
+    if (detail == null || _followLoading) return;
+
+    setState(() => _followLoading = true);
+    await widget.onToggleFollow(detail.isFollowed);
+    if (mounted) setState(() => _followLoading = false);
+  }
+
+  String _formatCount(num count) {
+    if (count >= 1000000) return '${(count / 1000000).toStringAsFixed(1)}M';
+    if (count >= 1000) return '${(count / 1000).toStringAsFixed(1)}K';
+    return count.toString();
   }
 }
 
@@ -1300,71 +1438,6 @@ class _OpenBadge extends StatelessWidget {
       );
 }
 
-class _StatItem extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String sub;
-  final Color? iconColor;
-  const _StatItem({required this.icon, required this.label, required this.sub, this.iconColor});
-
-  @override
-  Widget build(BuildContext context) => Expanded(
-        child: Column(
-          children: [
-            Icon(icon, size: 15, color: iconColor ?? AppColors.grey),
-            const SizedBox(height: 4),
-            Text(label,
-                style: const TextStyle(
-                    color: AppColors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600)),
-            const SizedBox(height: 2),
-            Text(sub,
-                style: const TextStyle(color: AppColors.greyDark, fontSize: 10)),
-          ],
-        ),
-      );
-}
-
-// ─── Search bar ───────────────────────────────────────────────────────────────
-
-class _SearchBar extends StatelessWidget {
-  final TextEditingController controller;
-  final ValueChanged<String> onChanged;
-  final VoidCallback onClear;
-  const _SearchBar({required this.controller, required this.onChanged, required this.onClear});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 44,
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: TextField(
-        controller: controller,
-        onChanged: onChanged,
-        style: const TextStyle(color: AppColors.white, fontSize: 14),
-        decoration: InputDecoration(
-          hintText: 'Search products in this shop…',
-          hintStyle: const TextStyle(color: AppColors.greyDark, fontSize: 14),
-          prefixIcon: const Icon(Icons.search, color: AppColors.greyDark, size: 18),
-          suffixIcon: controller.text.isNotEmpty
-              ? GestureDetector(
-                  onTap: onClear,
-                  child: const Icon(Icons.close, color: AppColors.grey, size: 16))
-              : null,
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(vertical: 12),
-          isDense: true,
-        ),
-        cursorColor: AppColors.white,
-      ),
-    );
-  }
-}
 
 // ─── Small badge ──────────────────────────────────────────────────────────────
 
@@ -1391,27 +1464,311 @@ class _SmallBadge extends StatelessWidget {
       );
 }
 
-// ─── Empty state ──────────────────────────────────────────────────────────────
+// ─── Floating icon button (over cover photo) ──────────────────────────────────
 
-class _EmptyState extends StatelessWidget {
-  final String message;
+class _FloatingIconButton extends StatelessWidget {
   final IconData icon;
-  const _EmptyState({required this.message, required this.icon});
+  final VoidCallback onTap;
+  final bool forceDark;
+
+  const _FloatingIconButton({
+    required this.icon,
+    required this.onTap,
+    this.forceDark = false,
+  });
+
   @override
-  Widget build(BuildContext context) => Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 40),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, color: AppColors.greyDark, size: 44),
-              const SizedBox(height: 14),
-              Text(message,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                      color: AppColors.grey, fontSize: 13, height: 1.5)),
-            ],
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: forceDark ? Colors.transparent : Colors.black.withOpacity(0.45),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(icon, color: AppColors.white, size: 18),
+      ),
+    );
+  }
+}
+
+// ─── Cover placeholder ────────────────────────────────────────────────────────
+
+class _CoverPlaceholder extends StatelessWidget {
+  final Shop shop;
+  const _CoverPlaceholder({required this.shop});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: AppColors.surface2,
+      child: Center(
+        child: Text(
+          shop.initial,
+          style: const TextStyle(
+            color: AppColors.greyDark,
+            fontSize: 64,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Stats column ─────────────────────────────────────────────────────────────
+
+class _StatsColumn extends StatelessWidget {
+  final String value;
+  final String label;
+  final Color? valueColor;
+
+  const _StatsColumn({required this.value, required this.label, this.valueColor});
+
+  @override
+  Widget build(BuildContext context) => Expanded(
+        child: Column(
+          children: [
+            Text(
+              value,
+              style: TextStyle(
+                color: valueColor ?? AppColors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: const TextStyle(color: AppColors.greyDark, fontSize: 11),
+            ),
+          ],
+        ),
+      );
+}
+
+class _VertDivider extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) =>
+      Container(width: 1, height: 36, color: AppColors.divider);
+}
+
+// ─── Follow button ────────────────────────────────────────────────────────────
+
+class _FollowButton extends StatelessWidget {
+  final String shopId;
+  final ShopDetail? detail;
+  final bool loading;
+  final VoidCallback onTap;
+
+  const _FollowButton({
+    required this.shopId,
+    required this.detail,
+    required this.loading,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final followed = detail?.isFollowed ?? false;
+    return GestureDetector(
+      onTap: loading ? null : onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        height: 42,
+        decoration: BoxDecoration(
+          color: followed ? AppColors.surface2 : AppColors.white,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: followed ? AppColors.border : AppColors.white),
+        ),
+        child: Center(
+          child: loading
+              ? SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: followed ? AppColors.grey : AppColors.bg,
+                  ),
+                )
+              : Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      followed ? Icons.check_rounded : Icons.add_rounded,
+                      size: 16,
+                      color: followed ? AppColors.grey : AppColors.bg,
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      followed ? 'Following' : 'Follow',
+                      style: TextStyle(
+                        color: followed ? AppColors.grey : AppColors.bg,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Share icon button ────────────────────────────────────────────────────────
+
+class _ShareIconButton extends StatelessWidget {
+  final VoidCallback onTap;
+  const _ShareIconButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            color: AppColors.surface2,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: const Icon(Icons.ios_share_rounded,
+              size: 18, color: AppColors.white),
+        ),
+      );
+}
+
+// ─── Info chip ────────────────────────────────────────────────────────────────
+
+class _InfoChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  const _InfoChip({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: AppColors.surface2,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 13, color: AppColors.grey),
+            const SizedBox(width: 5),
+            Text(
+              label,
+              style: const TextStyle(
+                color: AppColors.grey,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      );
+}
+
+// ─── Tag chip ─────────────────────────────────────────────────────────────────
+
+class _TagChip extends StatelessWidget {
+  final String tag;
+  const _TagChip(this.tag);
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Text(
+          '#$tag',
+          style: const TextStyle(
+            color: AppColors.grey,
+            fontSize: 11,
+            fontWeight: FontWeight.w500,
           ),
         ),
       );
 }
+
+// ─── Trust badge ──────────────────────────────────────────────────────────────
+
+class _TrustBadge extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  const _TrustBadge({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 12, color: AppColors.green),
+            const SizedBox(width: 5),
+            Text(
+              label,
+              style: const TextStyle(
+                color: AppColors.grey,
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      );
+}
+
+// ─── Tap-to-search bar ────────────────────────────────────────────────────────
+
+class _TapToSearchBar extends StatelessWidget {
+  final String hint;
+  final VoidCallback? onTap;
+
+  const _TapToSearchBar({required this.hint, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 42,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.search_rounded,
+                color: AppColors.greyDark, size: 18),
+            const SizedBox(width: 8),
+            Text(
+              hint,
+              style: const TextStyle(
+                color: AppColors.greyDark,
+                fontSize: 14,
+                fontWeight: FontWeight.w400,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+

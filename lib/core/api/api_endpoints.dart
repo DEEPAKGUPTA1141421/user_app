@@ -116,6 +116,9 @@ static const String chatServiceBase    = 'http://192.168.1.116:8082';
   // Products inside shop → GET /api/v1/search/results?sellerId=<id>&keyword=&...
   // Reuses the existing ES search endpoint — sellerId param scopes to one shop.
   static const String searchResults = '/api/v1/search/results';
+  // Follow / Unfollow a shop → POST/DELETE /api/v1/shops/{id}/follow
+  static String shopFollow(String id)   => '/api/v1/shops/$id/follow';
+  static String shopUnfollow(String id) => '/api/v1/shops/$id/follow';
 
   // ── Returns & Refunds ─────────────────────────────────────────────────────
   static const String returns = '/api/v1/returns';

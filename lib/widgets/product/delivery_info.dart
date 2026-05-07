@@ -8,12 +8,14 @@ class DeliveryInfo extends ConsumerWidget {
   final int deliveryDays;
   final String brandName;
   final bool freeDelivery;
+  final String? etaLabel;
 
   const DeliveryInfo({
     super.key,
     this.deliveryDays = 5,
     this.brandName = '',
     this.freeDelivery = true,
+    this.etaLabel,
   });
 
   @override
@@ -36,7 +38,7 @@ class DeliveryInfo extends ConsumerWidget {
     final state = defaultAddr?['state'] as String? ?? '';
     final pincode = defaultAddr?['pincode'] as String? ?? '';
     final line1 = defaultAddr?['line1'] as String? ?? '';
-    final deliveryDate = _formatDate(deliveryDays);
+    final deliveryDate = etaLabel != null ? etaLabel! : _formatDate(deliveryDays);
 
     return Padding(
       padding: const EdgeInsets.all(16),
@@ -145,8 +147,8 @@ class DeliveryInfo extends ConsumerWidget {
                   children: [
                     Text(
                       freeDelivery
-                          ? 'Free Delivery by $deliveryDate'
-                          : 'Delivery by $deliveryDate',
+                          ? 'Free Delivery ${etaLabel != null ? 'in' : 'by'} $deliveryDate'
+                          : 'Delivery ${etaLabel != null ? 'in' : 'by'} $deliveryDate',
                       style: const TextStyle(
                           color: AppColors.white,
                           fontSize: 13,

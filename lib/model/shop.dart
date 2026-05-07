@@ -104,6 +104,12 @@ class ShopDetail extends Shop {
   final String? address;
   final String? openHours;
   final int totalProducts;
+  final String? coverImageUrl;
+  final String? bio;
+  final String? websiteUrl;
+  final int followerCount;
+  final bool isFollowed;
+  final List<String> tags;
 
   const ShopDetail({
     required super.id,
@@ -122,6 +128,12 @@ class ShopDetail extends Shop {
     this.address,
     this.openHours,
     this.totalProducts = 0,
+    this.coverImageUrl,
+    this.bio,
+    this.websiteUrl,
+    this.followerCount = 0,
+    this.isFollowed = false,
+    this.tags = const [],
   });
 
   factory ShopDetail.fromJson(Map<String, dynamic> j) {
@@ -140,6 +152,11 @@ class ShopDetail extends Shop {
     final allImages = [...logoImages, ...extraImages
         .where((u) => !logoImages.contains(u))];
 
+    final rawTags = j['tags'];
+    final List<String> tags = rawTags is List
+        ? rawTags.map((e) => e.toString()).where((s) => s.isNotEmpty).toList()
+        : const [];
+
     return ShopDetail(
       id:               j['shopId']           as String,
       displayName:      j['displayName']       as String,
@@ -156,9 +173,40 @@ class ShopDetail extends Shop {
       description:      j['description']       as String?,
       address:          j['address']           as String?,
       openHours:        j['openHours']         as String?,
-      totalProducts:    (j['totalProducts']    as int?)             ?? 0,
+      totalProducts:    (j['totalProducts']    as num?)?.toInt()    ?? 0,
+      coverImageUrl:    j['coverImageUrl']      as String?,
+      bio:              j['bio']               as String?,
+      websiteUrl:       j['websiteUrl']        as String?,
+      followerCount:    (j['followerCount']    as num?)?.toInt()    ?? 0,
+      isFollowed:       j['isFollowed']        as bool?             ?? false,
+      tags:             tags,
     );
   }
+
+  ShopDetail copyWith({bool? isFollowed, int? followerCount}) => ShopDetail(
+        id:               id,
+        displayName:      displayName,
+        logoUrl:          logoUrl,
+        images:           images,
+        city:             city,
+        avgRating:        avgRating,
+        reviewCount:      reviewCount,
+        deliveryEtaLabel: deliveryEtaLabel,
+        distanceKm:       distanceKm,
+        isOpen:           isOpen,
+        categoryName:     categoryName,
+        categoryId:       categoryId,
+        description:      description,
+        address:          address,
+        openHours:        openHours,
+        totalProducts:    totalProducts,
+        coverImageUrl:    coverImageUrl,
+        bio:              bio,
+        websiteUrl:       websiteUrl,
+        followerCount:    followerCount ?? this.followerCount,
+        isFollowed:       isFollowed   ?? this.isFollowed,
+        tags:             tags,
+      );
 }
 
 // ── ShopFilter ────────────────────────────────────────────────────────────────

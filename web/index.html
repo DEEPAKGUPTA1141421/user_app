@@ -32,6 +32,17 @@
   <title>user_app</title>
   <link rel="manifest" href="manifest.json">
 
+  <!-- SPA path routing: restore path after server-side 404 redirect -->
+  <script>
+    (function() {
+      var redirect = sessionStorage.redirect;
+      delete sessionStorage.redirect;
+      if (redirect && redirect !== location.href) {
+        history.replaceState(null, null, redirect);
+      }
+    })();
+  </script>
+
   <script>
     // The value below is injected by flutter build, do not touch.
     const serviceWorkerVersion = null;

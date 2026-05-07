@@ -34,6 +34,7 @@ class _ProductDetailsPageState extends ConsumerState<ProductDetailsPage>
   late String itemId;
 
   String? _selectedSize;
+  String? _etaLabel;
   bool _isAddingToCart = false;
   bool _isTogglingWishlist = false;
 
@@ -164,6 +165,7 @@ class _ProductDetailsPageState extends ConsumerState<ProductDetailsPage>
         title = args['title'] ?? 'Unnamed Product';
         imageUrl = args['imageUrl'] ?? '';
         itemId = args['itemId'] ?? '';
+        _etaLabel = args['etaLabel'] as String?;
         WidgetsBinding.instance.addPostFrameCallback((_) {
           ref.read(productPod.notifier).saveSearch(
                 itemId: itemId,
@@ -382,6 +384,7 @@ class _ProductDetailsPageState extends ConsumerState<ProductDetailsPage>
                                       deliveryDays: deliveryDays,
                                       brandName: brand,
                                       freeDelivery: freeDelivery,
+                                      etaLabel: _etaLabel,
                                     ),
                                   ),
                                   const SizedBox(height: 10),

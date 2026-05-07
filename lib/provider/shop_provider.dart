@@ -213,6 +213,26 @@ class ShopNotifier extends StateNotifier<ShopState> {
     }
   }
 
+  // ── Follow / Unfollow ─────────────────────────────────────────────────────
+
+  Future<bool> followShop(String shopId) async {
+    try {
+      await _client.post(ApiEndpoints.shopFollow(shopId));
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> unfollowShop(String shopId) async {
+    try {
+      await _client.delete(ApiEndpoints.shopUnfollow(shopId));
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   // ── Private helpers ───────────────────────────────────────────────────────
 
   Future<_PageResult> _fetchNearby({

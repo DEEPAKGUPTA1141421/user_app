@@ -1,6 +1,7 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_web_plugins/flutter_web_plugins.dart';
 import 'package:user_app/utils/app_colors.dart';
 import 'core/api/api_client.dart';
 import 'core/api/api_endpoints.dart';
@@ -42,6 +43,7 @@ Future<void> _firebaseMessagingHandler(RemoteMessage message) async {
 final _navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
+  usePathUrlStrategy();
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingHandler);
