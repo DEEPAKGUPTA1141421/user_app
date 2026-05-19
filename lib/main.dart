@@ -35,6 +35,7 @@ import 'screens/order_success_screen.dart';
 import 'screens/order_tracking_screen.dart';
 import 'screens/shops/shop_detail_screen.dart';
 import 'screens/payment_page.dart';
+import 'screens/rider/rider_home_screen.dart';
 
 Future<void> _firebaseMessagingHandler(RemoteMessage message) async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
@@ -118,6 +119,7 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      title: 'Dashly',
       navigatorKey: _navigatorKey,
       debugShowCheckedModeBanner: false,
       home: const SplashScreen(),
@@ -139,6 +141,7 @@ class _MyAppState extends State<MyApp> {
         '/account/cards':          (context) => const SavedCardsUpiScreen(),
         '/account/notifications':  (context) => const NotificationSettingsScreen(),
         '/account/profile':        (context) => const EditProfilePage(),
+        '/rider-home':             (context) => const RiderHomeScreen(),
       },
 
       // Dynamic routes
@@ -351,6 +354,7 @@ class _SplashScreenState extends State<SplashScreen> {
 
   Future<void> _checkAuth() async {
     final isLoggedIn = await StorageService.isLoggedIn();
+    final userType   = await StorageService.getUserType(); // 'RIDER' | 'USER' | null
     final initialRoute = WidgetsBinding.instance.platformDispatcher.defaultRouteName;
     final isShopDeepLink = initialRoute.startsWith('/shop/');
 
@@ -362,9 +366,9 @@ class _SplashScreenState extends State<SplashScreen> {
     }
 
     if (isLoggedIn) {
-      // Register FCM token now that auth tokens are available
       _registerFcmToken();
-      Navigator.pushReplacementNamed(context, "/home");
+      final home = userType == 'RIDER' ? '/rider-home' : '/home';
+      Navigator.pushReplacementNamed(context, home);
     } else {
       Navigator.pushReplacementNamed(context, "/login");
     }

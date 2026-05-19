@@ -1,11 +1,11 @@
 {
-    "name": "user_app",
-    "short_name": "user_app",
+    "name": "Dashly",
+    "short_name": "Dashly",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "Dashly",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
