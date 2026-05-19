@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../provider/rider_provider.dart';
+import '../provider/zone_provider.dart';
 import '../utils/app_colors.dart';
 import '../core/widgets/app_loader.dart';
 
@@ -34,6 +35,42 @@ class _CurrentLocationButtonState
       final position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
       );
+
+      // Zone serviceability check before saving
+      final zoneNotifier = ref.read(zonePod.notifier);
+      await zoneNotifier.check(position.latitude, position.longitude);
+      final zoneState = ref.read(zonePod);
+
+      if (zoneState.serviceable == false && mounted) {
+        final proceed = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            backgroundColor: AppColors.surface,
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16)),
+            title: const Text('Area Not Serviceable',
+                style: TextStyle(
+                    color: AppColors.white, fontWeight: FontWeight.bold)),
+            content: const Text(
+              "We don't deliver to this location yet. You can save it, but checkout will be blocked until we expand coverage.",
+              style: TextStyle(color: AppColors.grey, height: 1.5),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancel',
+                    style: TextStyle(color: AppColors.grey)),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Save Anyway',
+                    style: TextStyle(color: AppColors.white)),
+              ),
+            ],
+          ),
+        );
+        if (proceed != true) return;
+      }
 
       final riderNotifier = ref.read(riderPod.notifier);
 

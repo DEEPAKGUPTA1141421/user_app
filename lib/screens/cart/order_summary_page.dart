@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../provider/cart_provider.dart';
 import '../../provider/checkout_provider.dart';
 import '../../provider/rider_provider.dart';
+import '../../provider/zone_provider.dart';
 import '../../provider/interaction_tracker_provider.dart';
 import '../../widgets/address_selector.dart';
 import '../../utils/app_colors.dart';
@@ -20,11 +21,12 @@ class OrderSummaryPage extends ConsumerStatefulWidget {
 class _OrderSummaryPageState
     extends ConsumerState<OrderSummaryPage> {
   Map<String, dynamic>? selectedAddress;
+  bool? _serviceable; // null = not checked, true/false = result
+  bool _zoneChecking = false;
 
   @override
   void initState() {
     super.initState();
-    // Auto-select the default address on open
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final addresses = ref.read(riderPod).addresses;
       final defaultAddr = addresses.cast<Map<String, dynamic>>().firstWhere(
@@ -34,10 +36,33 @@ class _OrderSummaryPageState
                 : <String, dynamic>{},
           );
       if (defaultAddr.isNotEmpty) {
-        setState(() => selectedAddress = defaultAddr);
-        ref.read(checkoutProvider.notifier).setAddress(defaultAddr);
+        _onAddressSelected(defaultAddr);
       }
     });
+  }
+
+  void _onAddressSelected(Map<String, dynamic> address) {
+    setState(() {
+      selectedAddress = address;
+      _serviceable = null;
+      _zoneChecking = false;
+    });
+    ref.read(checkoutProvider.notifier).setAddress(address);
+    _checkZone(address);
+  }
+
+  Future<void> _checkZone(Map<String, dynamic> address) async {
+    final lat = double.tryParse(address['latitude']?.toString() ?? '');
+    final lng = double.tryParse(address['longitude']?.toString() ?? '');
+    if (lat == null || lng == null) return;
+    if (mounted) setState(() => _zoneChecking = true);
+    await ref.read(zonePod.notifier).check(lat, lng);
+    if (mounted) {
+      setState(() {
+        _serviceable = ref.read(zonePod).serviceable;
+        _zoneChecking = false;
+      });
+    }
   }
 
   void showAddressModal() {
@@ -46,9 +71,8 @@ class _OrderSummaryPageState
       backgroundColor: Colors.transparent,
       builder: (_) => DeliveryAddressSelector(
         onAddressSelect: (address) {
-          setState(() => selectedAddress = address);
-          // Store in provider so order-success screen can display it
-          ref.read(checkoutProvider.notifier).setAddress(address);
+          Navigator.pop(context);
+          _onAddressSelected(address);
         },
         onClose: () => Navigator.pop(context),
       ),
@@ -167,8 +191,38 @@ class _OrderSummaryPageState
           Text(phone,
               style: const TextStyle(
                   color: AppColors.white, fontSize: 12)),
+          if (_zoneChecking) ...[
+            const SizedBox(height: 10),
+            const LinearProgressIndicator(minHeight: 2),
+          ] else if (_serviceable != null) ...[
+            const SizedBox(height: 10),
+            _zoneBanner(_serviceable!),
+          ],
         ],
       ),
+    );
+  }
+
+  Widget _zoneBanner(bool serviceable) {
+    return Row(
+      children: [
+        Icon(
+          serviceable ? Icons.check_circle_outline : Icons.cancel_outlined,
+          size: 14,
+          color: serviceable ? Colors.greenAccent : Colors.redAccent,
+        ),
+        const SizedBox(width: 6),
+        Text(
+          serviceable
+              ? 'Delivery available to this address'
+              : 'This area is not yet serviceable',
+          style: TextStyle(
+            color: serviceable ? Colors.greenAccent : Colors.redAccent,
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
     );
   }
 
@@ -355,6 +409,17 @@ class _OrderSummaryPageState
                   );
                   return;
                 }
+                if (_serviceable == false) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                          'Delivery is not available to this address yet'),
+                      behavior: SnackBarBehavior.floating,
+                      backgroundColor: Colors.redAccent,
+                    ),
+                  );
+                  return;
+                }
                 for (final it in ref.read(cartProvider).items) {
                   final pid = ((it as Map)['productId'] ?? it['id']).toString();
                   if (pid.isNotEmpty) {
@@ -375,8 +440,12 @@ class _OrderSummaryPageState
                 );
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.white,
-                foregroundColor: Colors.black,
+                backgroundColor: _serviceable == false
+                    ? AppColors.border
+                    : AppColors.white,
+                foregroundColor: _serviceable == false
+                    ? AppColors.grey
+                    : Colors.black,
                 padding: const EdgeInsets.symmetric(
                     horizontal: 24, vertical: 12),
               ),
