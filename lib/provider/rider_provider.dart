@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/api/api_client.dart';
 import '../core/api/api_endpoints.dart';
 import '../core/errors/app_exception.dart';
+import '../utils/StorageService.dart';
 
 // ── Typed State ───────────────────────────────────────────────────────────────
 
@@ -95,6 +96,21 @@ class RiderNotifier extends StateNotifier<AuthState> {
         data: {'phone': phone, 'typeOfUser': userType, 'otp_code': otp},
       );
       final body = res.data as Map<String, dynamic>;
+
+      // Persist access/refresh tokens and user type for splash routing
+      final data = body['data'] as Map<String, dynamic>?;
+      if (data != null) {
+        final access  = data['accessToken']  as String?;
+        final refresh = data['refreshToken'] as String?;
+        if (access != null && refresh != null) {
+          await StorageService.saveTokens(
+            accessToken: access,
+            refreshToken: refresh,
+            userType: userType,
+          );
+        }
+      }
+
       state = state.copyWith(isLoading: false);
       return body;
     } on DioException catch (e) {
