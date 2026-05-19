@@ -16,13 +16,15 @@ class ApiClient {
   static ApiClient? _instance;
   static ApiClient get instance => _instance ??= ApiClient._();
 
-  late final Dio _productClient = _build(ApiEndpoints.productServiceBase);
-  late final Dio _orderClient   = _build(ApiEndpoints.orderServiceBase);
-  late final Dio _chatClient    = _build(ApiEndpoints.chatServiceBase);
+  late final Dio _productClient  = _build(ApiEndpoints.productServiceBase);
+  late final Dio _orderClient    = _build(ApiEndpoints.orderServiceBase);
+  late final Dio _chatClient     = _build(ApiEndpoints.chatServiceBase);
+  late final Dio _deliveryClient = _build(ApiEndpoints.deliveryServiceBase);
 
-  Dio get productClient => _productClient;
-  Dio get orderClient   => _orderClient;
-  Dio get chatClient    => _chatClient;
+  Dio get productClient  => _productClient;
+  Dio get orderClient    => _orderClient;
+  Dio get chatClient     => _chatClient;
+  Dio get deliveryClient => _deliveryClient;
 
   Dio _build(String baseUrl) {
     final dio = Dio(

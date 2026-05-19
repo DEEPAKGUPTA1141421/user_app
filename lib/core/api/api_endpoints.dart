@@ -6,9 +6,10 @@ class ApiEndpoints {
   ApiEndpoints._();
 
   // ── Base URLs ──────────────────────────────────────────────────────────────
-  static const String productServiceBase = 'http://192.168.1.116:8081';
-static const String orderServiceBase   = 'http://192.168.1.116:8082';
-static const String chatServiceBase    = 'http://192.168.1.116:8082';
+  static const String productServiceBase  = 'http://192.168.1.116:8081';
+  static const String orderServiceBase    = 'http://192.168.1.116:8082';
+  static const String chatServiceBase     = 'http://192.168.1.116:8082';
+  static const String deliveryServiceBase = 'http://192.168.1.116:8083';
 
   // ── SendBird App ID (set to your SendBird Application ID) ─────────────────
   static const String sendbirdAppId = 'F125EC09-A15E-4141-9C1F-3B1BD2A8A309';
@@ -134,6 +135,20 @@ static const String chatServiceBase    = 'http://192.168.1.116:8082';
   static const String chatToken = '/api/chat/token';
   // POST /api/chat/support/ticket → { channelUrl, ticketId }
   static const String chatSupportTicket = '/api/chat/support/ticket';
+
+  // ── Rider Route & Location (DeliveryInventoryService :8083) ──────────────
+  static String riderTodayRoute(String riderId) =>
+      '/api/v1/riders/$riderId/route/today';
+
+  static String riderAssignmentStatus(String riderId, String assignmentId) =>
+      '/api/v1/riders/$riderId/assignments/$assignmentId/status';
+
+  static String riderLocation(String riderId) =>
+      '/api/v1/riders/$riderId/location';
+
+  // ── Zone Eligibility (DeliveryInventoryService :8083) ─────────────────────
+  static String zoneCheck(double lat, double lng, {String type = 'USER'}) =>
+      '/api/v1/zones/check?lat=$lat&lng=$lng&type=$type';
 
   // ── FCM Device Token ──────────────────────────────────────────────────────
   static const String fcmToken = '/api/v1/user/fcm-token';
