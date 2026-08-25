@@ -5,7 +5,6 @@ import 'package:flutter_web_plugins/flutter_web_plugins.dart';
 import 'package:user_app/utils/app_colors.dart';
 import 'core/api/api_client.dart';
 import 'core/api/api_endpoints.dart';
-import 'core/widgets/app_loader.dart';
 import 'core/api/auth_interceptor.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/home_screen.dart';
@@ -36,6 +35,8 @@ import 'screens/order_tracking_screen.dart';
 import 'screens/shops/shop_detail_screen.dart';
 import 'screens/payment_page.dart';
 import 'screens/rider/rider_home_screen.dart';
+
+final RouteObserver<PageRoute> routeObserver = RouteObserver<PageRoute>();
 
 Future<void> _firebaseMessagingHandler(RemoteMessage message) async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
@@ -121,6 +122,7 @@ class _MyAppState extends State<MyApp> {
     return MaterialApp(
       title: 'Dashly',
       navigatorKey: _navigatorKey,
+      navigatorObservers: [routeObserver],
       debugShowCheckedModeBanner: false,
       home: const SplashScreen(),
 
@@ -332,9 +334,8 @@ Future<void> _registerFcmToken() async {
   }
 }
 
-// ── SplashScreen — auth check + FCM token registration ───────────────────────
+// ── SplashScreen — animated logo + auth check ────────────────────────────────
 
-/// 🔹 SplashScreen handles the token check
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -342,36 +343,65 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> {
-  late FirebaseMessaging messaging;
+class _SplashScreenState extends State<SplashScreen>
+    with TickerProviderStateMixin {
+  late AnimationController _logoCtrl;
+  late Animation<double> _fadeAnim;
+  late Animation<double> _scaleAnim;
+
+  String? _destination; // resolved once auth check completes
+
+  static const _splashDuration = Duration(seconds: 3);
+  static const _revealDuration = Duration(milliseconds: 750);
+
   @override
   void initState() {
-    messaging = FirebaseMessaging.instance;
-    messaging.requestPermission();
     super.initState();
-    _checkAuth();
+
+    // ── Logo reveal animation ────────────────────────────────────────────────
+    _logoCtrl = AnimationController(vsync: this, duration: _revealDuration);
+
+    _fadeAnim = CurvedAnimation(parent: _logoCtrl, curve: Curves.easeOut);
+
+    _scaleAnim = Tween<double>(begin: 0.82, end: 1.0).animate(
+      CurvedAnimation(parent: _logoCtrl, curve: Curves.easeOutCubic),
+    );
+
+    _logoCtrl.forward();
+
+    // ── Auth check + minimum 3-second hold run in parallel ───────────────────
+    FirebaseMessaging.instance.requestPermission();
+    Future.wait([
+      _resolveDestination(),
+      Future<void>.delayed(_splashDuration),
+    ]).then((_) => _navigate());
   }
 
-  Future<void> _checkAuth() async {
+  Future<void> _resolveDestination() async {
     final isLoggedIn = await StorageService.isLoggedIn();
-    final userType   = await StorageService.getUserType(); // 'RIDER' | 'USER' | null
-    final initialRoute = WidgetsBinding.instance.platformDispatcher.defaultRouteName;
-    final isShopDeepLink = initialRoute.startsWith('/shop/');
+    final userType = await StorageService.getUserType();
+    final initialRoute =
+        WidgetsBinding.instance.platformDispatcher.defaultRouteName;
 
-    if (!mounted) return;
-
-    if (isShopDeepLink) {
-      Navigator.pushReplacementNamed(context, initialRoute);
-      return;
-    }
-
-    if (isLoggedIn) {
+    if (initialRoute.startsWith('/shop/')) {
+      _destination = initialRoute;
+    } else if (isLoggedIn) {
       _registerFcmToken();
-      final home = userType == 'RIDER' ? '/rider-home' : '/home';
-      Navigator.pushReplacementNamed(context, home);
+      _destination = userType == 'RIDER' ? '/rider-home' : '/home';
     } else {
-      Navigator.pushReplacementNamed(context, "/login");
+      _destination = '/login';
     }
+  }
+
+  void _navigate() {
+    if (!mounted) return;
+    Navigator.pushReplacementNamed(context, _destination ?? '/login');
+  }
+
+  @override
+  void dispose() {
+    _logoCtrl.dispose();
+    super.dispose();
   }
 
   @override
@@ -379,24 +409,38 @@ class _SplashScreenState extends State<SplashScreen> {
     return Scaffold(
       backgroundColor: AppColors.bg,
       body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ColorFiltered(
-              colorFilter: const ColorFilter.matrix(<double>[
-                1, 0, 0, 0, 0,
-                0, 1, 0, 0, 0,
-                0, 0, 1, 0, 0,
-                -1, -1, -1, 3, 0, // white → alpha 0; dark/colored → alpha 1
-              ]),
-              child: Image.asset('assets/images/DashlyLogo.jpeg', width: 200, fit: BoxFit.contain),
+        child: FadeTransition(
+          opacity: _fadeAnim,
+          child: ScaleTransition(
+            scale: _scaleAnim,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // ── Logo — white bg stripped via alpha matrix ────────────────
+                // The matrix sets A' = clamp(-R - G - B + 3·A), making pure
+                // white (R=G=B=1) fully transparent while preserving all the
+                // logo's colored pixels at full opacity.
+                ColorFiltered(
+                  colorFilter: const ColorFilter.matrix(<double>[
+                    1, 0, 0, 0, 0,
+                    0, 1, 0, 0, 0,
+                    0, 0, 1, 0, 0,
+                    -1, -1, -1, 3, 0,
+                  ]),
+                  child: Image.asset(
+                    'assets/images/DashlyLogo.jpeg',
+                    width: 280,
+                    filterQuality: FilterQuality.high,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 32),
-            const AppSpinner(color: AppColors.green),
-          ],
+          ),
         ),
       ),
     );
   }
+
 }
 

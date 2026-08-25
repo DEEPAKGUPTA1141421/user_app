@@ -20,6 +20,12 @@ class CheckoutState {
   final String? paymentId;
   final String? paymentMode; // CASH_ON_DELIVERY | ONLINE
 
+  // Razorpay order details (populated when gateway == 'razorpay')
+  final String? razorpayOrderId;
+  final String? razorpayKeyId;
+  final int? razorpayAmountPaise;
+  final String? razorpayCurrency;
+
   // Step 3 – Verification
   final bool paymentVerified;
   final String? paymentStatus;
@@ -36,6 +42,10 @@ class CheckoutState {
     this.transactionIds = const [],
     this.paymentId,
     this.paymentMode,
+    this.razorpayOrderId,
+    this.razorpayKeyId,
+    this.razorpayAmountPaise,
+    this.razorpayCurrency,
     this.paymentVerified = false,
     this.paymentStatus,
     this.selectedAddress,
@@ -65,6 +75,10 @@ class CheckoutState {
     List<String>? transactionIds,
     String? paymentId,
     String? paymentMode,
+    String? razorpayOrderId,
+    String? razorpayKeyId,
+    int? razorpayAmountPaise,
+    String? razorpayCurrency,
     bool? paymentVerified,
     String? paymentStatus,
     Map<String, dynamic>? selectedAddress,
@@ -78,6 +92,10 @@ class CheckoutState {
       transactionIds: transactionIds ?? this.transactionIds,
       paymentId: paymentId ?? this.paymentId,
       paymentMode: paymentMode ?? this.paymentMode,
+      razorpayOrderId: razorpayOrderId ?? this.razorpayOrderId,
+      razorpayKeyId: razorpayKeyId ?? this.razorpayKeyId,
+      razorpayAmountPaise: razorpayAmountPaise ?? this.razorpayAmountPaise,
+      razorpayCurrency: razorpayCurrency ?? this.razorpayCurrency,
       paymentVerified: paymentVerified ?? this.paymentVerified,
       paymentStatus: paymentStatus ?? this.paymentStatus,
       selectedAddress: selectedAddress ?? this.selectedAddress,
@@ -141,7 +159,7 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
   // gateway: 'phonepe' → pgPayment:true,  pgPaymentAmount:"<rupees>"
   Future<bool> createPayment({
     required String userId,
-    required String gateway, // 'cod' | 'phonepe'
+    required String gateway, // 'cod' | 'phonepe' | 'razorpay'
   }) async {
     if (state.bookings.isEmpty) {
       state = state.copyWith(error: 'No bookings found. Please try again.');
@@ -152,6 +170,10 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
     final isCod = gateway == 'cod';
     final txIds = <String>[];
     String? firstPaymentId;
+    String? razorpayOrderId;
+    String? razorpayKeyId;
+    int? razorpayAmountPaise;
+    String? razorpayCurrency;
 
     try {
       for (final booking in state.bookings) {
@@ -185,6 +207,10 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
           final txId = data['transactionId']?.toString();
           if (txId != null && txId.isNotEmpty) txIds.add(txId);
           firstPaymentId ??= data['paymentId']?.toString();
+          razorpayOrderId ??= data['razorpayOrderId']?.toString();
+          razorpayKeyId ??= data['razorpayKeyId']?.toString();
+          razorpayAmountPaise ??= (data['razorpayAmount'] as num?)?.toInt();
+          razorpayCurrency ??= data['razorpayCurrency']?.toString();
         }
       }
 
@@ -193,6 +219,10 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
         transactionIds: txIds,
         paymentId: firstPaymentId,
         paymentMode: isCod ? 'CASH_ON_DELIVERY' : 'ONLINE',
+        razorpayOrderId: razorpayOrderId,
+        razorpayKeyId: razorpayKeyId,
+        razorpayAmountPaise: razorpayAmountPaise,
+        razorpayCurrency: razorpayCurrency,
       );
       return true;
     } on DioException catch (e) {
@@ -205,16 +235,24 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
     }
   }
 
-  // ─── Step 3: Validate / Verify Payment (PhonePe only) ────────────────────
-  Future<bool> validatePayment() async {
-    if (state.bookingId == null) return false;
+  // ─── Step 3: Validate / Verify Payment ────────────────────────────────────
+  //
+  // gateway: 'phonepe' | 'razorpay'. merchantOrderId defaults to bookingId
+  // (legacy PhonePe behaviour) — Razorpay callers should pass the
+  // transactionId returned by createPayment instead.
+  Future<bool> validatePayment({
+    String gateway = 'phonepe',
+    String? merchantOrderId,
+  }) async {
+    final orderId = merchantOrderId ?? state.bookingId;
+    if (orderId == null) return false;
     state = state.copyWith(isLoading: true, error: null);
     try {
       final res = await _client.get(
         ApiEndpoints.validatePayment,
         queryParameters: {
-          'merchantOrderId': state.bookingId!,
-          'gateway': 'phonepe',
+          'merchantOrderId': orderId,
+          'gateway': gateway,
         },
       );
       final body = res.data as Map<String, dynamic>;

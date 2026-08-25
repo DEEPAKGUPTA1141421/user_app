@@ -6,10 +6,10 @@ class ApiEndpoints {
   ApiEndpoints._();
 
   // ── Base URLs ──────────────────────────────────────────────────────────────
-  static const String productServiceBase  = 'http://192.168.1.116:8081';
-  static const String orderServiceBase    = 'http://192.168.1.116:8082';
-  static const String chatServiceBase     = 'http://192.168.1.116:8082';
-  static const String deliveryServiceBase = 'http://192.168.1.116:8083';
+  static const String productServiceBase  = 'http://localhost:8081';
+  static const String orderServiceBase    = 'http://localhost:8082';
+  static const String chatServiceBase     = 'http://localhost:8082';
+  static const String deliveryServiceBase = 'http://localhost:8083';
 
   // ── SendBird App ID (set to your SendBird Application ID) ─────────────────
   static const String sendbirdAppId = 'F125EC09-A15E-4141-9C1F-3B1BD2A8A309';
@@ -55,6 +55,7 @@ class ApiEndpoints {
 
   static String applyCartCoupon(String code) => '/api/v1/cart/coupons/$code';
   static String cartItem(String id) => '/api/v1/cart/items/$id';
+  static const String cartMembership = '/api/v1/cart/membership';
 
   // ── Wishlist ────────────────────────────────────────────────────────────────
   static const String wishlist           = '/api/v1/wishlist';

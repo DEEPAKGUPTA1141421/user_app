@@ -36,6 +36,11 @@ class CartState {
 
   String? get appliedCoupon => cartData['cartCoupon'] as String?;
 
+  bool get membershipAdded => cartData['membershipAdded'] as bool? ?? false;
+
+  Map<String, dynamic>? get membershipOffer =>
+      cartData['membershipOffer'] as Map<String, dynamic>?;
+
   bool get isEmpty => items.isEmpty;
 
   CartState copyWith({
@@ -127,6 +132,42 @@ class CartNotifier extends StateNotifier<CartState> {
     try {
       await _client.delete('${ApiEndpoints.cartItems}/$itemId');
       await fetchCart();
+    } on DioException catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        error: AppException.fromDioError(e).message,
+      );
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: e.toString());
+    }
+  }
+
+  // ── Membership add-on ────────────────────────────────────────────────────
+
+  Future<void> addMembership() async {
+    state = state.copyWith(isLoading: true, error: null);
+    try {
+      final res = await _client.post(ApiEndpoints.cartMembership);
+      final data = (res.data as Map<String, dynamic>?)?['data']
+          as Map<String, dynamic>? ?? {};
+      state = state.copyWith(isLoading: false, cartData: data);
+    } on DioException catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        error: AppException.fromDioError(e).message,
+      );
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: e.toString());
+    }
+  }
+
+  Future<void> removeMembership() async {
+    state = state.copyWith(isLoading: true, error: null);
+    try {
+      final res = await _client.delete(ApiEndpoints.cartMembership);
+      final data = (res.data as Map<String, dynamic>?)?['data']
+          as Map<String, dynamic>? ?? {};
+      state = state.copyWith(isLoading: false, cartData: data);
     } on DioException catch (e) {
       state = state.copyWith(
         isLoading: false,

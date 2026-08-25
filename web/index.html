@@ -31,6 +31,9 @@
 
   <title>Dashly</title>
   <link rel="manifest" href="manifest.json">
+  <style>
+    html, body { margin: 0; padding: 0; background-color: #000000; }
+  </style>
 
   <!-- SPA path routing: restore path after server-side 404 redirect -->
   <script>
@@ -49,6 +52,9 @@
   </script>
   <!-- This script adds the flutter initialization JS code -->
   <script src="flutter.js" defer></script>
+
+  <!-- Razorpay web checkout SDK (used by lib/core/payment/razorpay_gateway_web.dart) -->
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 </head>
 <body>
   <script>

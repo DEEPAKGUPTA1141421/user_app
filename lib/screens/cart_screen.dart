@@ -62,9 +62,11 @@ class _CartScreenState extends ConsumerState<CartScreen> {
           children: [
             AppRefreshIndicator(
               onRefresh: _refreshCart,
-              child: items.isEmpty && !isLoading
-                  ? _buildEmptyCart(context)
-                  : _buildCartList(context, cartData, items),
+              child: isLoading && items.isEmpty
+                  ? Container(color: AppColors.bg)
+                  : items.isEmpty
+                      ? _buildEmptyCart(context)
+                      : _buildCartList(context, cartData, items),
             ),
             if (isLoading) const AppLoadingOverlay(),
           ],

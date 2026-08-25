@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../provider/order_tracking_provider.dart';
 import '../provider/checkout_provider.dart';
 import '../core/widgets/app_loader.dart';
+import '../main.dart' show routeObserver;
 
 class OrderTrackingScreen extends ConsumerStatefulWidget {
   const OrderTrackingScreen({super.key});
@@ -14,7 +15,7 @@ class OrderTrackingScreen extends ConsumerStatefulWidget {
 }
 
 class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, RouteAware {
   late AnimationController _shimCtrl;
   Timer? _refreshTimer;
 
@@ -25,7 +26,7 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen>
         AnimationController(vsync: this, duration: const Duration(seconds: 2))
           ..repeat();
 
-    // Ensure tracking is loaded, then start auto-refresh every 30 s
+    // Ensure tracking is loaded, then start auto-refresh every 10 s
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final bookingId = ref.read(checkoutProvider).bookingId;
       if (bookingId != null &&
@@ -36,8 +37,32 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen>
     });
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route is PageRoute) {
+      routeObserver.subscribe(this, route);
+    }
+  }
+
+  // Another route was pushed on top of this one — stop polling while hidden.
+  @override
+  void didPushNext() => _stopAutoRefresh();
+
+  // Came back to this route (e.g. after popping "View All Orders") — resume polling.
+  @override
+  void didPopNext() {
+    final bookingId = ref.read(orderTrackingProvider).bookingId;
+    if (bookingId != null) {
+      ref.read(orderTrackingProvider.notifier).loadTracking(bookingId);
+    }
+    _startAutoRefresh();
+  }
+
   void _startAutoRefresh() {
-    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+    _refreshTimer?.cancel();
+    _refreshTimer = Timer.periodic(const Duration(seconds: 10), (_) {
       final bookingId = ref.read(orderTrackingProvider).bookingId;
       if (bookingId != null) {
         ref.read(orderTrackingProvider.notifier).loadTracking(bookingId);
@@ -45,8 +70,14 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen>
     });
   }
 
+  void _stopAutoRefresh() {
+    _refreshTimer?.cancel();
+    _refreshTimer = null;
+  }
+
   @override
   void dispose() {
+    routeObserver.unsubscribe(this);
     _shimCtrl.dispose();
     _refreshTimer?.cancel();
     super.dispose();

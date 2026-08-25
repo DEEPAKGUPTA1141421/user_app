@@ -5,8 +5,29 @@ import 'coupon_screen.dart';
 class CouponAndOffersCard extends StatelessWidget {
   final VoidCallback? onApply;
   final VoidCallback? onBuy;
+  final VoidCallback? onRemove;
+  final double totalDiscount;
+  final double deliveryCharge;
+  final Map<String, dynamic>? membershipOffer;
+  final bool membershipAdded;
 
-  const CouponAndOffersCard({super.key, this.onApply, this.onBuy});
+  const CouponAndOffersCard({
+    super.key,
+    this.onApply,
+    this.onBuy,
+    this.onRemove,
+    this.totalDiscount = 0,
+    this.deliveryCharge = 0,
+    this.membershipOffer,
+    this.membershipAdded = false,
+  });
+
+  String _membershipSubtitle(Map<String, dynamic> config) {
+    final subtitle = config['subtitle'] as String? ?? "D2D Prime Membership";
+    final price = (config['price'] as num?)?.toDouble();
+    if (price == null) return subtitle;
+    return "$subtitle · ₹${price.toStringAsFixed(0)}";
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -15,6 +36,9 @@ class CouponAndOffersCard extends StatelessWidget {
       String subtitle, {
       bool isArrow = false,
       bool isBuyButton = false,
+      String buyButtonText = "Add To Cart",
+      bool buyButtonDisabled = false,
+      bool isRemoveButton = false,
       VoidCallback? onPressed,
     }) {
       return Padding(
@@ -67,19 +91,25 @@ class CouponAndOffersCard extends StatelessWidget {
             /// 👉 Buy Button
             if (isBuyButton)
               ElevatedButton(
-                onPressed: onPressed,
+                onPressed: buyButtonDisabled ? null : onPressed,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.white,
-                  foregroundColor: Colors.black,
+                  backgroundColor: isRemoveButton
+                      ? Colors.redAccent
+                      : (buyButtonDisabled
+                          ? AppColors.border
+                          : AppColors.white),
+                  foregroundColor: isRemoveButton
+                      ? Colors.white
+                      : (buyButtonDisabled ? AppColors.grey : Colors.black),
                   padding:
                       const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-                child: const Text(
-                  "Add To Cart",
-                  style: TextStyle(
+                child: Text(
+                  buyButtonText,
+                  style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 12,
                   ),
@@ -89,6 +119,11 @@ class CouponAndOffersCard extends StatelessWidget {
         ),
       );
     }
+
+    final config = membershipOffer;
+    final showMembership = config != null &&
+        config.isNotEmpty &&
+        config['active'] != false;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -106,28 +141,36 @@ class CouponAndOffersCard extends StatelessWidget {
             onPressed: onApply,
           ),
 
-          const Divider(color: AppColors.divider),
+          if (totalDiscount > 0) ...[
+            const Divider(color: AppColors.divider),
+            buildRow(
+              "₹${totalDiscount.toStringAsFixed(0)} saved",
+              "Discount applied on your order",
+            ),
+          ],
 
-          buildRow(
-            "₹121 saved",
-            "Items at ₹99 applied",
-          ),
+          if (deliveryCharge == 0) ...[
+            const Divider(color: AppColors.divider),
+            buildRow(
+              "Free Delivery",
+              "No delivery charges on this order",
+            ),
+          ],
 
-          const Divider(color: AppColors.divider),
-
-          buildRow(
-            "₹45 saved",
-            "Delivery applied",
-          ),
-
-          const Divider(color: AppColors.divider),
-
-          buildRow(
-            "Unlimited Free Deliveries",
-            "D2D Prime Membership",
-            isBuyButton: true,
-            onPressed: onBuy,
-          ),
+          if (showMembership) ...[
+            const Divider(color: AppColors.divider),
+            buildRow(
+              config['title'] as String? ?? "Unlimited Free Deliveries",
+              _membershipSubtitle(config),
+              isBuyButton: true,
+              isRemoveButton: membershipAdded,
+              buyButtonText: membershipAdded
+                  ? "Remove"
+                  : (config['buttonText'] as String? ?? "Add To Cart"),
+              buyButtonDisabled: false,
+              onPressed: membershipAdded ? onRemove : onBuy,
+            ),
+          ],
         ],
       ),
     );
